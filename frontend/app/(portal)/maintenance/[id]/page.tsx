@@ -501,7 +501,7 @@ export default function TaskPage() {
                 {t.gps_accuracy_m ? ` (±${Math.round(t.gps_accuracy_m)} m)` : ""}
               </dd>
               <dt>Asset scan</dt>
-              <dd>{t.asset_scanned_at ? `${label(t.asset_scan_method)} · ${fmtDateTime(t.asset_scanned_at)}` : "—"}</dd>
+              <dd>{t.asset_scanned_at ? `${(t.asset_scan_method || "").toUpperCase()} · ${fmtDateTime(t.asset_scanned_at)}` : "—"}</dd>
               <dt>Rework</dt>
               <dd>{t.rework_count}</dd>
               {t.complaint_id ? (

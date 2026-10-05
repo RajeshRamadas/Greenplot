@@ -1,0 +1,58 @@
+# GreenPlot V1 — single-VPS deployment (requirements §26-27).
+#   cp .env.example .env   # set secrets
+#   docker compose up -d --build
+#   docker compose exec api python -m app.seed   # optional demo data
+# Put Cloudflare (or another TLS reverse proxy) in front of the `web` service.
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: greenplot
+      POSTGRES_USER: greenplot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U greenplot"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      GP_DATABASE_URL: postgresql+psycopg://greenplot:${POSTGRES_PASSWORD}@db/greenplot
+    volumes:
+      - media:/data/storage
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    depends_on: [api]
+    env_file: .env
+    environment:
+      GP_DATABASE_URL: postgresql+psycopg://greenplot:${POSTGRES_PASSWORD}@db/greenplot
+    volumes:
+      - media:/data/storage
+    command: ["python", "-m", "app.worker"]
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        GREENPLOT_API_URL: http://api:8000
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  media:

@@ -10,7 +10,7 @@ import re
 import uuid
 from datetime import datetime, timedelta
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.deps import Actor
@@ -198,8 +198,11 @@ def search(
     hits: list[SearchHit] = []
     labels: dict[uuid.UUID, str] = {}
 
-    def like(col):
-        return col.ilike(f"%{text}%")
+    words = (text or "").split()
+
+    def text_match(*cols):
+        """Every remaining word must appear in at least one of the columns."""
+        return and_(*[or_(*[c.ilike(f"%{w}%") for c in cols]) for w in words])
 
     if want("maintenance") and actor.can("maintenance.read"):
         stmt = scope_tasks(tenant_select(MaintenanceTask, actor), db, actor)
@@ -228,12 +231,7 @@ def search(
             stmt = stmt.where(MaintenanceTask.created_at <= date_to)
         if text and not number:
             stmt = stmt.where(
-                or_(
-                    like(MaintenanceTask.title),
-                    like(MaintenanceTask.description),
-                    like(MaintenanceTask.number),
-                    like(MaintenanceTask.work_notes),
-                )
+                text_match(MaintenanceTask.title, MaintenanceTask.description, MaintenanceTask.number, MaintenanceTask.work_notes)
             )
         for t in db.scalars(stmt.order_by(MaintenanceTask.created_at.desc()).limit(limit)):
             hits.append(
@@ -266,7 +264,7 @@ def search(
         if date_to:
             stmt = stmt.where(Complaint.created_at <= date_to)
         if text and not number:
-            stmt = stmt.where(or_(like(Complaint.title), like(Complaint.description), like(Complaint.number)))
+            stmt = stmt.where(text_match(Complaint.title, Complaint.description, Complaint.number))
         if not (category and f_type != "complaint"):
             for c in db.scalars(stmt.order_by(Complaint.created_at.desc()).limit(limit)):
                 hits.append(
@@ -295,7 +293,7 @@ def search(
         if date_from:
             stmt = stmt.where(Inspection.created_at >= date_from)
         if text and not number:
-            stmt = stmt.where(or_(like(Inspection.findings), like(Inspection.number)))
+            stmt = stmt.where(text_match(Inspection.findings, Inspection.number))
         for i in db.scalars(stmt.order_by(Inspection.created_at.desc()).limit(limit)):
             hits.append(
                 SearchHit(
@@ -320,7 +318,7 @@ def search(
         if date_from:
             stmt = stmt.where(Incident.occurred_at >= date_from)
         if text and not number:
-            stmt = stmt.where(or_(like(Incident.title), like(Incident.description), like(Incident.number)))
+            stmt = stmt.where(text_match(Incident.title, Incident.description, Incident.number))
         for inc in db.scalars(stmt.order_by(Incident.occurred_at.desc()).limit(limit)):
             hits.append(
                 SearchHit(
@@ -341,7 +339,7 @@ def search(
         if prop_ids is not None:
             stmt = stmt.where(Asset.property_id.in_(prop_ids))
         if text:
-            stmt = stmt.where(or_(like(Asset.name), like(Asset.code), like(Asset.location), Asset.qr_code == text.upper()))
+            stmt = stmt.where(or_(text_match(Asset.name, Asset.code, Asset.location), Asset.qr_code == text.upper()))
         for a in db.scalars(stmt.limit(limit)):
             hits.append(
                 SearchHit(
@@ -354,7 +352,7 @@ def search(
         if prop_ids is not None:
             stmt = stmt.where(Property.id.in_(prop_ids))
         if text:
-            stmt = stmt.where(or_(like(Property.plot_number), like(Property.code), like(Property.owner_name), like(Property.address)))
+            stmt = stmt.where(text_match(Property.plot_number, Property.code, Property.owner_name, Property.address))
         for p in db.scalars(stmt.limit(limit)):
             labels[p.id] = f"Plot {p.plot_number}"
             hits.append(
@@ -369,12 +367,12 @@ def search(
             )
 
     if f_type in (None, "vendor") and actor.can("vendors.read") and text and plain and not plot:
-        for v in db.scalars(tenant_select(Vendor, actor).where(or_(like(Vendor.name), like(Vendor.contact_person))).limit(limit)):
+        for v in db.scalars(tenant_select(Vendor, actor).where(text_match(Vendor.name, Vendor.contact_person)).limit(limit)):
             hits.append(SearchHit(type="vendor", id=v.id, number=None, title=v.name, status="active" if v.is_active else "inactive"))
 
     if f_type in (None, "staff") and actor.can("staff.read") and text and plain and not plot:
         stmt = select(User).where(
-            User.tenant_id == actor.tenant_id, User.role.in_([Role.STAFF, Role.GUARD, Role.SUPERVISOR]), like(User.full_name)
+            User.tenant_id == actor.tenant_id, User.role.in_([Role.STAFF, Role.GUARD, Role.SUPERVISOR]), text_match(User.full_name)
         )
         for u in db.scalars(stmt.limit(limit)):
             hits.append(SearchHit(type="staff", id=u.id, number=None, title=u.full_name, status=u.role))

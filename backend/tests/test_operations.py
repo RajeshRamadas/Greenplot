@@ -173,3 +173,11 @@ def test_search_interpretation():
     f = interpret("open complaints plot 204")
     assert f["type"] == "complaint" and f["plot"] == "204" and "open" in f["status"]
     assert interpret("pump motor")["text"] == "pump motor"
+
+
+def test_search_matches_words_left_after_interpretation(as_, world):
+    sup = as_(world.supervisor)
+    t = sup.ok("post", "/maintenance", {"title": "E2E clean 12345 batch", "category": "cleaning"})
+    res = sup.ok("get", "/records/search", params={"q": "E2E clean 12345"})
+    assert res["interpreted"]["category"] == "cleaning" and res["interpreted"]["text"] == "e2e 12345"
+    assert [h["id"] for h in res["items"]] == [t["id"]]

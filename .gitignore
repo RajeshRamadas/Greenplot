@@ -19,3 +19,6 @@ next-env.d.ts
 # Misc
 .DS_Store
 .env
+frontend/public/index.html
+frontend/test-results/
+frontend/playwright-report/

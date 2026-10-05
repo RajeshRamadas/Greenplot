@@ -1,5 +1,6 @@
 """Background jobs: recurring schedules, due/overdue reminders, SOS escalation,
-dues reminders and media retention. Run by app.worker or the in-process loop."""
+dues reminders, media retention, ticket SLA escalation and auto-close, and
+notification retries. Run by app.worker or the in-process loop."""
 
 import logging
 import uuid
@@ -13,6 +14,7 @@ from app.models.base import utcnow
 from app.models.enums import MediaStatus, Role, SosStatus
 from app.services import audit, billing, notifications
 from app.services import maintenance as msvc
+from app.services import tickets as tickets_svc
 from app.services.storage import get_storage
 
 log = logging.getLogger("greenplot.jobs")
@@ -153,6 +155,9 @@ def run_all(db: Session) -> dict:
     result["sos_escalated"] = escalate_sos(db)
     result["dues_reminded"] = billing.refresh_overdue(db)
     result["media_purged"] = purge_expired_media(db)
+    result["ticket_sla_alerts"] = tickets_svc.run_sla_checks(db)
+    result["tickets_auto_closed"] = tickets_svc.auto_close_resolved(db)
+    result["notification_retries"] = notifications.retry_failed_deliveries(db)
     db.commit()
     return result
 

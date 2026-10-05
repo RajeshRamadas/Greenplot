@@ -198,3 +198,38 @@ class SyncState(StrEnum):
     FAILED = "failed"
     RETRY = "retry"
     CONFLICT = "conflict"
+
+
+class TicketStatus(StrEnum):
+    """Customer ticket lifecycle (ticketing requirements §8)."""
+
+    OPEN = "open"
+    UNDER_REVIEW = "under_review"
+    ASSIGNED = "assigned"
+    ACCEPTED = "accepted"
+    IN_PROGRESS = "in_progress"
+    WAITING_FOR_CUSTOMER = "waiting_for_customer"
+    WORK_COMPLETED = "work_completed"
+    VERIFICATION = "verification"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+    ON_HOLD = "on_hold"
+    REOPENED = "reopened"
+
+
+class TicketPriority(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class CommentVisibility(StrEnum):
+    """Who can read a ticket comment (ticketing requirements §13, §23)."""
+
+    CUSTOMER = "customer"
+    VENDOR = "vendor"
+    INTERNAL = "internal"
+    SUPERVISOR = "supervisor"

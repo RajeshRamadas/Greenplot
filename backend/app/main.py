@@ -21,6 +21,7 @@ from app.api.v1 import (
     security,
     system,
     tenants,
+    tickets,
     users,
 )
 from app.core.config import get_settings
@@ -90,6 +91,7 @@ def create_app() -> FastAPI:
         maintenance,
         media,
         complaints,
+        tickets,
         inspections,
         people,
         security,

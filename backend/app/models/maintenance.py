@@ -45,12 +45,14 @@ class MaintenanceTask(TenantModel, SoftDelete):
     category: Mapped[str] = mapped_column(String(40), index=True)
     priority: Mapped[str] = mapped_column(String(20), default="medium")
     status: Mapped[str] = mapped_column(String(30), default="created", index=True)
-    source: Mapped[str] = mapped_column(String(30), default="manual")  # manual, complaint, inspection, schedule, asset_scan
+    source: Mapped[str] = mapped_column(String(30), default="manual")  # manual, complaint, ticket, inspection, schedule, asset_scan
 
     property_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("properties.id"), index=True, nullable=True)
     layout_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("layouts.id"), nullable=True)
     asset_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("assets.id"), index=True, nullable=True)
     complaint_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("complaints.id"), nullable=True)
+    # Plain reference (no FK) to avoid a tickets <-> maintenance_tasks cycle, like Complaint.maintenance_task_id.
+    ticket_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True, nullable=True)
     inspection_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("inspections.id"), nullable=True)
     schedule_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("maintenance_schedules.id"), nullable=True)
     location_note: Mapped[str | None] = mapped_column(String(300), nullable=True)

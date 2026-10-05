@@ -277,7 +277,7 @@ def records_search(
 @router.get("/meta")
 def meta(actor: CurrentActor):
     """Enumerations for building forms."""
-    from app.models.enums import INSPECTION_POINTS, EvidenceType, Priority, RequirementKey
+    from app.models.enums import INSPECTION_POINTS, EvidenceType, Priority, RequirementKey, TicketPriority, TicketStatus
 
     return {
         "task_categories": [c.value for c in TaskCategory],
@@ -303,4 +303,7 @@ def meta(actor: CurrentActor):
             "other",
         ],
         "exception_reasons": ["camera_unavailable", "no_gps_signal", "not_applicable", "privacy", "device_issue", "other"],
+        "ticket_statuses": [s.value for s in TicketStatus],
+        "ticket_priorities": [p.value for p in TicketPriority],
+        "ticket_reject_reasons": ["wrong_category", "outside_service_area", "no_availability", "equipment_unavailable", "other"],
     }

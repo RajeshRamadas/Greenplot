@@ -50,6 +50,16 @@ from app.models.operations import (
     VehicleLog,
     Visitor,
 )
+from app.models.tickets import (
+    NotificationDelivery,
+    Ticket,
+    TicketAssignment,
+    TicketCategory,
+    TicketComment,
+    TicketEvidence,
+    TicketSLA,
+    TicketStatusHistory,
+)
 
 __all__ = [
     "Asset",
@@ -79,6 +89,7 @@ __all__ = [
     "Media",
     "Notice",
     "Notification",
+    "NotificationDelivery",
     "PatrolCheckpoint",
     "PatrolRoute",
     "PatrolRun",
@@ -93,6 +104,13 @@ __all__ = [
     "StaffProfile",
     "SyncOperation",
     "Tenant",
+    "Ticket",
+    "TicketAssignment",
+    "TicketCategory",
+    "TicketComment",
+    "TicketEvidence",
+    "TicketSLA",
+    "TicketStatusHistory",
     "User",
     "Vehicle",
     "VehicleLog",

@@ -40,6 +40,7 @@ from app.models.enums import (
     TaskStatus,
 )
 from app.services import audit, notifications
+from app.services import tickets as tickets_svc
 from app.services.access import is_task_worker
 from app.services.numbering import next_number
 
@@ -258,10 +259,13 @@ def assign(db, actor, task, staff_id, vendor_id, supervisor_id=None, due_at=None
     task.accepted_at = None
     if due_at:
         task.due_at = due_at
-    recipients = [staff_id, *notifications.vendor_users(db, task.tenant_id, vendor_id)]
-    notifications.notify(
-        db, task.tenant_id, recipients, "task_assigned", f"New task {task.number}", task.title, "maintenance_task", task.id
-    )
+    if task.ticket_id:
+        tickets_svc.on_task_event(db, actor, task, "assigned")  # notifies with a link to the ticket
+    else:
+        recipients = [staff_id, *notifications.vendor_users(db, task.tenant_id, vendor_id)]
+        notifications.notify(
+            db, task.tenant_id, recipients, "task_assigned", f"New task {task.number}", task.title, "maintenance_task", task.id
+        )
     _sync_complaint(db, task, ComplaintStatus.ASSIGNED)
 
 
@@ -274,6 +278,7 @@ def accept(db, actor, task):
     _require_worker(actor, task)
     _transition(db, actor, task, "accept")
     task.accepted_at = utcnow()
+    tickets_svc.on_task_event(db, actor, task, "accepted")
 
 
 def decline(db, actor, task, reason: str):
@@ -282,6 +287,9 @@ def decline(db, actor, task, reason: str):
     task.assigned_staff_id = None
     task.vendor_id = None
     task.accepted_at = None
+    if task.ticket_id:
+        tickets_svc.on_task_event(db, actor, task, "declined", reason=reason)  # returns the ticket to the office
+        return
     notifications.notify(
         db,
         task.tenant_id,
@@ -306,6 +314,7 @@ def start(db, actor, task, lat=None, lng=None, accuracy=None):
     if lat is not None and lng is not None:
         task.start_latitude, task.start_longitude, task.gps_accuracy_m = lat, lng, accuracy
     _sync_complaint(db, task, ComplaintStatus.IN_PROGRESS)
+    tickets_svc.on_task_event(db, actor, task, "started")
 
 
 def record_asset_scan(db, actor, task, code: str, method: str):
@@ -507,6 +516,7 @@ def complete(db, actor, task, lat=None, lng=None, accuracy=None):
     _transition(db, actor, task, "complete", {"completed_by": actor.id})
     task.completed_at = utcnow()
     task.completed_by = actor.id
+    tickets_svc.on_task_event(db, actor, task, "completed")
     if not proof["policy"]["supervisor_approval"]:
         _approve(db, None, task, "Auto-approved: supervisor approval not required for this category")
         return
@@ -550,6 +560,7 @@ def _approve(db, actor, task, comment):
         db.add(MaintenanceComment(tenant_id=task.tenant_id, task_id=task.id, author_id=actor.id, body=comment, kind="review"))
     recipients = [task.assigned_staff_id, *notifications.vendor_users(db, task.tenant_id, task.vendor_id)]
     notifications.notify(db, task.tenant_id, recipients, "task_approved", f"{task.number} approved", comment, "maintenance_task", task.id)
+    tickets_svc.on_task_event(db, actor, task, "approved")
     if tenant_setting(db, task.tenant_id, "auto_close_on_approval", True):
         close(db, actor, task)
 
@@ -582,6 +593,7 @@ def reject(db, actor, task, comment: str, decision: str = "rework"):
     notifications.notify(
         db, task.tenant_id, recipients, "task_rework", f"Rework required: {task.number}", comment, "maintenance_task", task.id
     )
+    tickets_svc.on_task_event(db, actor, task, "rework", comment=comment)
 
 
 def close(db, actor, task):
@@ -609,11 +621,13 @@ def reopen(db, actor, task, reason: str):
     db.add(MaintenanceComment(tenant_id=task.tenant_id, task_id=task.id, author_id=actor.id, body=reason, kind="review"))
     recipients = [task.assigned_staff_id, *notifications.vendor_users(db, task.tenant_id, task.vendor_id)]
     notifications.notify(db, task.tenant_id, recipients, "task_rework", f"Reopened: {task.number}", reason, "maintenance_task", task.id)
+    tickets_svc.on_task_event(db, actor, task, "rework", comment=reason)
 
 
 def cancel(db, actor, task, reason: str):
     _transition(db, actor, task, "cancel", {"reason": reason})
     task.review_comment = reason
+    tickets_svc.on_task_event(db, actor, task, "cancelled", reason=reason)
 
 
 def acknowledge(db, actor, task, note: str | None):

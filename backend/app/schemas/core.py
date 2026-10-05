@@ -45,6 +45,7 @@ class UserOut(Stamped):
     is_active: bool
     vendor_id: uuid.UUID | None
     last_login_at: datetime | None
+    whatsapp_opt_in: bool = False
 
 
 class MeOut(UserOut):

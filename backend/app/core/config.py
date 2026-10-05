@@ -52,7 +52,19 @@ class Settings(BaseSettings):
     worker_enabled: bool = False
     worker_interval_seconds: int = 300
 
-    whatsapp_number: str = "918105568225"
+    whatsapp_number: str = "918105568225"  # public contact number shown on the website
+
+    # WhatsApp Business Cloud API (Meta). "log" only logs messages; "meta" sends them.
+    whatsapp_provider: str = "log"
+    whatsapp_api_url: str = "https://graph.facebook.com"
+    whatsapp_api_version: str = "v21.0"
+    whatsapp_phone_number_id: str | None = None
+    whatsapp_access_token: str | None = None
+    whatsapp_app_secret: str | None = None  # verifies X-Hub-Signature-256 on webhooks
+    whatsapp_verify_token: str | None = None  # answers Meta's webhook subscription challenge
+    whatsapp_template: str = "greenplot_update"  # approved utility template with {{1}} title and {{2}} body
+    whatsapp_template_language: str = "en"
+    default_country_code: str = "91"
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -40,8 +40,19 @@ Every V1 module in the requirements:
 These are built behind adapters and need credentials or a provider choice (see §47 open questions):
 
 - **Payments**: a real Razorpay (or other) order call and checkout. The demo has a "simulate payment" button that is disabled in production.
-- **Notifications**: push, SMS, WhatsApp and email adapters currently log the message.
+- **Notifications**: push, SMS and email adapters currently log the message. WhatsApp is implemented (below) and logs until it is configured.
 - **Malware scanning**: plug ClamAV or a provider into `scan_for_malware`.
+
+### WhatsApp (two-way)
+
+GreenPlot uses the official **WhatsApp Business Cloud API**. Ticket updates (created, assigned, accepted, work started, completed, resolved, **closed**), new-assignment alerts for vendors and announcements are sent to people who **opted in** (Profile → *WhatsApp updates*, or by messaging START to the business number). Residents can **reply to an update** — or send a ticket number — and the message is added to the ticket's conversation. STATUS returns the ticket status, and STOP opts out. Every send and its sent → delivered → read / failed receipt is shown in the ticket's notification delivery log. Failed sends are retried. Admins choose the channels per event and can send a test message under **Settings → Notifications**.
+
+To go live:
+
+1. In Meta Business Manager, create a WhatsApp Business app and register your number. Note the **phone number ID**, create a **System User access token** with `whatsapp_business_messaging`, and copy the **app secret**.
+2. Create and get approved a *Utility* message template named `greenplot_update` (language `en`), with the body `{{1}}` + newline + `{{2}}` — for example, “*{{1}}*  {{2}}  Reply to this message to talk to the layout office.” It is used for messages sent outside WhatsApp's 24-hour reply window. Inside that window, plain text is sent.
+3. Set `GP_WHATSAPP_PROVIDER=meta` and the `GP_WHATSAPP_*` variables (see `.env.example`).
+4. In the app's WhatsApp → Configuration, set the callback URL to `https://<your-domain>/api/v1/webhooks/whatsapp`, use the same verify token, and subscribe to **messages**.
 
 ## Run it locally
 
@@ -80,7 +91,7 @@ Put Cloudflare or another TLS reverse proxy in front of port 3000. For large vid
 ## Tests
 
 ```bash
-cd backend && pytest -q                                   # 53 tests on SQLite
+cd backend && pytest -q                                   # 65 tests on SQLite
 GP_TEST_DATABASE_URL=postgresql+psycopg://greenplot:greenplot@localhost/greenplot_test pytest -q
 ruff check app tests
 

@@ -878,7 +878,7 @@ function DeliveriesDialog({ id, onClose }: { id: string; onClose: () => void }) 
                   <td>{label(d.event_type)}</td>
                   <td>{label(d.channel)}</td>
                   <td>
-                    <Badge status={d.status === "stored" || d.status === "sent" || d.status === "delivered" ? "completed" : d.status === "failed" ? "failed" : "pending"} text={label(d.status)} />
+                    <Badge status={["stored", "sent", "delivered", "read"].includes(d.status) ? "completed" : d.status === "failed" ? "failed" : "pending"} text={label(d.status)} />
                     {d.failure_reason ? <div className="small muted">{d.failure_reason}</div> : null}
                     {d.attempts > 1 ? <div className="small muted">{d.attempts} attempts</div> : null}
                   </td>

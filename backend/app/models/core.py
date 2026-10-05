@@ -44,6 +44,10 @@ class User(Model):
     invite_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     token_version: Mapped[int] = mapped_column(Integer, default=0)
+    # WhatsApp consent: business-initiated messages go only to users who opted in.
+    whatsapp_opt_in: Mapped[bool] = mapped_column(Boolean, default=False)
+    whatsapp_opt_in_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    whatsapp_last_inbound_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
 
 class RefreshToken(Model):

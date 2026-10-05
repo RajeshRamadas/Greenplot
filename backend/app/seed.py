@@ -139,6 +139,7 @@ def run(reset: bool = False) -> None:
     db.flush()
     vendor_user = user(t, "vendor@greenvalley.example", Role.VENDOR, "Vikram Shetty", "9000000022", vendor_id=v_gate.id)
     resident = user(t, "resident@greenvalley.example", Role.RESIDENT, "Priya Nair", "9000000030")
+    resident.whatsapp_opt_in = True  # demo: ticket updates also go to WhatsApp (logged unless GP_WHATSAPP_PROVIDER=meta)
 
     props = {}
     for i, plot in enumerate(["101", "102", "103", "104", "105", "117", "204", "221", "89"] + [str(300 + n) for n in range(15)]):

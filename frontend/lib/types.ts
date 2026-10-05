@@ -20,6 +20,7 @@ export interface Me {
   permissions: string[];
   tenant_name: string | null;
   tenant_modules: string[];
+  whatsapp_opt_in: boolean;
 }
 
 export interface User {

@@ -59,6 +59,7 @@ from app.models.tickets import (
     TicketEvidence,
     TicketSLA,
     TicketStatusHistory,
+    WhatsAppMessage,
 )
 
 __all__ = [
@@ -116,4 +117,5 @@ __all__ = [
     "VehicleLog",
     "Vendor",
     "Visitor",
+    "WhatsAppMessage",
 ]

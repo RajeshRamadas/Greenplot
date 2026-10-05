@@ -23,6 +23,7 @@ from app.api.v1 import (
     tenants,
     tickets,
     users,
+    whatsapp,
 )
 from app.core.config import get_settings
 from app.core.deps import client_ip
@@ -100,6 +101,7 @@ def create_app() -> FastAPI:
         reports,
         system,
         public,
+        whatsapp,
     ):
         app.include_router(module.router, prefix=s.api_prefix)
     app.include_router(tenants.settings_router, prefix=s.api_prefix)

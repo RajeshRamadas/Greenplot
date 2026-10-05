@@ -32,8 +32,8 @@ DEFAULT_CHANNELS: dict[str, list[str]] = {
     "sos": ["in_app", "push", "sms"],
     "announcement": ["in_app", "push"],
     "visitor": ["in_app", "push"],
-    "ticket_update": ["in_app", "push"],
-    "ticket_assigned": ["in_app", "push", "sms"],
+    "ticket_update": ["in_app", "push", "whatsapp"],
+    "ticket_assigned": ["in_app", "push", "whatsapp"],
     "ticket_closed": ["in_app", "push", "whatsapp"],
     "ticket_sla": ["in_app", "push"],
 }
@@ -62,8 +62,15 @@ class SmsAdapter(ChannelAdapter):
         return super().send(user, title, body)
 
 
-class WhatsAppAdapter(SmsAdapter):
+class WhatsAppAdapter(ChannelAdapter):
+    """WhatsApp Business Cloud API; see app.services.whatsapp (consent, 24-hour window, templates)."""
+
     name = "whatsapp"
+
+    def send(self, user: User, title: str, body: str | None) -> tuple[str, str | None]:
+        from app.services import whatsapp
+
+        return whatsapp.send_notification(user, title, body)
 
 
 class EmailAdapter(ChannelAdapter):
@@ -116,27 +123,29 @@ def notify(
         )
         delivery = {}
         for ch in chans:
-            result = "stored" if ch == "in_app" else _send(ch, user, title, body)
+            result, provider_id = ("stored", None) if ch == "in_app" else _send(ch, user, title, body)
             delivery[ch] = result
-            db.add(_delivery_row(n, ch, result))
+            db.add(_delivery_row(n, ch, result, provider_id))
         n.delivery = delivery
         db.add(n)
         created.append(n)
     return created
 
 
-def _send(channel: str, user: User, title: str, body: str | None) -> str:
+def _send(channel: str, user: User, title: str, body: str | None) -> tuple[str, str | None]:
+    """Returns (result, provider message id). Adapters may return a plain result string."""
     adapter = ADAPTERS.get(channel)
     if adapter is None:
-        return "unsupported"
+        return "unsupported", None
     try:
-        return adapter.send(user, title, body)
+        out = adapter.send(user, title, body)
     except Exception as exc:  # provider failures must not break workflows
         log.warning("%s delivery to %s failed: %s", channel, user.id, exc)
-        return f"failed:{exc}"
+        return f"failed:{exc}", None
+    return out if isinstance(out, tuple) else (out, None)
 
 
-def _delivery_row(n: Notification, channel: str, result: str) -> NotificationDelivery:
+def _delivery_row(n: Notification, channel: str, result: str, provider_id: str | None = None) -> NotificationDelivery:
     status, _, reason = result.partition(":")
     now = utcnow()
     return NotificationDelivery(
@@ -151,6 +160,7 @@ def _delivery_row(n: Notification, channel: str, result: str) -> NotificationDel
         sent_at=now if status in ("stored", "sent", "delivered") else None,
         delivered_at=now if status in ("stored", "delivered") else None,
         failure_reason=reason or (None if status in ("stored", "sent", "delivered") else status),
+        provider_message_id=provider_id,
     )
 
 
@@ -165,8 +175,9 @@ def retry_failed_deliveries(db: Session) -> int:
         note = db.get(Notification, d.notification_id)
         if user is None or note is None or not user.is_active:
             continue
-        result = _send(d.channel, user, note.title, note.body)
+        result, provider_id = _send(d.channel, user, note.title, note.body)
         status, _, reason = result.partition(":")
+        d.provider_message_id = provider_id or d.provider_message_id
         d.attempts += 1
         d.status = status if status in ("sent", "delivered", "skipped") else "failed"
         d.failure_reason = (reason or status) if d.status == "failed" else None

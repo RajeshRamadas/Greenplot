@@ -160,8 +160,25 @@ class NotificationDelivery(Model):
     entity_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
     entity_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True, nullable=True)
     channel: Mapped[str] = mapped_column(String(20))
-    status: Mapped[str] = mapped_column(String(20), index=True)  # stored, sent, delivered, skipped, failed
+    status: Mapped[str] = mapped_column(String(20), index=True)  # stored, sent, delivered, read, skipped, failed
+    provider_message_id: Mapped[str | None] = mapped_column(String(120), index=True, nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, default=1)
     sent_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     delivered_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class WhatsAppMessage(Model):
+    """Inbound and conversational WhatsApp messages; inbound ids make webhook replays idempotent."""
+
+    __tablename__ = "whatsapp_messages"
+
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
+    direction: Mapped[str] = mapped_column(String(3))  # in, out
+    wamid: Mapped[str | None] = mapped_column(String(120), unique=True, nullable=True)
+    phone: Mapped[str] = mapped_column(String(20), index=True)
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ticket_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("tickets.id", ondelete="SET NULL"), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="received")  # received, handled, ignored, sent, delivered, read, failed
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)

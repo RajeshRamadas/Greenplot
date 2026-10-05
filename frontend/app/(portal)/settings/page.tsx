@@ -532,13 +532,147 @@ function Tickets() {
   );
 }
 
+type WaStatus = {
+  provider: string;
+  live: boolean;
+  configured: boolean;
+  webhook_secured: boolean;
+  phone_number_id: string | null;
+  template: string;
+  template_language: string;
+  business_number: string;
+  opted_in_users: number;
+  webhook_path: string;
+  events: Record<string, string[]>;
+  recent: { at: string; direction: string; user_name: string | null; phone: string; body: string | null; status: string; error: string | null; ticket_id: string | null }[];
+};
+const CHANNELS = ["push", "whatsapp", "sms", "email"] as const;
+const CHANNEL_NAMES: Record<string, string> = { push: "Push", whatsapp: "WhatsApp", sms: "SMS", email: "Email" };
+
+/** WhatsApp channel status and which channels each notification uses (ticketing §18). */
+function Notifications() {
+  const act = useAction();
+  const toast = useToast();
+  const { data, reload } = useApi<WaStatus>("/whatsapp/status");
+  if (!data) return null;
+  async function toggle(kind: string, ch: string, on: boolean) {
+    const next: Record<string, string[]> = {};
+    for (const [k, v] of Object.entries(data!.events)) next[k] = v.filter((c) => c !== "in_app");
+    next[kind] = on ? [...next[kind], ch] : next[kind].filter((c) => c !== ch);
+    if (await act.run(() => api("/settings", { method: "PATCH", body: { notification_channels: next } }))) {
+      reload();
+      toast("Saved");
+    }
+  }
+  async function test() {
+    const r = await act.run(() => api<{ result: string }>("/whatsapp/test", { body: {} }));
+    if (r) toast(r.result === "sent" ? "Test message sent to your WhatsApp" : `Not sent: ${label(r.result.replace(":", " — "))}`, r.result === "sent" ? "ok" : "error");
+  }
+  return (
+    <div className="stack" style={{ gap: 16 }}>
+      <ErrorBox error={act.error} />
+      <div className="card">
+        <div className="card-head">
+          <h2>WhatsApp Business</h2>
+          <Badge status={data.live ? "completed" : "pending"} text={data.live ? "Live" : "Logging only"} />
+        </div>
+        {!data.live ? (
+          <div className="alert warn" style={{ marginBottom: 12 }}>
+            Messages are only logged. To send real WhatsApp messages, set <span className="mono">GP_WHATSAPP_PROVIDER=meta</span> with the access token, phone number
+            ID, app secret and verify token from Meta, and create the approved template described in the README.
+          </div>
+        ) : null}
+        <dl className="kv">
+          <dt>Provider</dt>
+          <dd>{data.provider === "meta" ? "WhatsApp Cloud API (Meta)" : "Log only"}</dd>
+          <dt>Phone number ID</dt>
+          <dd className="mono">{data.phone_number_id || "—"}</dd>
+          <dt>Template</dt>
+          <dd>
+            <span className="mono">{data.template}</span> ({data.template_language}) — used outside the 24-hour reply window
+          </dd>
+          <dt>Webhook</dt>
+          <dd>
+            <span className="mono">{typeof window !== "undefined" ? window.location.origin : ""}{data.webhook_path}</span>
+            {data.webhook_secured ? <Badge status="completed" text="Signed" /> : <Badge status="pending" text="No app secret" />}
+          </dd>
+          <dt>Opted-in users</dt>
+          <dd>{data.opted_in_users}</dd>
+        </dl>
+        <div className="row" style={{ marginTop: 12 }}>
+          <button className="btn" disabled={act.pending} onClick={test}>
+            Send me a test message
+          </button>
+          <span className="small muted">Turn on WhatsApp updates in your Profile first.</span>
+        </div>
+      </div>
+      <div className="card">
+        <h2>Channels per notification</h2>
+        <p className="small muted">In-app is always on. WhatsApp goes only to people who opted in; SMS needs a phone number.</p>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Notification</th>
+                {CHANNELS.map((c) => (
+                  <th key={c}>{CHANNEL_NAMES[c]}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(data.events).map(([kind, chans]) => (
+                <tr key={kind}>
+                  <td>{label(kind)}</td>
+                  {CHANNELS.map((c) => (
+                    <td key={c}>
+                      <input type="checkbox" aria-label={`${label(kind)} via ${CHANNEL_NAMES[c]}`} checked={chans.includes(c)} disabled={act.pending} onChange={(e) => toggle(kind, c, e.target.checked)} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="card">
+        <h2>Recent WhatsApp conversations</h2>
+        {!data.recent.length ? <p className="small muted">No messages yet. Residents&apos; replies to ticket updates appear here and on the ticket.</p> : null}
+        <div className="list">
+          {data.recent.map((m, i) => (
+            <div key={i} className="list-item" style={{ alignItems: "flex-start" }}>
+              <div style={{ minWidth: 0 }}>
+                <div className="title">
+                  {m.direction === "in" ? "From" : "To"} {m.user_name || m.phone}{" "}
+                  {m.ticket_id ? (
+                    <a href={`/tickets/${m.ticket_id}`} className="small">
+                      ticket
+                    </a>
+                  ) : null}
+                </div>
+                <div className="small" style={{ whiteSpace: "pre-wrap" }}>
+                  {m.body}
+                </div>
+                {m.error ? <div className="small muted">{m.error}</div> : null}
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <Badge status={["failed"].includes(m.status) ? "failed" : m.status === "ignored" ? "pending" : "completed"} text={label(m.status)} />
+                <div className="small muted">{fmtDate(m.at)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const [tab, setTab] = useState("general");
   return (
     <>
       <PageHead title="Settings" sub="Layout configuration, service tickets, evidence rules, checklists, schedules and access." />
       <div className="tabs">
-        {["general", "tickets", "evidence", "checklists", "schedules", "users"].map((t) => (
+        {["general", "tickets", "notifications", "evidence", "checklists", "schedules", "users"].map((t) => (
           <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
             {label(t)}
           </button>
@@ -546,6 +680,7 @@ export default function SettingsPage() {
       </div>
       {tab === "general" ? <General /> : null}
       {tab === "tickets" ? <Tickets /> : null}
+      {tab === "notifications" ? <Notifications /> : null}
       {tab === "evidence" ? <Policies /> : null}
       {tab === "checklists" ? <Templates /> : null}
       {tab === "schedules" ? <Schedules /> : null}

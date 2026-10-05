@@ -168,6 +168,18 @@ def test_vendor_rejection_returns_ticket_for_reassignment(as_, world):
     assert staff.ok("get", f"/tickets/{tid}")["status"] == "accepted"
 
 
+def test_office_can_resolve_after_vendor_declines(as_, world):
+    resident, admin, vendor = as_(world.resident), as_(world.admin), as_(world.vendor_user)
+    tid = raise_ticket(resident, world)["id"]
+    task_id = admin.ok("post", f"/tickets/{tid}/assign", {"vendor_id": str(world.vendor.id)})["work_order"]["id"]
+    vendor.ok("post", f"/tickets/{tid}/reject", {"reason_code": "other", "reason": "Not our trade"})
+    t = admin.ok("get", f"/tickets/{tid}")
+    assert "resolve" in t["allowed_actions"]
+    t = admin.ok("post", f"/tickets/{tid}/resolve", {"resolution": "Fixed by the layout plumber"})
+    assert t["status"] == "resolved"
+    assert admin.ok("get", f"/maintenance/{task_id}")["status"] == "cancelled"
+
+
 def test_work_done_from_job_screen_keeps_ticket_in_step(as_, world):
     """Vendors may work from the maintenance job; the ticket follows (§32)."""
     resident, admin, vendor = as_(world.resident), as_(world.admin), as_(world.vendor_user)

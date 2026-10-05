@@ -7,6 +7,8 @@ export function linkFor(type: string | null | undefined, id: string | null | und
       return `/maintenance/${id}`;
     case "complaint":
       return `/complaints/${id}`;
+    case "ticket":
+      return `/tickets/${id}`;
     case "inspection":
       return `/inspections/${id}`;
     case "incident":

@@ -16,11 +16,13 @@ interface NavItem {
   label: string;
   icon: string;
   group?: string;
+  short?: string;
 }
 
 const NAV: Record<Role, NavItem[]> = {
   layout_admin: [
     { href: "/dashboard", label: "Dashboard", icon: "home" },
+    { href: "/tickets", label: "Service tickets", short: "Tickets", icon: "ticket", group: "Operations" },
     { href: "/maintenance", label: "Maintenance", icon: "wrench", group: "Operations" },
     { href: "/approvals", label: "Pending approvals", icon: "check", group: "Operations" },
     { href: "/gardening", label: "Gardening & cleaning", icon: "leaf", group: "Operations" },
@@ -43,6 +45,7 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   supervisor: [
     { href: "/dashboard", label: "Dashboard", icon: "home" },
+    { href: "/tickets", label: "Service tickets", short: "Tickets", icon: "ticket", group: "Review" },
     { href: "/approvals", label: "Pending approvals", icon: "check", group: "Review" },
     { href: "/maintenance", label: "Maintenance", icon: "wrench", group: "Review" },
     { href: "/gardening", label: "Gardening & cleaning", icon: "leaf", group: "Review" },
@@ -59,6 +62,7 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   staff: [
     { href: "/my-tasks", label: "My tasks", icon: "clipboard" },
+    { href: "/tickets", label: "Service tickets", short: "Tickets", icon: "ticket" },
     { href: "/scan", label: "Scan asset", icon: "qr" },
     { href: "/attendance", label: "Attendance", icon: "user" },
     { href: "/complaints", label: "Complaints", icon: "message" },
@@ -66,6 +70,7 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/offline", label: "Offline queue", icon: "sync" },
   ],
   vendor: [
+    { href: "/tickets", label: "Service tickets", short: "Tickets", icon: "ticket" },
     { href: "/my-tasks", label: "My jobs", icon: "clipboard" },
     { href: "/scan", label: "Scan asset", icon: "qr" },
     { href: "/maintenance", label: "Job history", icon: "wrench" },
@@ -82,10 +87,10 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   resident: [
     { href: "/dashboard", label: "Home", icon: "home" },
+    { href: "/tickets", label: "Service tickets", short: "Tickets", icon: "ticket" },
     { href: "/my-property", label: "My property", icon: "building" },
     { href: "/inspections", label: "Property Watch", icon: "eye" },
     { href: "/maintenance", label: "Maintenance history", icon: "wrench" },
-    { href: "/complaints", label: "Complaints", icon: "message" },
     { href: "/visitors", label: "Visitors", icon: "users" },
     { href: "/vehicles", label: "Vehicles", icon: "car" },
     { href: "/billing", label: "Dues & payments", icon: "rupee" },
@@ -97,11 +102,11 @@ const NAV: Record<Role, NavItem[]> = {
 
 const BOTTOM: Partial<Record<Role, string[]>> = {
   staff: ["/my-tasks", "/scan", "/attendance", "/offline"],
-  vendor: ["/my-tasks", "/scan", "/maintenance", "/offline"],
+  vendor: ["/tickets", "/my-tasks", "/scan", "/offline"],
   guard: ["/dashboard", "/visitors", "/patrol", "/incidents"],
-  resident: ["/dashboard", "/maintenance", "/complaints", "/billing", "/sos"],
-  supervisor: ["/dashboard", "/approvals", "/maintenance", "/records"],
-  layout_admin: ["/dashboard", "/maintenance", "/approvals", "/records"],
+  resident: ["/dashboard", "/tickets", "/maintenance", "/billing", "/sos"],
+  supervisor: ["/dashboard", "/tickets", "/approvals", "/maintenance"],
+  layout_admin: ["/dashboard", "/tickets", "/maintenance", "/approvals"],
 };
 
 export function homeFor(role?: Role) {
@@ -215,7 +220,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {bottom.map((i) => (
               <Link key={i.href} href={i.href} className={isActive(i.href) ? "active" : ""}>
                 <Icon name={i.icon} size={22} />
-                {i.label.split(" ")[0]}
+                {i.short ?? i.label.split(" ")[0]}
               </Link>
             ))}
           </nav>

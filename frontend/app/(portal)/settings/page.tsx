@@ -4,10 +4,10 @@ import { useState } from "react";
 import { Badge, Dialog, ErrorBox, Field, PageHead, Select, useToast } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { fmtDate, label, roleLabel } from "@/lib/format";
+import { fmtDate, label, minutes, roleLabel } from "@/lib/format";
 import { useAction, useApi } from "@/lib/hooks";
 import { invalidateLookups, useLookups } from "@/lib/lookups";
-import type { Page, Tenant, User } from "@/lib/types";
+import type { Page, Tenant, TicketCategory, User } from "@/lib/types";
 
 const POLICY_FIELDS = ["before_photo", "after_photo", "checklist", "gps", "video", "materials", "invoice", "qr_scan", "supervisor_approval", "resident_acknowledgement"] as const;
 type Policy = { category: string } & Record<(typeof POLICY_FIELDS)[number], boolean>;
@@ -338,19 +338,214 @@ function General() {
   );
 }
 
+type TicketConfig = { sla: Record<string, { response_minutes: number; resolution_minutes: number }> } & Record<string, unknown>;
+
+/** Ticket categories, SLA targets and customer policy (ticketing requirements §5, §15, §42). */
+function Tickets() {
+  const { meta } = useAuth();
+  const act = useAction();
+  const toast = useToast();
+  const cats = useApi<TicketCategory[]>("/tickets/categories", { include_inactive: true });
+  const cfg = useApi<TicketConfig>("/tickets/config");
+  const [adding, setAdding] = useState(false);
+  const [nc, setNc] = useState<Record<string, string>>({ default_priority: "medium", task_category: "repairs" });
+
+  async function saveSettings(patch: Record<string, unknown>) {
+    if (await act.run(() => api("/settings", { method: "PATCH", body: patch }))) {
+      cfg.reload();
+      toast("Saved");
+    }
+  }
+  async function saveCat(c: TicketCategory, patch: Partial<TicketCategory>) {
+    if (await act.run(() => api(`/tickets/categories/${c.id}`, { method: "PATCH", body: patch }))) {
+      cats.reload();
+      toast("Saved");
+    }
+  }
+  const num = (v: string) => (v.trim() === "" ? null : Number(v));
+  const slug = (v?: string) => (v || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 40);
+  const c = cfg.data;
+  return (
+    <div className="stack" style={{ gap: 16 }}>
+      <ErrorBox error={act.error} />
+      {c ? (
+        <div className="card">
+          <h2>Service levels by priority</h2>
+          <p className="small muted">Targets for the first response and for resolution. A category can set its own, below.</p>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Priority</th>
+                  <th>Response (minutes)</th>
+                  <th>Resolution (minutes)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(c.sla).map(([p, v]) => (
+                  <tr key={p}>
+                    <td>
+                      <Badge status={p} />
+                    </td>
+                    {(["response_minutes", "resolution_minutes"] as const).map((k) => (
+                      <td key={k}>
+                        <input
+                          type="number"
+                          min="1"
+                          aria-label={`${p} ${k}`}
+                          defaultValue={v[k]}
+                          onBlur={(e) => Number(e.target.value) !== v[k] && saveSettings({ ticket_sla: { ...c.sla, [p]: { ...v, [k]: Number(e.target.value) } } })}
+                          style={{ maxWidth: 120 }}
+                        />{" "}
+                        <span className="small muted">{minutes(v[k])}</span>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="divider" />
+          <h2>Customer & vendor policy</h2>
+          <div className="form two">
+            <Field label="Highest priority a customer can choose">
+              <Select value={String(c.ticket_customer_max_priority)} onChange={(v) => saveSettings({ ticket_customer_max_priority: v })} options={["low", "medium", "high", "critical"]} />
+            </Field>
+            <Field label="Customers can reopen closed tickets for (days)">
+              <input type="number" min="0" defaultValue={Number(c.ticket_reopen_days)} onBlur={(e) => saveSettings({ ticket_reopen_days: Number(e.target.value) })} />
+            </Field>
+            <Field label="Close resolved tickets automatically after (days)" hint="0 = wait for the customer or the office">
+              <input type="number" min="0" defaultValue={Number(c.ticket_auto_close_days)} onBlur={(e) => saveSettings({ ticket_auto_close_days: Number(e.target.value) })} />
+            </Field>
+            <Field label="Warn when this much of the SLA has passed (%)">
+              <input type="number" min="10" max="99" defaultValue={Number(c.ticket_sla_at_risk_percent)} onBlur={(e) => saveSettings({ ticket_sla_at_risk_percent: Number(e.target.value) })} />
+            </Field>
+            <Field label="Re-escalate an unresolved breach every (hours)">
+              <input type="number" min="1" defaultValue={Number(c.ticket_escalate_every_hours)} onBlur={(e) => saveSettings({ ticket_escalate_every_hours: Number(e.target.value) })} />
+            </Field>
+            <Field label="Vendors can message customers">
+              <Select value={String(c.ticket_assignee_customer_chat)} onChange={(v) => saveSettings({ ticket_assignee_customer_chat: v === "true" })} options={[{ value: "true", label: "Yes" }, { value: "false", label: "No — through the office" }]} />
+            </Field>
+            <Field label="Vendors see the customer's phone number">
+              <Select value={String(c.ticket_share_customer_contact)} onChange={(v) => saveSettings({ ticket_share_customer_contact: v === "true" })} options={[{ value: "false", label: "No" }, { value: "true", label: "Yes" }]} />
+            </Field>
+            <Field label="Customers see the vendor's phone number">
+              <Select value={String(c.ticket_share_vendor_contact)} onChange={(v) => saveSettings({ ticket_share_vendor_contact: v === "true" })} options={[{ value: "false", label: "No" }, { value: "true", label: "Yes" }]} />
+            </Field>
+          </div>
+        </div>
+      ) : null}
+      <div className="card">
+        <div className="card-head">
+          <h2>Ticket categories</h2>
+          <button className="btn small" onClick={() => setAdding(true)}>
+            Add category
+          </button>
+        </div>
+        <p className="small muted">The work type decides the proof-of-work checklist and evidence rules (see the Evidence tab) for the vendor&apos;s job.</p>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Default priority</th>
+                <th>Work type</th>
+                <th>Response / resolution SLA (min)</th>
+                <th>Customer picks priority</th>
+                <th>Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cats.data?.map((x) => (
+                <tr key={x.id}>
+                  <td>
+                    <b>{x.name}</b>
+                    <div className="small muted">{x.subcategories.join(", ") || "—"}</div>
+                  </td>
+                  <td>
+                    <Select value={x.default_priority} onChange={(v) => saveCat(x, { default_priority: v })} options={["low", "medium", "high", "critical"]} aria-label={`${x.name} default priority`} />
+                  </td>
+                  <td>
+                    <Select value={x.task_category} onChange={(v) => saveCat(x, { task_category: v })} options={meta?.task_categories ?? [x.task_category]} aria-label={`${x.name} work type`} />
+                  </td>
+                  <td>
+                    <div className="row" style={{ flexWrap: "nowrap" }}>
+                      <input type="number" min="1" placeholder={String(x.effective_response_minutes)} defaultValue={x.response_sla_minutes ?? ""} onBlur={(e) => num(e.target.value) !== x.response_sla_minutes && saveCat(x, { response_sla_minutes: num(e.target.value) })} style={{ width: 90 }} aria-label={`${x.name} response SLA`} />
+                      <input type="number" min="1" placeholder={String(x.effective_resolution_minutes)} defaultValue={x.resolution_sla_minutes ?? ""} onBlur={(e) => num(e.target.value) !== x.resolution_sla_minutes && saveCat(x, { resolution_sla_minutes: num(e.target.value) })} style={{ width: 90 }} aria-label={`${x.name} resolution SLA`} />
+                    </div>
+                  </td>
+                  <td>
+                    <input type="checkbox" checked={x.customer_sets_priority} onChange={(e) => saveCat(x, { customer_sets_priority: e.target.checked })} aria-label={`${x.name}: customer picks priority`} />
+                  </td>
+                  <td>
+                    <input type="checkbox" checked={x.is_active} onChange={(e) => saveCat(x, { is_active: e.target.checked })} aria-label={`${x.name} active`} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <Dialog title="Add ticket category" open={adding} onClose={() => setAdding(false)}>
+        <form
+          className="form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const body = {
+              code: nc.code ?? slug(nc.name),
+              name: nc.name,
+              default_priority: nc.default_priority,
+              task_category: nc.task_category,
+              subcategories: (nc.subs || "").split("\n").map((x) => x.trim()).filter(Boolean),
+            };
+            if (await act.run(() => api("/tickets/categories", { body }))) {
+              setAdding(false);
+              setNc({ default_priority: "medium", task_category: "repairs" });
+              cats.reload();
+            }
+          }}
+        >
+          <Field label="Name">
+            <input required value={nc.name || ""} onChange={(e) => setNc({ ...nc, name: e.target.value })} />
+          </Field>
+          <Field label="Code" hint="Lowercase letters, digits and underscores">
+            <input required pattern="[a-z0-9_]{2,40}" value={nc.code ?? slug(nc.name)} onChange={(e) => setNc({ ...nc, code: e.target.value })} />
+          </Field>
+          <Field label="Default priority">
+            <Select value={nc.default_priority} onChange={(v) => setNc({ ...nc, default_priority: v })} options={["low", "medium", "high", "critical"]} />
+          </Field>
+          <Field label="Work type">
+            <Select value={nc.task_category} onChange={(v) => setNc({ ...nc, task_category: v })} options={meta?.task_categories ?? ["repairs"]} />
+          </Field>
+          <Field label="Issue types (one per line)">
+            <textarea value={nc.subs || ""} onChange={(e) => setNc({ ...nc, subs: e.target.value })} />
+          </Field>
+          <ErrorBox error={act.error} />
+          <div className="actions">
+            <button className="btn primary" disabled={act.pending}>
+              Add
+            </button>
+          </div>
+        </form>
+      </Dialog>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const [tab, setTab] = useState("general");
   return (
     <>
-      <PageHead title="Settings" sub="Layout configuration, evidence rules, checklists, schedules and access." />
+      <PageHead title="Settings" sub="Layout configuration, service tickets, evidence rules, checklists, schedules and access." />
       <div className="tabs">
-        {["general", "evidence", "checklists", "schedules", "users"].map((t) => (
+        {["general", "tickets", "evidence", "checklists", "schedules", "users"].map((t) => (
           <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
             {label(t)}
           </button>
         ))}
       </div>
       {tab === "general" ? <General /> : null}
+      {tab === "tickets" ? <Tickets /> : null}
       {tab === "evidence" ? <Policies /> : null}
       {tab === "checklists" ? <Templates /> : null}
       {tab === "schedules" ? <Schedules /> : null}

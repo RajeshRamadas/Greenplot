@@ -54,6 +54,8 @@ export function tone(status?: string | null): "green" | "amber" | "red" | "blue"
     case "exited":
     case "satisfied":
     case "accepted":
+    case "met":
+    case "on_track":
       return "green";
     case "rework_required":
     case "attention":
@@ -65,6 +67,11 @@ export function tone(status?: string | null): "green" | "amber" | "red" | "blue"
     case "retry":
     case "incomplete":
     case "pending":
+    case "verification":
+    case "work_completed":
+    case "waiting_for_customer":
+    case "on_hold":
+    case "at_risk":
       return "amber";
     case "issue":
     case "failed":
@@ -78,6 +85,9 @@ export function tone(status?: string | null): "green" | "amber" | "red" | "blue"
     case "high":
     case "urgent":
     case "cancelled":
+    case "reopened":
+    case "rejected":
+    case "breached":
       return "red";
     case "assigned":
     case "started":
@@ -86,8 +96,26 @@ export function tone(status?: string | null): "green" | "amber" | "red" | "blue"
     case "inside":
     case "syncing":
     case "queued":
+    case "under_review":
       return "blue";
     default:
       return "grey";
   }
+}
+
+/** Minutes as a short duration: 15 min, 4 h, 2 d. */
+export function minutes(m?: number | null) {
+  if (m == null) return "—";
+  if (m < 60) return `${m} min`;
+  if (m < 60 * 24 || m % (60 * 24)) return `${+(m / 60).toFixed(1)} h`;
+  return `${m / 60 / 24} d`;
+}
+
+/** Time left until (or past) a deadline, e.g. "in 3 h" / "5 h overdue". */
+export function until(v?: string | null) {
+  if (!v) return "—";
+  const s = (new Date(v).getTime() - Date.now()) / 1000;
+  const a = Math.abs(s);
+  const t = a < 3600 ? `${Math.max(1, Math.round(a / 60))} min` : a < 86400 ? `${Math.round(a / 3600)} h` : `${Math.round(a / 86400)} d`;
+  return s >= 0 ? `in ${t}` : `${t} overdue`;
 }

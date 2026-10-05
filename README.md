@@ -22,6 +22,7 @@ Browser / installed PWA ── Cloudflare (TLS) ── Next.js (site + app, prox
 
 Every V1 module in the requirements:
 
+- **Customer ticketing & vendor service management** ([`GreenPlot_Ticketing_System_Requirements.md`](GreenPlot_Ticketing_System_Requirements.md)): residents raise service tickets (`GP-TKT-2026-000001`) with photos from the portal or the public website's "Raise a ticket" link. The office reviews, prioritises and assigns each ticket to internal staff or an external vendor. The vendor accepts or rejects with a reason (a rejection returns the ticket to the office), then works it through a linked maintenance work order that carries the full Proof of Work rules. A supervisor verifies or requests rework, and the ticket is resolved. The customer confirms or reopens it and rates the service. Closing a ticket sends a mandatory closure notification, and every channel delivery is logged and retried. Tickets have configurable categories, per-priority and per-category response/resolution SLAs with at-risk warnings and breach escalation, auto-close, separate customer, vendor and internal comment visibility, a full timeline and audit trail, reports (volume, SLA, vendor performance, categories, properties, satisfaction), property history, search and offline creation.
 - **Maintenance & Proof of Work** (§8–11, §31, §48): lifecycle `CREATED → ASSIGNED → ACCEPTED → STARTED → COMPLETED → APPROVED → CLOSED` with rework and reopen. Configurable evidence per task type: before/after photos, checklist, GPS, video, materials, invoice and QR/NFC scan. Failed or skipped checklist items need a reason. Missing evidence blocks submission unless the worker records an exception, which the supervisor then reviews. Workers cannot approve their own jobs. Evidence is kept per rework round, and a downloadable PDF Proof of Work report is available.
 - **Digital records & evidence integrity** (§12–13): private storage behind short-lived signed URLs. SHA-256 is computed on the device and verified on the server. Content-type sniffing, a malware-scan hook and thumbnails are included. Replacements and deletions are audited, approved evidence is locked, and retention is configurable (routine 90 days, incidents longer).
 - **Property Watch / inspections**: resident visit requests, inspection-point checklist, photos, an owner report, and one-click follow-up maintenance.
@@ -79,7 +80,7 @@ Put Cloudflare or another TLS reverse proxy in front of port 3000. For large vid
 ## Tests
 
 ```bash
-cd backend && pytest -q                                   # 41 tests on SQLite
+cd backend && pytest -q                                   # 53 tests on SQLite
 GP_TEST_DATABASE_URL=postgresql+psycopg://greenplot:greenplot@localhost/greenplot_test pytest -q
 ruff check app tests
 

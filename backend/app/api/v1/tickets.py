@@ -209,6 +209,8 @@ def _timeline(db, actor: Actor, t: Ticket, comments: list[TicketCommentOut], att
     assignments = list(db.scalars(select(TicketAssignment).where(TicketAssignment.ticket_id == t.id)))
     names = user_names(db, [h.changed_by for h in history] + [a.assigned_by for a in assignments])
     for h in history:
+        if h.new_status == "assigned":
+            continue  # the assignment entry below names who it went to
         reason = h.reason if (not customer_view or h.new_status in CUSTOMER_REASONS) else None
         items.append(
             TimelineItem(
@@ -224,9 +226,11 @@ def _timeline(db, actor: Actor, t: Ticket, comments: list[TicketCommentOut], att
     vendors = vendor_names(db, [a.assignee_id for a in assignments if a.assignee_type == "vendor"])
     for a in assignments:
         who = (vendors if a.assignee_type == "vendor" else staff).get(a.assignee_id, a.assignee_type)
-        items.append(TimelineItem(at=a.assigned_at, kind="assignment", title=f"Assigned to {who}", actor_name=names.get(a.assigned_by)))
-        if a.accepted_at:
-            items.append(TimelineItem(at=a.accepted_at, kind="assignment", title=f"{who} accepted", actor_name=who))
+        items.append(
+            TimelineItem(
+                at=a.assigned_at, kind="assignment", title=f"Assigned to {who}", actor_name=names.get(a.assigned_by), status="assigned"
+            )
+        )
         if a.rejected_at and not customer_view:
             items.append(TimelineItem(at=a.rejected_at, kind="assignment", title=f"{who} declined", detail=a.rejection_reason))
     for c in comments:
@@ -285,7 +289,11 @@ def allowed_actions(db, actor: Actor, t: Ticket, task: MaintenanceTask | None) -
             acts.append("review")
         if st in svc.ASSIGNABLE and not (live_task and live_task.status == TaskStatus.COMPLETED):
             acts.append("reassign" if t.assigned_to_id else "assign")
-        if st in svc.ACTIVE and st not in (S.WORK_COMPLETED, S.VERIFICATION) and live_task is None:
+        if (
+            st in svc.ACTIVE
+            and st not in (S.WORK_COMPLETED, S.VERIFICATION)
+            and (live_task is None or live_task.status == TaskStatus.CREATED)
+        ):
             acts.append("resolve")
         if st == S.RESOLVED:
             acts.append("close")

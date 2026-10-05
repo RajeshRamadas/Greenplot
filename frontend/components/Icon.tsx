@@ -30,6 +30,7 @@ const paths: Record<string, string> = {
   sos: "M12 3l10 18H2zM12 10v5M12 18h.01",
   layers: "M12 3l9 5-9 5-9-5zM3 13l9 5 9-5",
   doc: "M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7",
+  ticket: "M3 7a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4zM14 5v14",
 };
 
 export function Icon({ name, size = 18 }: { name: keyof typeof paths | string; size?: number }) {

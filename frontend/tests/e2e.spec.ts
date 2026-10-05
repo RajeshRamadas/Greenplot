@@ -38,12 +38,12 @@ test("public website loads with the WhatsApp contact", async ({ page }) => {
 });
 
 const ROLES: [string, string[]][] = [
-  ["admin@greenvalley.example", ["/dashboard", "/maintenance", "/approvals", "/gardening", "/inspections", "/complaints", "/properties", "/assets", "/staff", "/vendors", "/visitors", "/vehicles", "/patrol", "/incidents", "/billing", "/notices", "/records", "/reports", "/audit", "/settings"]],
-  ["supervisor@greenvalley.example", ["/dashboard", "/approvals", "/maintenance", "/my-tasks", "/scan"]],
-  ["staff@greenvalley.example", ["/my-tasks", "/scan", "/attendance", "/offline"]],
-  ["vendor@greenvalley.example", ["/my-tasks", "/maintenance"]],
+  ["admin@greenvalley.example", ["/dashboard", "/tickets", "/maintenance", "/approvals", "/gardening", "/inspections", "/complaints", "/properties", "/assets", "/staff", "/vendors", "/visitors", "/vehicles", "/patrol", "/incidents", "/billing", "/notices", "/records", "/reports", "/audit", "/settings"]],
+  ["supervisor@greenvalley.example", ["/dashboard", "/tickets", "/approvals", "/maintenance", "/my-tasks", "/scan"]],
+  ["staff@greenvalley.example", ["/my-tasks", "/tickets", "/scan", "/attendance", "/offline"]],
+  ["vendor@greenvalley.example", ["/tickets", "/my-tasks", "/maintenance"]],
   ["guard@greenvalley.example", ["/dashboard", "/visitors", "/vehicles", "/patrol", "/incidents"]],
-  ["resident@greenvalley.example", ["/dashboard", "/my-property", "/inspections", "/maintenance", "/complaints", "/visitors", "/billing", "/notices", "/sos"]],
+  ["resident@greenvalley.example", ["/dashboard", "/tickets", "/my-property", "/inspections", "/maintenance", "/visitors", "/billing", "/notices", "/sos"]],
   ["platform@greenplot.in", ["/tenants"]],
 ];
 
@@ -116,6 +116,65 @@ test("worker captures proof of work and supervisor approves", async ({ browser }
   await sup.getByPlaceholder(/gate repairs/).fill(title);
   await sup.getByRole("button", { name: "Search" }).click();
   await expect(sup.getByText(title)).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("customer ticket reaches the vendor, returns to the office and closes with a customer notification", async ({ browser }) => {
+  // Resident raises a ticket from the portal.
+  const res = await browser.newPage();
+  const errors = watchErrors(res);
+  await login(res, "resident@greenvalley.example");
+  await res.goto("/tickets");
+  await res.getByRole("button", { name: "Raise ticket" }).click();
+  const d = res.getByRole("dialog");
+  await d.getByLabel("Category").selectOption({ label: "Plumbing" });
+  await d.getByLabel("Type of issue").selectOption("Leak");
+  const title = `E2E leak ${Date.now()}`;
+  await d.getByLabel("What's the problem?").fill(title);
+  await d.getByLabel("Description").fill("Water pooling next to the gate");
+  await d.getByRole("button", { name: "Submit ticket" }).click();
+  await expect(d.getByText(/GP-TKT-\d{4}-\d{6}/).first()).toBeVisible();
+  await d.getByRole("button", { name: "Track ticket" }).click();
+  await res.waitForURL(/\/tickets\/[0-9a-f-]+$/);
+  const url = res.url();
+
+  // Office assigns it to the vendor.
+  const admin = await browser.newPage();
+  errors.push(...watchErrors(admin));
+  await login(admin, "admin@greenvalley.example");
+  await admin.goto(url);
+  await admin.getByRole("button", { name: "Assign", exact: true }).click();
+  await admin.getByRole("dialog").getByLabel("Vendor").selectOption({ label: "FixIt Gates & Fabrication" });
+  await admin.getByRole("dialog").getByRole("button", { name: "Assign", exact: true }).click();
+  await expect(admin.locator(".badge").filter({ hasText: "Assigned" }).first()).toBeVisible();
+
+  // The vendor sees it, accepts, then hands it back with a reason.
+  const vendor = await browser.newPage();
+  errors.push(...watchErrors(vendor));
+  await login(vendor, "vendor@greenvalley.example");
+  await vendor.goto("/tickets");
+  await vendor.getByText(title).click();
+  await vendor.getByRole("button", { name: "Accept job" }).click();
+  await expect(vendor.locator(".badge").filter({ hasText: "Accepted" }).first()).toBeVisible();
+  await res.reload();
+  await expect(res.locator(".timeline")).toContainText("Accepted by the assignee");
+  await vendor.getByRole("button", { name: "Reject assignment" }).click();
+  await vendor.getByRole("dialog").getByLabel("Reason").selectOption("wrong_category");
+  await vendor.getByRole("dialog").getByLabel("Details").fill("Plumbing is not our trade");
+  await vendor.getByRole("dialog").getByRole("button", { name: "Reject assignment" }).click();
+  await vendor.waitForURL(/\/tickets$/);
+
+  // The office resolves and closes it; the resident is notified.
+  await admin.reload();
+  await expect(admin.locator(".timeline")).toContainText("declined");
+  await admin.getByRole("button", { name: "Resolve" }).click();
+  await admin.getByRole("dialog").getByRole("textbox").fill("Valve tightened by the layout plumber.");
+  await admin.getByRole("dialog").getByRole("button", { name: "Confirm" }).click();
+  await admin.getByRole("button", { name: "Close ticket" }).click();
+  await expect(admin.locator(".badge").filter({ hasText: "Closed" }).first()).toBeVisible();
+
+  await res.goto("/notifications");
+  await expect(res.getByText("GreenPlot Ticket Closed").first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 

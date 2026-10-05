@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { NewTicketDialog } from "@/components/Tickets";
 import { Badge, Empty, ErrorBox, Loading, PageHead, Stat } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { ago, fmtDateTime, inr } from "@/lib/format";
 import { useApi } from "@/lib/hooks";
-import type { Notice, Page, Sos, Visitor } from "@/lib/types";
+import type { Notice, Page, Sos, TicketDashboard, TicketSummary, Visitor } from "@/lib/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Dash = Record<string, any>;
@@ -16,9 +17,30 @@ function pct(v: number | null | undefined) {
   return v == null ? "—" : `${Math.round(v * 100)}%`;
 }
 
+function TicketKpis() {
+  const { data } = useApi<TicketDashboard>("/tickets/dashboard");
+  if (!data?.buckets) return null;
+  const b = data.buckets;
+  return (
+    <>
+      <h2 style={{ margin: "4px 0 10px" }}>Service tickets</h2>
+      <div className="stats">
+        <Stat label="New tickets" value={b.new} href="/tickets" kind={b.new ? "warn" : undefined} />
+        <Stat label="Unassigned" value={b.unassigned} href="/tickets" />
+        <Stat label="Awaiting verification" value={b.awaiting_verification} href="/tickets" kind={b.awaiting_verification ? "warn" : undefined} />
+        <Stat label="SLA at risk" value={b.sla_at_risk} href="/tickets" kind={b.sla_at_risk ? "warn" : undefined} />
+        <Stat label="SLA breached" value={b.sla_breached} href="/tickets" kind={b.sla_breached ? "alert" : undefined} />
+        <Stat label="Reopened" value={b.reopened} href="/tickets" />
+      </div>
+    </>
+  );
+}
+
 function ManagerDashboard({ d }: { d: Dash }) {
   return (
     <>
+      <TicketKpis />
+      <h2 style={{ margin: "4px 0 10px" }}>Operations</h2>
       <div className="stats">
         <Stat label="Pending approvals" value={d.pending_approvals} href="/approvals" kind={d.pending_approvals ? "warn" : undefined} />
         <Stat label="Active maintenance" value={d.active_maintenance} href="/maintenance" />
@@ -149,14 +171,45 @@ function GuardDashboard({ d }: { d: Dash }) {
 
 function ResidentDashboard({ d }: { d: Dash }) {
   const notices = useApi<Page<Notice>>("/notices", { limit: 3 });
+  const tickets = useApi<Page<TicketSummary>>("/tickets", { limit: 4 });
+  const [raise, setRaise] = useState(false);
+  const openTickets = tickets.data?.items.filter((t) => !["closed", "cancelled", "rejected"].includes(t.status)).length ?? 0;
   return (
     <>
       <div className="stats">
         <Stat label="Dues outstanding" value={inr(d.dues_outstanding)} href="/billing" kind={d.dues_outstanding ? "warn" : undefined} />
+        <Stat label="Open service tickets" value={openTickets} href="/tickets" />
         <Stat label="Active maintenance" value={d.active_maintenance} href="/maintenance" />
-        <Stat label="Open complaints" value={d.open_complaints} href="/complaints" />
         <Stat label="Expected visitors" value={d.visitors_expected} href="/visitors" />
       </div>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-head">
+          <h2>Service tickets</h2>
+          <div className="row">
+            <Link href="/tickets" className="small">
+              All tickets
+            </Link>
+            <button className="btn primary small" onClick={() => setRaise(true)}>
+              Raise a ticket
+            </button>
+          </div>
+        </div>
+        {tickets.data && !tickets.data.items.length ? (
+          <Empty title="No tickets yet">Something not working? Raise a ticket and track it until it's fixed.</Empty>
+        ) : null}
+        {tickets.data?.items.map((t) => (
+          <Link key={t.id} href={`/tickets/${t.id}`} className="list-item">
+            <div>
+              <div className="title">{t.title}</div>
+              <div className="small muted">
+                <span className="mono">{t.number}</span> · {t.assignee_name ? `with ${t.assignee_name}` : "awaiting assignment"} · {ago(t.updated_at)}
+              </div>
+            </div>
+            <Badge status={t.status} />
+          </Link>
+        ))}
+      </div>
+      <NewTicketDialog open={raise} onClose={() => (setRaise(false), tickets.reload())} />
       <div className="grid two">
         <div className="card">
           <div className="card-head">

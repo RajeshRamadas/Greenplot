@@ -189,6 +189,7 @@ def apply_sla(db: Session, t: Ticket, start: datetime | None = None) -> TicketSL
     sla.response_breached = bool(sla.first_response_at and sla.first_response_at > sla.response_due_at)
     sla.resolution_breached = bool(sla.resolved_at and sla.resolved_at > sla.resolution_due_at)
     t.due_at = sla.resolution_due_at
+    db.flush()  # sessions don't autoflush; later lookups in this transaction must see it
     return sla
 
 
@@ -233,7 +234,13 @@ def set_status(db: Session, actor: Actor | None, t: Ticket, new: TicketStatus, r
     t.status = new
     db.add(
         TicketStatusHistory(
-            tenant_id=t.tenant_id, ticket_id=t.id, old_status=old, new_status=new, changed_by=actor.id if actor else None, reason=reason
+            tenant_id=t.tenant_id,
+            ticket_id=t.id,
+            old_status=old,
+            new_status=new,
+            changed_by=actor.id if actor else None,
+            reason=reason,
+            created_at=utcnow(),
         )
     )
     audit.record(
@@ -372,7 +379,11 @@ def create(db: Session, actor: Actor, data: dict) -> Ticket:
     t.created_at = utcnow()
     db.add(t)
     db.flush()
-    db.add(TicketStatusHistory(tenant_id=t.tenant_id, ticket_id=t.id, old_status=None, new_status=S.OPEN, changed_by=actor.id))
+    db.add(
+        TicketStatusHistory(
+            tenant_id=t.tenant_id, ticket_id=t.id, old_status=None, new_status=S.OPEN, changed_by=actor.id, created_at=t.created_at
+        )
+    )
     apply_sla(db, t)
     audit.record(db, actor, "ticket.created", "ticket", t.id, new=audit.snapshot(t))
     notify_customer(db, t, f"Ticket {t.number} created", f"We have received your request: {t.title}. We will review it shortly.")
@@ -559,9 +570,16 @@ def resolve(db: Session, actor: Actor, t: Ticket, resolution: str) -> None:
     _require_manager(actor)
     if t.status not in ACTIVE or t.status in (S.WORK_COMPLETED, S.VERIFICATION):
         raise http(409, f"Cannot resolve a ticket that is {t.status}")
+    from app.services import maintenance as msvc
+
     task = active_task(db, t)
-    if task is not None:
+    if task is not None and task.status != TaskStatus.CREATED:
         raise http(409, f"Work order {task.number} is still open; verify it, or cancel the ticket")
+    if task is not None:
+        # Unassigned work order left behind by a declined assignment: retire it with the ticket.
+        t.maintenance_task_id = None
+        msvc.cancel(db, actor, task, f"Ticket {t.number} resolved without field work")
+        t.maintenance_task_id = task.id
     _mark_resolved(db, actor, t, resolution)
 
 
@@ -948,6 +966,7 @@ def _on_assigned(db: Session, actor: Actor | None, t: Ticket, task: MaintenanceT
             notes=ctx.get("notes"),
         )
     )
+    db.flush()
     t.assigned_to_type, t.assigned_to_id = kind, target
     t.maintenance_task_id = task.id
     t.assigned_at = now

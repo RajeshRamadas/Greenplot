@@ -488,6 +488,9 @@ export interface Meta {
   asset_categories: string[];
   complaint_categories: string[];
   exception_reasons: string[];
+  ticket_statuses: string[];
+  ticket_priorities: string[];
+  ticket_reject_reasons: string[];
 }
 
 export interface Tenant {
@@ -500,4 +503,156 @@ export interface Tenant {
   modules: string[];
   settings: Record<string, unknown>;
   contact_email: string | null;
+}
+
+// ------------------------------------------------------------------ customer tickets
+
+export interface TicketCategory {
+  id: UUID;
+  code: string;
+  name: string;
+  subcategories: string[];
+  default_priority: string;
+  task_category: string;
+  preferred_vendor_type: string | null;
+  response_sla_minutes: number | null;
+  resolution_sla_minutes: number | null;
+  customer_sets_priority: boolean;
+  is_active: boolean;
+  position: number;
+  effective_response_minutes: number | null;
+  effective_resolution_minutes: number | null;
+}
+
+export interface TicketSummary {
+  id: UUID;
+  number: string;
+  title: string;
+  category_id: UUID;
+  category_code: string | null;
+  category_name: string | null;
+  subcategory: string | null;
+  priority: string;
+  status: string;
+  source: string;
+  property_id: UUID | null;
+  property_label: string | null;
+  customer_id: UUID;
+  customer_name: string | null;
+  assigned_to_type: "staff" | "vendor" | null;
+  assigned_to_id: UUID | null;
+  assignee_name: string | null;
+  maintenance_task_id: UUID | null;
+  due_at: string | null;
+  resolved_at: string | null;
+  closed_at: string | null;
+  reopen_count: number;
+  rating: number | null;
+  sla_state: "on_track" | "at_risk" | "breached" | "met" | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TicketSla {
+  response_due_at: string;
+  resolution_due_at: string;
+  first_response_at: string | null;
+  resolved_at: string | null;
+  response_breached: boolean;
+  resolution_breached: boolean;
+  escalation_level: number;
+  state: string | null;
+}
+
+export interface TicketComment {
+  id: UUID;
+  author_id: UUID | null;
+  author_name: string | null;
+  author_role: string | null;
+  comment_type: string;
+  visibility: string;
+  message: string;
+  created_at: string;
+}
+
+export interface TicketAttachment {
+  id: UUID;
+  media_id: UUID;
+  source: "ticket" | "work";
+  evidence_type: string;
+  caption: string | null;
+  uploaded_by_name: string | null;
+  uploaded_at: string | null;
+  content_type: string | null;
+  filename: string | null;
+  sha256: string | null;
+  url: string | null;
+  thumbnail_url: string | null;
+}
+
+export interface TicketTimelineItem {
+  at: string;
+  kind: string;
+  title: string;
+  detail: string | null;
+  actor_name: string | null;
+  status: string | null;
+}
+
+export interface WorkOrder {
+  id: UUID;
+  number: string;
+  status: string;
+  category: string;
+  assignee_name: string | null;
+  rework_count: number;
+  due_at: string | null;
+  completed_at: string | null;
+  approved_at: string | null;
+  missing: string[];
+  pending_checklist: string[];
+  checklist_total: number;
+  checklist_done: number;
+  evidence_count: number;
+  materials_count: number;
+}
+
+export interface TicketDetail extends TicketSummary {
+  description: string;
+  location: string | null;
+  preferred_time: string | null;
+  contact_phone: string | null;
+  created_by: UUID;
+  first_response_at: string | null;
+  assigned_at: string | null;
+  accepted_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  verified_at: string | null;
+  reopened_at: string | null;
+  rework_count: number;
+  resolution: string | null;
+  feedback: string | null;
+  feedback_at: string | null;
+  customer_confirmation: string | null;
+  customer_phone: string | null;
+  assignee_phone: string | null;
+  sla: TicketSla | null;
+  work_order: WorkOrder | null;
+  work_orders: WorkOrder[];
+  comments: TicketComment[];
+  attachments: TicketAttachment[];
+  timeline: TicketTimelineItem[];
+  allowed_actions: string[];
+  comment_visibilities: string[];
+  reopen_until: string | null;
+}
+
+export interface TicketDashboard {
+  by_status: Record<string, number>;
+  kpis: Record<"open" | "in_progress" | "sla_at_risk" | "resolved_today" | "closed_today" | "sla_breached", number>;
+  buckets?: Record<string, number>;
+  sections?: Record<string, number>;
+  rejected?: { ticket_id: UUID; number: string | null; title: string | null; rejected_at: string; reason: string | null }[];
+  tabs?: Record<string, number>;
 }

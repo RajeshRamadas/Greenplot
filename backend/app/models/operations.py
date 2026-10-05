@@ -305,3 +305,22 @@ class SyncOperation(TenantModel):
     result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     device_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+# --------------------------------------------------------------------------- public website (§32)
+
+
+class DemoRequest(Model):
+    """A 'Request Demo' enquiry from the public website (not tenant data)."""
+
+    __tablename__ = "demo_requests"
+
+    name: Mapped[str] = mapped_column(String(200))
+    phone: Mapped[str] = mapped_column(String(30))
+    email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    layout_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    plots: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="new")  # new, contacted, closed
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)

@@ -95,7 +95,8 @@ h1{font-size:58px;line-height:1.01;letter-spacing:-3.5px;margin:16px 0 20px;max-
 .watchEvidence b{color:var(--ink)}
 .watchActions{display:flex;gap:9px;margin-top:14px}.watchActions .btn{font-size:11px;padding:9px 12px}
 .workflow{background:#fff}.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}.step{border-top:2px solid var(--green);padding:19px 3px}.num{font-size:10px;color:var(--green);font-weight:900}.step h3{font-size:16px;margin:9px 0 5px}.step p{font-size:12px;color:var(--muted);margin:0}
-.propertyGrid,.recordGrid,.watchGrid,.mobileGrid{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}.roleGrid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr 1fr}.panelBody{grid-template-columns:120px 1fr}}
+.cards{grid-template-columns:1fr 1fr}
+@media(max-width:900px){.heroGrid,.propertyGrid,.recordGrid,.watchGrid,.mobileGrid{grid-template-columns:1fr}.roleGrid{grid-template-columns:1fr 1fr}.steps{grid-template-columns:1fr 1fr}.panelBody{grid-template-columns:120px 1fr}}
 @media(max-width:580px){.container{width:min(100% - 34px,1180px)}.actions .light{display:none}.hero{padding:58px 0}.heroBtns{flex-direction:column}h1{font-size:42px;letter-spacing:-2.4px}.cards,.roleGrid,.steps{grid-template-columns:1fr}.section{padding:65px 0}.section h2{font-size:34px}.stats{grid-template-columns:1fr 1fr}.panelBody{grid-template-columns:1fr}.side{display:none}.plots{grid-template-columns:1fr 1fr}.meta{grid-template-columns:1fr}.cta h2{font-size:36px}.footerin{flex-direction:column}.featureImage{height:180px}.featureImage img{transform:scale(1.24)}}
 
 /* Final feature-card treatment: preserve the supplied artwork and fit it cleanly. */
@@ -582,12 +583,82 @@ h1{font-size:58px;line-height:1.01;letter-spacing:-3.5px;margin:16px 0 20px;max-
 .whatsapp-float svg{width:31px;height:31px;display:block;fill:currentColor}
 @media(max-width:600px){.whatsapp-float{width:54px;height:54px;right:16px;bottom:16px}.whatsapp-float svg{width:29px;height:29px}}
 </style>
+<style id="hero-checks-slight-right">
+@media (max-width:600px){
+  .hero .checks{transform:translateX(8px)}
+}
+@media (max-width:380px){
+  .hero .checks{transform:translateX(6px)}
+}
+</style>
+<style id="greenplot-v1-sections">
+/* Small fixes */
+.attn{color:var(--amber)!important}
+.mapLegend{display:flex;gap:16px;margin-top:12px;font-size:10px;color:var(--muted)}
+.mapLegend span{display:inline-flex;align-items:center;gap:6px}
+.mapLegend .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
+.mapLegend .dot.a{background:var(--amber)}.mapLegend .dot.r{background:var(--red)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+/* Mobile menu */
+.menu{display:none;width:42px;height:42px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0}
+.menu span{display:block;width:18px;height:2px;background:var(--ink);border-radius:2px}
+.navlogin{display:none}
+@media(max-width:760px){.menu{display:inline-flex}.navlinks .navlogin{display:block;color:var(--green);font-weight:800}.navin{position:relative}}
+/* Proof of Work */
+.proof{background:#fff;border-top:1px solid var(--line)}
+.proofGrid{display:grid;grid-template-columns:1fr 1.05fr;gap:40px;align-items:center}
+.proofList{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.proofItem{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--green-pale)}
+.proofItem b{display:block;font-size:14px;margin-bottom:4px}.proofItem span{font-size:12px;color:var(--muted)}
+.proofRecord{border:1px solid #d7e6df;border-radius:20px;padding:20px;box-shadow:var(--shadow);background:#fff;position:relative;overflow:hidden}
+.proofRecord:before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,var(--green),#76cda5)}
+.proofTag{font-size:9px;letter-spacing:1.2px;font-weight:900;color:var(--muted);margin-bottom:10px}
+.proofHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.proofHead .mono{font-size:11px;color:var(--green);font-weight:700}.proofHead h3{margin:4px 0 2px;font-size:19px;letter-spacing:-.4px}.proofHead small{font-size:11px;color:var(--muted)}
+.proofMeta{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:16px 0 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--line)}
+.proofMeta div{background:#fff;padding:10px 12px}.proofMeta dt{font-size:9px;color:var(--muted)}.proofMeta dd{margin:2px 0 0;font-size:12px;font-weight:700}
+.proofChecks{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}.proofChecks span{font-size:10.5px;font-weight:800;padding:5px 9px;border-radius:20px;background:var(--green-soft);color:var(--green-dark)}
+.proofAudit{margin-top:14px;padding:10px 12px;border-radius:10px;background:var(--green-pale);font-size:11px;font-weight:700;color:#36584a}
+.proofFoot{margin-top:10px;font-size:10px;color:var(--muted)}
+/* For layouts */
+.layouts{background:var(--green-pale);border-top:1px solid var(--line)}
+.layoutRoles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.layoutRole{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}
+.layoutRole b{display:block;font-size:15px;margin-bottom:5px}.layoutRole span{font-size:12.5px;color:var(--muted)}
+.layoutFacts{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 22px;margin-top:26px;font-size:12px;color:var(--muted)}
+.layoutFacts b{color:var(--ink)}
+/* Request demo */
+.cta{padding:90px 0;background:linear-gradient(135deg,#f6fcf9,#eef9f4 60%,#fff);border-top:1px solid var(--line)}
+.ctaGrid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+.ctaCopy h2{font-size:42px;line-height:1.06;letter-spacing:-2.2px;margin:12px 0 14px}.ctaCopy p{color:var(--muted);font-size:15px;margin:0}
+.ctaPoints{margin:20px 0 0;padding:0;list-style:none;display:grid;gap:10px;font-size:14px}
+.ctaPoints li:before{content:"✓";color:var(--green);font-weight:900;margin-right:9px}
+.demoForm{background:#fff;border:1px solid #d7e6df;border-radius:20px;padding:24px;box-shadow:0 22px 60px rgba(13,74,51,.10);display:grid;gap:12px}
+.demoForm h3{margin:0 0 4px;font-size:20px;letter-spacing:-.4px}
+.demoForm label{display:grid;gap:5px;font-size:12px;font-weight:700;color:#3e544b}
+.demoForm input,.demoForm textarea{font:inherit;font-size:14px;font-weight:400;border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;color:var(--ink)}
+.demoForm input:focus,.demoForm textarea:focus{outline:2px solid #9ed6bd;border-color:var(--green)}
+.demoRow{display:grid;grid-template-columns:1.5fr 1fr;gap:12px}
+.demoForm .btn{min-height:46px;font-size:14px;border:0;cursor:pointer}
+.demoStatus{margin:0;font-size:13px;min-height:18px}.demoStatus.ok{color:var(--green-dark)}.demoStatus.err{color:var(--red)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+/* Contact */
+.contact{background:#fff;border-top:1px solid var(--line)}
+.contactGrid{display:grid;grid-template-columns:.9fr 1.1fr;gap:48px;align-items:center}
+.contactGrid h2{margin:11px 0 12px}
+.contactCards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.contactCard{border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:3px;transition:.2s ease}
+a.contactCard:hover{border-color:#b9d9cb;box-shadow:var(--shadow)}
+.contactCard b{font-size:13px;color:var(--green)}.contactCard span{font-size:15px;font-weight:700}
+@media(max-width:900px){.proofGrid,.ctaGrid,.contactGrid{grid-template-columns:1fr;gap:32px}.layoutRoles{grid-template-columns:1fr 1fr}}
+@media(max-width:580px){.proofList,.layoutRoles,.contactCards,.proofMeta{grid-template-columns:1fr}.demoRow{grid-template-columns:1fr}.ctaCopy h2{font-size:34px}.cta{padding:65px 0}.proofHead{flex-direction:column}}
+</style>
 </head>
 <body>
 <nav class="nav"><div class="container navin">
 <img class="brand-logo" src="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22600%22%20height=%22150%22%20viewBox=%220%200%20600%20150%22%3E%3Ctext%20x=%224%22%20y=%2291%22%20font-family=%22Arial,%20Helvetica,%20sans-serif%22%20font-size=%2294%22%20font-weight=%22900%22%20letter-spacing=%22-5%22%3E%3Ctspan%20fill=%22%23218b22%22%3EGreen%3C/tspan%3E%3Ctspan%20fill=%22%23202a2f%22%3EPlot%3C/tspan%3E%3C/text%3E%3Ctext%20x=%2210%22%20y=%22128%22%20font-family=%22Arial,%20Helvetica,%20sans-serif%22%20font-size=%2221%22%20font-weight=%22600%22%20letter-spacing=%220.15%22%20fill=%22%2353615d%22%3EProperty%20Management%20Made%20Simple%3C/text%3E%3C/svg%3E" alt="GreenPlot — Property Management Made Simple" />
-<div class="navlinks"><a href="#services">Services</a><a href="#properties">Property Watch</a><a href="#records">Digital Records</a><a href="#how">How It Works</a></div>
-<div class="actions"><a class="btn light" href="#">Login</a><a class="btn primary" href="#demo">Request Demo</a></div>
+<div class="navlinks" id="navlinks"><a href="#services">Services</a><a href="#watch">Property Watch</a><a href="#proof">Proof of Work</a><a href="#records">Digital Records</a><a href="#how">How It Works</a><a href="#layouts">For Layouts</a><a href="#contact">Contact</a><a class="navlogin" href="/login">Login</a></div>
+<div class="actions"><a class="btn light" href="/login">Login</a><a class="btn primary" href="#demo">Request Demo</a><button class="menu" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navlinks" onclick="toggleNav(this)"><span></span><span></span><span></span></button></div>
 </div></nav>
 <header class="hero"><div class="container heroGrid">
 <div>
@@ -654,7 +725,7 @@ h1{font-size:58px;line-height:1.01;letter-spacing:-3.5px;margin:16px 0 20px;max-
 </div>
 </div>
 <div class="propertyMap"><div class="mapHead"><div><b>Green Valley · Property View</b><small>248 properties · 12 common assets</small></div><span class="pill">Live</span></div>
-<div class="plots"><div class="plot"><strong>Plot 101</strong><span class="ok">● Good · inspected</span></div><div class="plot"><strong>Plot 102</strong><span class="ok">● Good · maintained</span></div><div class="plot"><strong>Plot 103</strong><span class="watch">● Attention · garden</span></div><div class="plot"><strong>Plot 104</strong><span class="ok">● Good · inspected</span></div><div class="plot"><strong>Plot 105</strong><span class="ok">● Good · maintained</span></div><div class="plot"><strong>Plot 117</strong><span class="ok">● Cleaning done</span></div><div class="plot"><strong>Plot 204</strong><span class="ok">● Inspection done</span></div><div class="plot"><strong>Plot 89</strong><span class="issue">● Gate repair</span></div><div class="plot"><strong>Plot 221</strong><span class="ok">● Good · inspected</span></div></div>
+<div class="plots"><div class="plot"><strong>Plot 101</strong><span class="ok">● Good · inspected</span></div><div class="plot"><strong>Plot 102</strong><span class="ok">● Good · maintained</span></div><div class="plot"><strong>Plot 103</strong><span class="attn">● Attention · garden</span></div><div class="plot"><strong>Plot 104</strong><span class="ok">● Good · inspected</span></div><div class="plot"><strong>Plot 105</strong><span class="ok">● Good · maintained</span></div><div class="plot"><strong>Plot 117</strong><span class="ok">● Cleaning done</span></div><div class="plot"><strong>Plot 204</strong><span class="ok">● Inspection done</span></div><div class="plot"><strong>Plot 89</strong><span class="issue">● Gate repair</span></div><div class="plot"><strong>Plot 221</strong><span class="ok">● Good · inspected</span></div></div>
 <div class="mapLegend"><span><i class="dot"></i>Normal</span><span><i class="dot a"></i>Attention</span><span><i class="dot r"></i>Issue</span></div>
 </div>
 </div></section>
@@ -747,10 +818,67 @@ h1{font-size:58px;line-height:1.01;letter-spacing:-3.5px;margin:16px 0 20px;max-
 <div class="watchActions"><a class="btn primary" href="#records">View Full Report</a><a class="btn light" href="#services">Create Follow-up</a></div>
 </div>
 </div></section>
+<section class="section proof" id="proof"><div class="container">
+<div class="center"><div class="eyebrow">Maintenance records · Proof of Work</div><h2>Every maintenance task. Documented and verified.</h2><p class="lead">Know what was done, when it was done, and who completed it. GreenPlot keeps maintenance activities organized with photo evidence, task checklists, work notes, and supervisor verification—all connected to the property’s digital history.</p></div>
+<div class="proofGrid">
+<div class="proofList">
+<div class="proofItem"><b>Before &amp; after photos</b><span>Original and completed condition, linked to the job and timestamped.</span></div>
+<div class="proofItem"><b>Task checklists</b><span>Every item marked done, failed or skipped — with a reason when it isn’t done.</span></div>
+<div class="proofItem"><b>Work notes &amp; materials</b><span>What was done, what was found and which spares were used.</span></div>
+<div class="proofItem"><b>Invoices &amp; service reports</b><span>Receipts, vendor reports and warranty documents kept with the job.</span></div>
+<div class="proofItem"><b>QR/NFC asset scan &amp; GPS</b><span>Confirms the right gate, pump or streetlight — location as supporting evidence.</span></div>
+<div class="proofItem"><b>Supervisor approval &amp; audit trail</b><span>Approve, reject or request rework. Every step is recorded and searchable.</span></div>
+</div>
+<div class="proofRecord" aria-label="Sample maintenance record">
+<div class="proofTag">SAMPLE RECORD · DEMO DATA</div>
+<div class="proofHead"><div><span class="mono">GP-MNT-2026-00418</span><h3>Gate hinge lubrication and alignment</h3><small>Green Valley Layout · Main Entrance Gate</small></div><span class="approved">SUPERVISOR APPROVED</span></div>
+<dl class="proofMeta"><div><dt>Assigned</dt><dd>Maintenance Staff</dd></div><div><dt>Completed</dt><dd>26 Sep 2026, 10:42 AM</dd></div><div><dt>Supervisor</dt><dd>Approved · 11:15 AM</dd></div><div><dt>Asset scan</dt><dd>QR · Main gate</dd></div></dl>
+<div class="proofChecks"><span>✓ Before photos</span><span>✓ After photos</span><span>✓ Checklist 5/5</span><span>✓ Work notes</span><span>✓ Materials</span><span>✓ Service document</span><span>◎ GPS</span></div>
+<div class="proofAudit">Created → Assigned → Started → Evidence Submitted → Approved → Closed</div>
+<div class="proofFoot">Downloadable Proof of Work report · SHA-256 verified evidence</div>
+</div>
+</div>
+</div></section>
 <section class="section workflow" id="how"><div class="container"><div class="center"><div class="eyebrow">Operational workflow</div><h2>From property request to verified completion.</h2><p class="lead">The same workflow works for inspections, cleaning, repairs, gardening, incidents and vendor jobs.</p></div>
 <div class="steps"><div class="step"><div class="num">01 · REQUEST</div><h3>Request</h3><p>Resident, owner or admin creates a maintenance, inspection or service request.</p></div><div class="step"><div class="num">02 · ASSIGN</div><h3>Assign</h3><p>Staff, supervisor or vendor receives the job with location and instructions.</p></div><div class="step"><div class="num">03 · VISIT</div><h3>Visit property</h3><p>Field team arrives, records start time and captures initial evidence.</p></div><div class="step"><div class="num">04 · COMPLETE</div><h3>Complete work</h3><p>Checklist is completed and before/after photos or video are attached.</p></div><div class="step"><div class="num">05 · VERIFY</div><h3>Verify &amp; record</h3><p>Supervisor approves and the complete digital record becomes searchable history.</p></div></div>
 </div></section>
-<section class="cta" id="demo"><div class="container"><div class="eyebrow">For layout associations &amp; property managers</div><h2>Bring your properties onto GreenPlot.</h2><p>Manage property care, layout operations and digital evidence from one platform.</p><div style="margin-top:25px"><a class="btn primary" href="mailto:hello@greenplot.in">Request a Demo →</a></div></div></section>
+<section class="section layouts" id="layouts"><div class="container">
+<div class="center"><div class="eyebrow">For layouts</div><h2>One platform for everyone who looks after a layout.</h2><p class="lead">Built for layout associations, plotted developments and property managers in Bangalore — every role gets a simple, mobile-first view of the work that matters to them.</p></div>
+<div class="layoutRoles">
+<div class="layoutRole"><b>Association &amp; admins</b><span>Properties, residents, maintenance, security, vendors, billing, reports and settings in one dashboard.</span></div>
+<div class="layoutRole"><b>Supervisors</b><span>Assign work, review evidence, approve or request rework and track overdue jobs.</span></div>
+<div class="layoutRole"><b>Maintenance staff</b><span>My tasks, asset scan, camera, checklists and notes — even with a weak signal.</span></div>
+<div class="layoutRole"><b>Guards</b><span>Visitors, vehicles, patrol checkpoints, incidents and SOS, working offline.</span></div>
+<div class="layoutRole"><b>Vendors</b><span>Receive jobs, submit service reports, invoices and proof of work.</span></div>
+<div class="layoutRole"><b>Owners &amp; residents</b><span>Property history, maintenance records, complaints, visitors, dues and notices.</span></div>
+</div>
+<div class="layoutFacts"><span><b>Role-based access</b> — residents only see their own records</span><span><b>Private storage</b> — no public links to your photos</span><span><b>Audit trail</b> on every important action</span><span><b>Installable app</b> for Android &amp; iPhone</span></div>
+</div></section>
+<section class="section cta" id="demo"><div class="container ctaGrid">
+<div class="ctaCopy"><div class="eyebrow">For layout associations &amp; property managers</div><h2>Bring your properties onto GreenPlot.</h2><p>Manage property care, layout operations and digital evidence from one platform. Tell us about your layout and we’ll set up a walkthrough with sample records.</p>
+<ul class="ctaPoints"><li>Live demo with sample (never real) records</li><li>Help importing plots, owners and assets</li><li>Start with maintenance &amp; Property Watch, add modules later</li></ul></div>
+<form class="demoForm" id="demoForm" novalidate>
+<h3>Request a demo</h3>
+<label>Your name<input name="name" required minlength="2" autocomplete="name"></label>
+<label>Phone / WhatsApp<input name="phone" required type="tel" inputmode="tel" pattern="[0-9+\-\s()]{8,}" autocomplete="tel"></label>
+<label>Email (optional)<input name="email" type="email" autocomplete="email"></label>
+<div class="demoRow"><label>Layout / property<input name="layout_name"></label><label>No. of plots<input name="plots" type="number" min="1" inputmode="numeric"></label></div>
+<label>Message (optional)<textarea name="message" rows="3"></textarea></label>
+<input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+<button class="btn primary" type="submit">Request a Demo →</button>
+<p class="demoStatus" role="status" aria-live="polite"></p>
+</form>
+</div></section>
+<section class="section contact" id="contact"><div class="container contactGrid">
+<div><div class="eyebrow">Contact</div><h2>Talk to us.</h2><p class="lead" style="margin:0">Questions about GreenPlot for your layout or property? We usually reply within a working day.</p></div>
+<div class="contactCards">
+<a class="contactCard" href="https://wa.me/918105568225?text=Hi%20GreenPlot%2C%20I%E2%80%99d%20like%20to%20know%20more%20about%20your%20property%20management%20services." target="_blank" rel="noopener noreferrer"><b>WhatsApp</b><span>+91 81055 68225</span></a>
+<a class="contactCard" href="tel:+918105568225"><b>Call</b><span>+91 81055 68225</span></a>
+<a class="contactCard" href="mailto:hello@greenplot.in?subject=GreenPlot%20Enquiry"><b>Email</b><span>hello@greenplot.in</span></a>
+<div class="contactCard"><b>Location</b><span>Bangalore, Karnataka</span></div>
+</div>
+</div></section>
+
 <footer class="site-footer">
   <div class="container footer-main">
     <div class="footer-brand">
@@ -759,8 +887,8 @@ h1{font-size:58px;line-height:1.01;letter-spacing:-3.5px;margin:16px 0 20px;max-
       <a class="footer-contact" href="mailto:hello@greenplot.in">hello@greenplot.in <span aria-hidden="true">↗</span></a>
     </div>
     <nav class="footer-nav" aria-label="Footer navigation">
-      <div class="footer-col"><h3>Explore</h3><a href="#services">Services</a><a href="#watch">Property Watch</a><a href="#records">Digital Records</a><a href="#how">How It Works</a></div>
-      <div class="footer-col"><h3>Get started</h3><a href="#demo">Request a Demo</a><a href="#properties">For Layouts</a><a href="mailto:hello@greenplot.in?subject=GreenPlot%20Enquiry">Contact Us</a></div>
+      <div class="footer-col"><h3>Explore</h3><a href="#services">Services</a><a href="#watch">Property Watch</a><a href="#proof">Proof of Work</a><a href="#records">Digital Records</a><a href="#how">How It Works</a></div>
+      <div class="footer-col"><h3>Get started</h3><a href="#demo">Request a Demo</a><a href="#layouts">For Layouts</a><a href="#contact">Contact Us</a><a href="/login">Login</a></div>
     </nav>
   </div>
   <div class="container footer-bottom">
@@ -769,7 +897,7 @@ h1{font-size:58px;line-height:1.01;letter-spacing:-3.5px;margin:16px 0 20px;max-
     <span class="footer-signoff">Property Management Made Simple</span>
   </div>
 </footer>
-<script>function toggleNav(){const n=document.querySelector('.navlinks');n.style.display=n.style.display==='flex'?'none':'flex';}</script>
+<script>function toggleNav(b){const n=document.getElementById('navlinks');const open=n.classList.toggle('mobile-open');b.setAttribute('aria-expanded',open);}document.querySelectorAll('#navlinks a').forEach(a=>a.addEventListener('click',()=>{document.getElementById('navlinks').classList.remove('mobile-open');}));</script>
 <style id="final-mobile-checks-align">
 @media (max-width:600px){
   .hero .checks{
@@ -866,12 +994,25 @@ h1{font-size:58px;line-height:1.01;letter-spacing:-3.5px;margin:16px 0 20px;max-
 <a class="whatsapp-float" href="https://wa.me/918105568225?text=Hi%20GreenPlot%2C%20I%E2%80%99d%20like%20to%20know%20more%20about%20your%20property%20management%20services." target="_blank" rel="noopener noreferrer" aria-label="Chat with GreenPlot on WhatsApp" title="Chat with us on WhatsApp">
   <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M16.02 3.2C9.03 3.2 3.35 8.84 3.34 15.78c0 2.22.59 4.39 1.71 6.31L3.2 28.8l6.89-1.8a12.8 12.8 0 0 0 5.92 1.45h.01c6.98 0 12.66-5.64 12.67-12.58A12.48 12.48 0 0 0 25 6.96a12.6 12.6 0 0 0-8.98-3.76Zm0 23.1h-.01a10.6 10.6 0 0 1-5.39-1.47l-.39-.23-4.09 1.07 1.09-3.96-.25-.4a10.4 10.4 0 0 1-1.62-5.53c0-5.88 4.79-10.66 10.67-10.66 2.85 0 5.53 1.11 7.55 3.13a10.56 10.56 0 0 1 3.12 7.54c0 5.88-4.79 10.66-10.67 10.66Zm5.86-7.98c-.32-.16-1.9-.94-2.19-1.05-.29-.11-.51-.16-.72.16-.21.32-.83 1.05-1.02 1.27-.19.21-.38.24-.7.08-.32-.16-1.35-.5-2.57-1.59-.95-.84-1.59-1.88-1.78-2.2-.19-.32-.02-.49.14-.65.14-.14.32-.38.48-.57.16-.19.21-.32.32-.54.11-.21.05-.4-.03-.56-.08-.16-.72-1.73-.99-2.37-.26-.62-.52-.54-.72-.55h-.61c-.21 0-.56.08-.85.4-.29.32-1.12 1.09-1.12 2.66s1.15 3.09 1.31 3.3c.16.21 2.26 3.44 5.47 4.82.76.33 1.36.52 1.83.67.77.24 1.47.21 2.02.13.62-.09 1.9-.78 2.17-1.53.27-.75.27-1.39.19-1.53-.08-.13-.29-.21-.61-.37Z"/></svg>
 </a>
+<script>
+(function(){
+  var f=document.getElementById('demoForm'); if(!f) return;
+  var status=f.querySelector('.demoStatus');
+  var wa='https://wa.me/918105568225?text=';
+  f.addEventListener('submit',function(e){
+    e.preventDefault();
+    if(!f.reportValidity()) return;
+    var d=Object.fromEntries(new FormData(f).entries());
+    Object.keys(d).forEach(function(k){ if(d[k]==='') d[k]=null; });
+    if(d.plots) d.plots=parseInt(d.plots,10);
+    var btn=f.querySelector('button'); btn.disabled=true; status.className='demoStatus'; status.textContent='Sending…';
+    var fallback=wa+encodeURIComponent('Hi GreenPlot, I would like a demo. Name: '+(d.name||'')+', Layout: '+(d.layout_name||'')+', Plots: '+(d.plots||'')+'. '+(d.message||''));
+    fetch('/api/v1/public/demo-requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
+      .then(function(r){ if(!r.ok) throw new Error(r.status); f.reset(); status.className='demoStatus ok'; status.textContent='Thank you! We will contact you shortly.'; })
+      .catch(function(){ status.className='demoStatus err'; status.innerHTML='Could not send right now. <a href="'+fallback+'" target="_blank" rel="noopener">Send it on WhatsApp instead →</a>'; })
+      .finally(function(){ btn.disabled=false; });
+  });
+})();
+</script>
 </body>
-</html><style id="hero-checks-slight-right">
-@media (max-width:600px){
-  .hero .checks{transform:translateX(8px)}
-}
-@media (max-width:380px){
-  .hero .checks{transform:translateX(6px)}
-}
-</style>
+</html>

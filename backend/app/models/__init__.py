@@ -30,6 +30,7 @@ from app.models.maintenance import (
 from app.models.operations import (
     AuditLog,
     BillingPlan,
+    DemoRequest,
     Expense,
     Incident,
     IncidentUpdate,
@@ -54,6 +55,7 @@ __all__ = [
     "Asset",
     "Attendance",
     "AuditLog",
+    "DemoRequest",
     "BillingPlan",
     "ChecklistTemplate",
     "Complaint",

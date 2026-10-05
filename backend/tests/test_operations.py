@@ -181,3 +181,16 @@ def test_search_matches_words_left_after_interpretation(as_, world):
     res = sup.ok("get", "/records/search", params={"q": "E2E clean 12345"})
     assert res["interpreted"]["category"] == "cleaning" and res["interpreted"]["text"] == "e2e 12345"
     assert [h["id"] for h in res["items"]] == [t["id"]]
+
+
+def test_public_demo_request(client, as_, world):
+    r = client.post(
+        "/api/v1/public/demo-requests",
+        json={"name": "Layout Secretary", "phone": "+91 98450 00000", "layout_name": "Lake View", "plots": 120},
+    )
+    assert r.status_code == 201
+    assert client.post("/api/v1/public/demo-requests", json={"name": "Bot", "phone": "9999999999", "website": "spam"}).status_code == 201
+    assert client.post("/api/v1/public/demo-requests", json={"name": "X", "phone": "abc"}).status_code == 422
+    leads = as_(world.super).ok("get", "/public/demo-requests")["items"]
+    assert [x["layout_name"] for x in leads] == ["Lake View"]
+    assert as_(world.admin).get("/public/demo-requests").status_code == 403

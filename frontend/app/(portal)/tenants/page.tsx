@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Badge, Dialog, ErrorBox, Field, PageHead, useToast } from "@/components/ui";
 import { api } from "@/lib/api";
+import { fmtDateTime } from "@/lib/format";
 import { useAction, useApi } from "@/lib/hooks";
 
 interface Row {
@@ -21,6 +22,7 @@ export default function TenantsPage() {
   const toast = useToast();
   const act = useAction();
   const { data, reload } = useApi<Row[]>("/tenants/stats");
+  const leads = useApi<{ items: { id: string; name: string; phone: string; email: string | null; layout_name: string | null; plots: number | null; message: string | null; created_at: string }[] }>("/public/demo-requests", { limit: 50 });
   const [open, setOpen] = useState(false);
   const [f, setF] = useState<Record<string, string>>({ plan: "core", city: "Bangalore" });
 
@@ -72,6 +74,23 @@ export default function TenantsPage() {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="card" style={{ marginTop: 16 }}>
+        <h2>Demo requests from the website</h2>
+        {leads.data && !leads.data.items.length ? <p className="muted">No requests yet.</p> : null}
+        {leads.data?.items.map((l) => (
+          <div key={l.id} className="list-item">
+            <div>
+              <div className="title">
+                {l.name} {l.layout_name ? `· ${l.layout_name}` : ""} {l.plots ? `· ${l.plots} plots` : ""}
+              </div>
+              <div className="small muted">
+                <a href={`tel:${l.phone}`}>{l.phone}</a> {l.email ? `· ${l.email}` : ""} {l.message ? `· ${l.message}` : ""}
+              </div>
+            </div>
+            <span className="small muted">{fmtDateTime(l.created_at)}</span>
+          </div>
+        ))}
       </div>
       <Dialog title="Onboard a layout" open={open} onClose={() => setOpen(false)}>
         <form

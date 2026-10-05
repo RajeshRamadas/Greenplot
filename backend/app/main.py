@@ -16,6 +16,7 @@ from app.api.v1 import (
     media,
     people,
     properties,
+    public,
     reports,
     security,
     system,
@@ -96,6 +97,7 @@ def create_app() -> FastAPI:
         comms,
         reports,
         system,
+        public,
     ):
         app.include_router(module.router, prefix=s.api_prefix)
     app.include_router(tenants.settings_router, prefix=s.api_prefix)

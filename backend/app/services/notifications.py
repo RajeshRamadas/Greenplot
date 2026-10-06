@@ -55,12 +55,14 @@ class PushAdapter(ChannelAdapter):
 
 
 class SmsAdapter(ChannelAdapter):
+    """MSG91 DLT template when GP_SMS_PROVIDER=msg91 (see app.services.sms), otherwise logs."""
+
     name = "sms"
 
-    def send(self, user: User, title: str, body: str | None) -> str:
-        if not user.phone:
-            return "skipped:no_phone"
-        return super().send(user, title, body)
+    def send(self, user: User, title: str, body: str | None) -> tuple[str, str | None]:
+        from app.services import sms
+
+        return sms.send_notification(user.phone, title, body)
 
 
 class WhatsAppAdapter(ChannelAdapter):

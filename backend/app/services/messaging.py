@@ -62,12 +62,12 @@ def send_email(to: str | None, subject: str, text: str) -> str:
 # --------------------------------------------------------------------------- phone
 
 
-def send_sms(phone: str | None, text: str) -> str:
-    """SMS provider hook (MSG91, Twilio, …). Logs until a provider is plugged in."""
-    if not phone:
-        return "skipped:no_phone"
-    log.info("[sms:log] -> %s: %s", phone, text)
-    return "sent"
+def send_sms(phone: str | None, title: str, text: str, link: str | None = None) -> str:
+    """SMS through MSG91 DLT templates (app.services.sms): the link template when there is a link."""
+    from app.services import sms
+
+    result, _ = sms.send_link(phone, title, link) if link else sms.send_notification(phone, title, text)
+    return result
 
 
 def send_otp(phone: str | None = None, email: str | None = None, code: str = "", purpose: str = "sign-in") -> list[str]:
@@ -81,14 +81,17 @@ def send_otp(phone: str | None = None, email: str | None = None, code: str = "",
         r = whatsapp.send_otp(phone_n, code) if whatsapp.enabled() else "skipped:whatsapp_off"
         if _sent(r):
             channels.append("whatsapp")
-        elif _sent(send_sms(phone_n, text)):
-            channels.append("sms")
+        else:
+            from app.services import sms
+
+            if _sent(sms.send_otp(phone_n, code)[0]):
+                channels.append("sms")
     if email and _sent(send_email(email, f"Your GreenPlot {purpose} code", text)):
         channels.append("email")
     return channels
 
 
-def send_link(phone: str | None, email: str | None, subject: str, text: str) -> list[str]:
+def send_link(phone: str | None, email: str | None, subject: str, text: str, link: str | None = None) -> list[str]:
     """A message with a link (invites, approvals) by email, WhatsApp and/or SMS."""
     from app.services import whatsapp
 
@@ -99,6 +102,6 @@ def send_link(phone: str | None, email: str | None, subject: str, text: str) -> 
     if phone_n:
         if whatsapp.enabled() and _sent(whatsapp.send_template(phone_n, subject, text)):
             channels.append("whatsapp")
-        elif _sent(send_sms(phone_n, f"{subject}: {text}")):
+        elif _sent(send_sms(phone_n, subject, text, link)):
             channels.append("sms")
     return channels

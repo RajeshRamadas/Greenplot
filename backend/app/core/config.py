@@ -84,6 +84,17 @@ class Settings(BaseSettings):
     whatsapp_template: str = "greenplot_update"  # approved utility template with {{1}} title and {{2}} body
     whatsapp_template_language: str = "en"
     whatsapp_otp_template: str = "greenplot_otp"  # approved Authentication template with a copy-code button
+
+    # SMS via MSG91 Flow API with DLT-registered templates. "log" only logs; "msg91" sends.
+    sms_provider: str = "log"
+    msg91_api_url: str = "https://control.msg91.com/api/v5"
+    msg91_authkey: str | None = None
+    msg91_sender: str | None = None  # 6-letter DLT sender id (optional when set on the template)
+    msg91_otp_template_id: str | None = None  # variables: ##otp##
+    msg91_notify_template_id: str | None = None  # variables: ##title## ##body##
+    msg91_link_template_id: str | None = None  # variables: ##title## ##link##
+    msg91_var_max: int = 30  # DLT limit per variable
+    msg91_webhook_token: str | None = None  # secret in the delivery-report URL
     default_country_code: str = "91"
 
     @property

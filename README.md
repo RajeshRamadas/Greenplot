@@ -40,8 +40,27 @@ Every V1 module in the requirements:
 These are built behind adapters and need credentials or a provider choice (see §47 open questions):
 
 - **Payments**: a real Razorpay (or other) order call and checkout. The demo has a "simulate payment" button that is disabled in production.
-- **Notifications**: push and SMS adapters currently log the message. Email sends over SMTP once `GP_SMTP_*` is set. WhatsApp is implemented (below) and logs until it is configured.
+- **Notifications**: the push adapter logs until a push provider is added. Email sends over SMTP once `GP_SMTP_*` is set, SMS through MSG91 and WhatsApp through the Cloud API (below); each logs until it is configured.
 - **Malware scanning**: plug ClamAV or a provider into `scan_for_malware`.
+
+### SMS (MSG91)
+
+SMS goes through **MSG91's Flow API**. Indian SMS must use **DLT-registered templates**, so GreenPlot sends three kinds:
+
+| Template | Variables | Used for | Example text |
+|---|---|---|---|
+| `GP_MSG91_OTP_TEMPLATE_ID` | `##otp##` | sign-in, password-reset and registration codes when WhatsApp isn't available | `##otp## is your GreenPlot code. Valid 10 minutes. Do not share. -GreenPlot` |
+| `GP_MSG91_NOTIFY_TEMPLATE_ID` | `##title##` `##body##` | notifications whose channels include SMS (e.g. dues reminders, SOS) | `GreenPlot: ##title## ##body##` |
+| `GP_MSG91_LINK_TEMPLATE_ID` | `##title##` `##link##` | invites, account alerts | `GreenPlot: ##title## Open: ##link##` |
+
+DLT limits each variable (usually 30 characters), so `title` and `body` are trimmed to `GP_MSG91_VAR_MAX`; links are sent in full. Each send's MSG91 request id is stored in the delivery log. Delivery reports posted to `/api/v1/webhooks/msg91?token=<GP_MSG91_WEBHOOK_TOKEN>` mark it delivered or failed (with the reason, e.g. NDNC). Failures are retried by the worker.
+
+To go live:
+
+1. In MSG91, add your DLT entity and sender ID, then create the three templates with the variables above, linked to their DLT template IDs.
+2. Set `GP_SMS_PROVIDER=msg91`, `GP_MSG91_AUTHKEY`, the template IDs, and optionally `GP_MSG91_SENDER`.
+3. Set the delivery-report webhook in MSG91 to `https://<your-domain>/api/v1/webhooks/msg91?token=<GP_MSG91_WEBHOOK_TOKEN>`.
+4. Check it under **Settings → Notifications → SMS (MSG91)** with *Send test SMS*.
 
 ### Sign-in & accounts
 
@@ -103,7 +122,7 @@ Put Cloudflare or another TLS reverse proxy in front of port 3000. For large vid
 ## Tests
 
 ```bash
-cd backend && pytest -q                                   # 77 tests on SQLite
+cd backend && pytest -q                                   # 83 tests on SQLite
 GP_TEST_DATABASE_URL=postgresql+psycopg://greenplot:greenplot@localhost/greenplot_test pytest -q
 ruff check app tests
 

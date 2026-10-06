@@ -667,6 +667,63 @@ type WaStatus = {
 const CHANNELS = ["push", "whatsapp", "sms", "email"] as const;
 const CHANNEL_NAMES: Record<string, string> = { push: "Push", whatsapp: "WhatsApp", sms: "SMS", email: "Email" };
 
+type SmsStatus = { provider: string; live: boolean; configured: boolean; sender: string | null; templates: Record<"otp" | "notify" | "link", boolean>; webhook_secured: boolean; webhook_path: string; var_max: number };
+
+/** MSG91 SMS: DLT templates, delivery reports and a test send. */
+function SmsCard() {
+  const act = useAction();
+  const toast = useToast();
+  const { data } = useApi<SmsStatus>("/sms/status");
+  const [phone, setPhone] = useState("");
+  if (!data) return null;
+  const names = { otp: "One-time codes (##otp##)", notify: "Notifications (##title## ##body##)", link: "Invites & links (##title## ##link##)" } as const;
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h2>SMS (MSG91)</h2>
+        <Badge status={data.live ? "completed" : "pending"} text={data.live ? "Live" : "Logging only"} />
+      </div>
+      {!data.live ? (
+        <div className="alert warn" style={{ marginBottom: 12 }}>
+          SMS is only logged. Set <span className="mono">GP_SMS_PROVIDER=msg91</span>, the MSG91 auth key and the three DLT template IDs (see the README) to send real SMS.
+        </div>
+      ) : null}
+      <dl className="kv">
+        <dt>Sender ID</dt>
+        <dd className="mono">{data.sender || "From template"}</dd>
+        {(Object.keys(names) as (keyof typeof names)[]).map((k) => (
+          <span key={k} style={{ display: "contents" }}>
+            <dt>{names[k]}</dt>
+            <dd>
+              <Badge status={data.templates[k] ? "completed" : "pending"} text={data.templates[k] ? "Template set" : "Not set"} />
+            </dd>
+          </span>
+        ))}
+        <dt>Delivery reports</dt>
+        <dd>
+          <span className="mono">{typeof window !== "undefined" ? window.location.origin : ""}{data.webhook_path}</span>{" "}
+          {data.webhook_secured ? <Badge status="completed" text="Token set" /> : <Badge status="pending" text="No token" />}
+        </dd>
+      </dl>
+      <p className="small muted">Text variables are trimmed to {data.var_max} characters to fit DLT rules; links are sent in full.</p>
+      <div className="row" style={{ marginTop: 8 }}>
+        <input type="tel" placeholder="Mobile (blank = your number)" value={phone} onChange={(e) => setPhone(e.target.value)} style={{ maxWidth: 240 }} aria-label="Test mobile number" />
+        <button
+          className="btn"
+          disabled={act.pending}
+          onClick={async () => {
+            const r = await act.run(() => api<{ result: string }>("/sms/test", { body: { phone: phone || null } }));
+            if (r) toast(r.result === "sent" ? "Test SMS sent" : `Not sent: ${r.result}`, r.result === "sent" ? "ok" : "error");
+          }}
+        >
+          Send test SMS
+        </button>
+      </div>
+      <ErrorBox error={act.error} />
+    </div>
+  );
+}
+
 /** WhatsApp channel status and which channels each notification uses (ticketing §18). */
 function Notifications() {
   const act = useAction();
@@ -724,6 +781,7 @@ function Notifications() {
           <span className="small muted">Turn on WhatsApp updates in your Profile first.</span>
         </div>
       </div>
+      <SmsCard />
       <div className="card">
         <h2>Channels per notification</h2>
         <p className="small muted">In-app is always on. WhatsApp goes only to people who opted in; SMS needs a phone number.</p>

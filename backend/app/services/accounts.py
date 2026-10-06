@@ -110,6 +110,7 @@ def register_failure(db: Session, user: User, ip: str | None) -> None:
             "GreenPlot sign-in locked",
             f"Hello {user.full_name}, your account was locked for {s.lockout_minutes} minutes after "
             f"{s.lockout_threshold} failed sign-in attempts. If this wasn't you, reset your password: {s.app_url}/forgot-password",
+            link=f"{s.app_url}/forgot-password",
         )
 
 
@@ -278,4 +279,4 @@ def deliver_invite(db: Session, user: User, token: str | None) -> list[str]:
         f"Hello {user.full_name}, you have been invited to GreenPlot{where}. "
         f"Set your password here (the link is valid for {s.invite_token_hours} hours): {invite_link(token)}"
     )
-    return messaging.send_link(user.phone, user.email, "Your GreenPlot invitation", text)
+    return messaging.send_link(user.phone, user.email, "Your GreenPlot invitation", text, link=invite_link(token))

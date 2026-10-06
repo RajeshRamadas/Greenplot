@@ -150,16 +150,34 @@ async function safeJson(r: Response): Promise<unknown> {
   }
 }
 
-export async function login(email: string, password: string) {
-  const r = await fetch(`${BASE}/auth/login`, {
+export interface SignInResult {
+  /** Set when the account uses 2-step verification: finish with verifyMfa(). */
+  mfa_token?: string;
+}
+
+async function signIn(path: string, body: Record<string, unknown>): Promise<SignInResult> {
+  const r = await fetch(`${BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, device: navigator.userAgent.slice(0, 180) }),
+    body: JSON.stringify({ ...body, device: navigator.userAgent.slice(0, 180) }),
   });
+  const data = (await safeJson(r)) as { access_token?: string; refresh_token?: string; mfa_required?: boolean; mfa_token?: string; detail?: unknown };
+  if (!r.ok) throw new ApiError(r.status, data?.detail);
+  if (data.mfa_required) return { mfa_token: data.mfa_token };
+  setTokens(data.access_token!, data.refresh_token!);
+  return {};
+}
+
+export const login = (email: string, password: string) => signIn("/auth/login", { email, password });
+export const otpLogin = (phone: string, code: string) => signIn("/auth/otp/verify", { phone, code });
+export const verifyMfa = (mfa_token: string, code: string) => signIn("/auth/2fa/verify", { mfa_token, code });
+
+/** POST without a session (codes, password reset, registration). */
+export async function publicPost<T = unknown>(path: string, body: unknown): Promise<T> {
+  const r = await fetch(`${BASE}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const data = await safeJson(r);
-  if (!r.ok) throw new ApiError(r.status, (data as { detail?: unknown })?.detail);
-  const t = data as { access_token: string; refresh_token: string };
-  setTokens(t.access_token, t.refresh_token);
+  if (!r.ok) throw new ApiError(r.status, (data as { detail?: unknown })?.detail ?? data);
+  return data as T;
 }
 
 export async function acceptInvite(token: string, password: string) {

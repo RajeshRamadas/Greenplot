@@ -16,10 +16,14 @@ class LoginIn(BaseModel):
 
 
 class TokenOut(BaseModel):
-    access_token: str
-    refresh_token: str
+    """Tokens, or (for accounts with 2-step verification) an mfa_token to finish at /auth/2fa/verify."""
+
+    access_token: str | None = None
+    refresh_token: str | None = None
     token_type: str = "bearer"
-    expires_in: int
+    expires_in: int | None = None
+    mfa_required: bool = False
+    mfa_token: str | None = None
 
 
 class RefreshIn(BaseModel):
@@ -45,10 +49,17 @@ class UserOut(Stamped):
     is_active: bool
     vendor_id: uuid.UUID | None
     last_login_at: datetime | None
+    whatsapp_opt_in: bool = False
+    phone_verified_at: datetime | None = None
+    totp_enabled: bool = False
+    locked_until: datetime | None = None
 
 
 class MeOut(UserOut):
     permissions: list[str] = []
+    mfa_setup_required: bool = False
+    recovery_codes_left: int = 0
+    features: list[str] | None = None  # enabled feature switches for residents/vendors (None: role not switchable)
     tenant_name: str | None = None
     tenant_modules: list[str] = []
 
@@ -75,6 +86,7 @@ class InviteOut(BaseModel):
     user: UserOut
     invite_token: str | None = None
     invite_url: str | None = None
+    sent_via: list[str] = []
 
 
 # ---------------------------------------------------------------- tenants
@@ -127,6 +139,16 @@ class TenantSettingsIn(BaseModel):
     notification_channels: dict[str, list[str]] | None = None
     sos_escalation_minutes: int | None = Field(None, ge=1, le=120)
     vendor_access_days: int | None = Field(None, ge=1, le=3650)
+    # customer ticketing (ticketing requirements §42 open decisions)
+    ticket_customer_max_priority: str | None = Field(None, pattern="^(low|medium|high|critical)$")
+    ticket_reopen_days: int | None = Field(None, ge=0, le=365)
+    ticket_auto_close_days: int | None = Field(None, ge=0, le=90)
+    ticket_share_customer_contact: bool | None = None
+    ticket_share_vendor_contact: bool | None = None
+    ticket_assignee_customer_chat: bool | None = None
+    ticket_sla_at_risk_percent: int | None = Field(None, ge=10, le=99)
+    ticket_escalate_every_hours: int | None = Field(None, ge=1, le=168)
+    ticket_sla: dict[str, dict[str, int]] | None = None
 
 
 # ---------------------------------------------------------------- layouts / properties / residents

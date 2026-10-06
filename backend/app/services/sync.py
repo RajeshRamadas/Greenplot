@@ -151,6 +151,27 @@ def complaint_create(db, actor, p, ts):
     return {"id": c.id, "number": c.number}
 
 
+def ticket_create(db, actor, p, ts):
+    if not actor.can("tickets.create"):
+        raise HTTPException(403, "Not allowed")
+    from app.schemas.tickets import TicketIn
+    from app.services import tickets as tickets_svc
+
+    data = TicketIn.model_validate(p).model_dump()
+    data["source"] = "offline"
+    t = tickets_svc.create(db, actor, data)
+    return {"id": t.id, "number": t.number}
+
+
+def ticket_comment(db, actor, p, ts):
+    from app.services import tickets as tickets_svc
+    from app.services.access import get_ticket
+
+    t = get_ticket(db, actor, _uuid(p.get("ticket_id")))
+    c = tickets_svc.add_comment(db, actor, t, str(p.get("message") or "")[:4000] or "-", p.get("visibility") or "customer")
+    return {"id": c.id}
+
+
 def _task(db, actor, p):
     if not actor.can("maintenance.work"):
         raise HTTPException(403, "Not allowed")
@@ -255,6 +276,8 @@ HANDLERS: dict[tuple[str, str], Callable] = {
     ("incident", "create"): incident_create,
     ("sos", "create"): sos_create,
     ("complaint", "create"): complaint_create,
+    ("ticket", "create"): ticket_create,
+    ("ticket", "comment"): ticket_comment,
     ("maintenance", "accept"): m_accept,
     ("maintenance", "start"): m_start,
     ("maintenance", "scan"): m_scan,

@@ -13,7 +13,11 @@ PREFIX = {
     "INC": "GP-INC",
     "INV": "GP-INV",
     "RCT": "GP-RCT",
+    "TKT": "GP-TKT",
 }
+
+# Ticket numbers use six digits (GP-TKT-2026-000001, ticketing requirements §6).
+WIDTH = {"TKT": 6}
 
 
 def next_number(db: Session, tenant_id: uuid.UUID, kind: str) -> str:
@@ -28,4 +32,4 @@ def next_number(db: Session, tenant_id: uuid.UUID, kind: str) -> str:
         db.add(counter)
     counter.value += 1
     db.flush()
-    return f"{PREFIX[kind]}-{year}-{counter.value:05d}"
+    return f"{PREFIX[kind]}-{year}-{counter.value:0{WIDTH.get(kind, 5)}d}"

@@ -8,6 +8,7 @@ import { fmtTime, roleLabel } from "@/lib/format";
 import { useAction, useApi } from "@/lib/hooks";
 import { invalidateLookups } from "@/lib/lookups";
 import type { Staff, TaskSummary } from "@/lib/types";
+import { announceInvite } from "@/lib/invites";
 
 interface History {
   name: string;
@@ -121,15 +122,12 @@ export default function StaffPage() {
           className="form two"
           onSubmit={async (e) => {
             e.preventDefault();
-            const r = await act.run(() => api<{ invite_url: string | null }>("/users", { body: { email: f.email, full_name: f.name, phone: f.phone || null, role: f.role } }));
+            const r = await act.run(() => api<{ invite_url: string | null; sent_via?: string[] }>("/users", { body: { email: f.email, full_name: f.name, phone: f.phone || null, role: f.role } }));
             if (r) {
               setOpen(false);
               invalidateLookups();
               staff.reload();
-              if (r.invite_url) {
-                await navigator.clipboard?.writeText(r.invite_url).catch(() => {});
-                toast("Invite link copied — share it with the staff member");
-              }
+              await announceInvite(r, toast, "Invite");
             }
           }}
         >

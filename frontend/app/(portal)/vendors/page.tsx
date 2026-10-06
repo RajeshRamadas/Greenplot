@@ -8,6 +8,7 @@ import { label } from "@/lib/format";
 import { useAction, useApi } from "@/lib/hooks";
 import { invalidateLookups } from "@/lib/lookups";
 import type { Page, Vendor } from "@/lib/types";
+import { announceInvite } from "@/lib/invites";
 
 interface Perf {
   vendor_id: string;
@@ -134,13 +135,10 @@ export default function VendorsPage() {
           className="form"
           onSubmit={async (e) => {
             e.preventDefault();
-            const r = await act.run(() => api<{ invite_url: string | null }>("/users", { body: { email: f.email, full_name: f.name, phone: f.phone || null, role: "vendor", vendor_id: login!.id } }));
+            const r = await act.run(() => api<{ invite_url: string | null; sent_via?: string[] }>("/users", { body: { email: f.email, full_name: f.name, phone: f.phone || null, role: "vendor", vendor_id: login!.id } }));
             if (r) {
               setLogin(null);
-              if (r.invite_url) {
-                await navigator.clipboard?.writeText(r.invite_url).catch(() => {});
-                toast("Invite link copied");
-              }
+              await announceInvite(r, toast, "Invite");
             }
           }}
         >

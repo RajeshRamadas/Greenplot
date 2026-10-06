@@ -1,3 +1,4 @@
+from app.models.accounts import OtpCode, SignupRequest
 from app.models.core import (
     Asset,
     Attendance,
@@ -50,6 +51,17 @@ from app.models.operations import (
     VehicleLog,
     Visitor,
 )
+from app.models.tickets import (
+    NotificationDelivery,
+    Ticket,
+    TicketAssignment,
+    TicketCategory,
+    TicketComment,
+    TicketEvidence,
+    TicketSLA,
+    TicketStatusHistory,
+    WhatsAppMessage,
+)
 
 __all__ = [
     "Asset",
@@ -79,6 +91,8 @@ __all__ = [
     "Media",
     "Notice",
     "Notification",
+    "OtpCode",
+    "NotificationDelivery",
     "PatrolCheckpoint",
     "PatrolRoute",
     "PatrolRun",
@@ -89,13 +103,22 @@ __all__ = [
     "PushSubscription",
     "RefreshToken",
     "Resident",
+    "SignupRequest",
     "SosAlert",
     "StaffProfile",
     "SyncOperation",
     "Tenant",
+    "Ticket",
+    "TicketAssignment",
+    "TicketCategory",
+    "TicketComment",
+    "TicketEvidence",
+    "TicketSLA",
+    "TicketStatusHistory",
     "User",
     "Vehicle",
     "VehicleLog",
     "Vendor",
     "Visitor",
+    "WhatsAppMessage",
 ]

@@ -182,6 +182,11 @@ def finalize(db: Session, actor: Actor, m: Media, caption: str | None = None) ->
     if m.entity_type == "maintenance_task" and m.evidence_type:
         task = db.get(MaintenanceTask, m.entity_id)
         msvc.link_evidence(db, actor, task, m, m.evidence_type, caption)
+    if m.entity_type == "ticket":
+        from app.models import Ticket
+        from app.services import tickets as tsvc
+
+        tsvc.attach(db, actor, db.get(Ticket, m.entity_id), m, None, caption)
     db.flush()
     return m
 

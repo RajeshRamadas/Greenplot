@@ -17,6 +17,7 @@ from app.models import (
     PatrolRun,
     Property,
     Resident,
+    Ticket,
     Vehicle,
     Vendor,
     Visitor,
@@ -166,11 +167,56 @@ def can_view_property(db: Session, actor: Actor, property_id: uuid.UUID | None) 
     return actor.can("properties.read")
 
 
+# --------------------------------------------------------------------------- customer tickets (ticketing §22)
+
+
+def is_ticket_assignee(actor: Actor, t: Ticket) -> bool:
+    if t.assigned_to_type == "vendor":
+        return actor.role == Role.VENDOR and actor.user.vendor_id is not None and t.assigned_to_id == actor.user.vendor_id
+    if t.assigned_to_type == "staff":
+        return t.assigned_to_id == actor.id
+    return False
+
+
+def scope_tickets(stmt: Select, db: Session, actor: Actor) -> Select:
+    """Customers see their own tickets and their properties'; assignees only what is assigned to them now."""
+    if actor.is_manager():
+        return stmt
+    if actor.role == Role.RESIDENT:
+        props = resident_property_ids(db, actor) or {uuid.uuid4()}
+        return stmt.where(or_(Ticket.customer_id == actor.id, Ticket.property_id.in_(props)))
+    if actor.role == Role.VENDOR:
+        if actor.user.vendor_id is None:
+            return stmt.where(false())
+        return stmt.where(Ticket.assigned_to_type == "vendor", Ticket.assigned_to_id == actor.user.vendor_id)
+    if actor.role == Role.STAFF:
+        return stmt.where(Ticket.assigned_to_type == "staff", Ticket.assigned_to_id == actor.id)
+    return stmt.where(false())
+
+
+def can_view_ticket(db: Session, actor: Actor, t: Ticket) -> bool:
+    if t.tenant_id != actor.tenant_id or not actor.can("tickets.read"):
+        return False
+    if actor.is_manager():
+        return True
+    if actor.role == Role.RESIDENT:
+        return t.customer_id == actor.id or t.property_id in resident_property_ids(db, actor)
+    return is_ticket_assignee(actor, t)
+
+
+def get_ticket(db: Session, actor: Actor, ticket_id: uuid.UUID) -> Ticket:
+    t = get_scoped(db, Ticket, ticket_id, actor, "Ticket")
+    if not can_view_ticket(db, actor, t):
+        raise not_found("Ticket")
+    return t
+
+
 # --------------------------------------------------------------------------- generic entity access (media)
 
 MEDIA_ENTITY_TYPES = {
     "maintenance_task",
     "complaint",
+    "ticket",
     "inspection",
     "incident",
     "property",
@@ -197,6 +243,11 @@ def check_entity_access(db: Session, actor: Actor, entity_type: str, entity_id: 
         if not can_view_complaint(db, actor, c):
             raise not_found("Complaint")
         return c
+    if entity_type == "ticket":
+        t = get_ticket(db, actor, entity_id)
+        if write and t.status in ("closed", "cancelled"):
+            raise HTTPException(status.HTTP_409_CONFLICT, f"Ticket is {t.status}")
+        return t
     if entity_type == "inspection":
         i = get_scoped(db, Inspection, entity_id, actor, "Inspection")
         if not can_view_inspection(db, actor, i):

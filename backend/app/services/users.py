@@ -67,7 +67,4 @@ def create_user(
 
 
 def invite_url(token: str | None) -> str | None:
-    if not token:
-        return None
-    base = get_settings().cors_origin_list[0] if get_settings().cors_origin_list else ""
-    return f"{base}/accept-invite?token={token}"
+    return f"{get_settings().app_url}/accept-invite?token={token}" if token else None

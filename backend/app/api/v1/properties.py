@@ -16,6 +16,7 @@ from app.models import (
     Property,
     Resident,
     Tenant,
+    Ticket,
 )
 from app.models.base import utcnow
 from app.models.enums import Role
@@ -161,7 +162,7 @@ def delete_property(property_id: uuid.UUID, db: DB, actor: Perm("properties.mana
 
 @router.get("/properties/{property_id}/history", response_model=list[TimelineEntry])
 def property_history(property_id: uuid.UUID, db: DB, actor: CurrentActor, limit: int = Limit):
-    """Timeline of inspections, maintenance, complaints, incidents and gardening for a property (§6)."""
+    """Timeline of inspections, maintenance, tickets, complaints, incidents and gardening for a property (§6)."""
     p = _get_visible(db, actor, property_id)
     entries: list[TimelineEntry] = []
     for t in db.scalars(select(MaintenanceTask).where(MaintenanceTask.property_id == p.id, MaintenanceTask.deleted_at.is_(None))):
@@ -188,6 +189,18 @@ def property_history(property_id: uuid.UUID, db: DB, actor: CurrentActor, limit:
         )
     for c in db.scalars(select(Complaint).where(Complaint.property_id == p.id, Complaint.deleted_at.is_(None))):
         entries.append(TimelineEntry(at=c.created_at, kind="complaint", id=c.id, number=c.number, title=c.title, status=c.status))
+    if actor.can("tickets.read") and (actor.is_manager() or actor.role == Role.RESIDENT):
+        # Ticket history on the property timeline (ticketing §33): raised, and closed with its outcome.
+        for t in db.scalars(select(Ticket).where(Ticket.property_id == p.id, Ticket.deleted_at.is_(None))):
+            entries.append(
+                TimelineEntry(at=t.created_at, kind="ticket", id=t.id, number=t.number, title=f"Ticket raised · {t.title}", status=t.status)
+            )
+            if t.closed_at:
+                entries.append(
+                    TimelineEntry(
+                        at=t.closed_at, kind="ticket", id=t.id, number=t.number, title=f"Ticket closed · {t.title}", status="closed"
+                    )
+                )
     if actor.role != Role.RESIDENT or actor.can("incidents.read"):
         for inc in db.scalars(select(Incident).where(Incident.property_id == p.id, Incident.deleted_at.is_(None))):
             entries.append(
@@ -257,8 +270,13 @@ def create_resident(body: ResidentIn, db: DB, actor: Perm("residents.manage")):
     db.add(r)
     db.flush()
     audit.record(db, actor, "resident.created", "resident", r.id, new=audit.snapshot(r))
+    sent = []
+    if invite:
+        from app.services.accounts import deliver_invite
+
+        sent = deliver_invite(db, user, invite)
     db.commit()
-    return {"resident": ResidentOut.model_validate(r), "invite_token": invite, "invite_url": invite_url(invite)}
+    return {"resident": ResidentOut.model_validate(r), "invite_token": invite, "invite_url": invite_url(invite), "sent_via": sent}
 
 
 @router.patch("/residents/{resident_id}", response_model=ResidentOut)

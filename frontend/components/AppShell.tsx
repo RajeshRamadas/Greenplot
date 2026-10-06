@@ -16,11 +16,15 @@ interface NavItem {
   label: string;
   icon: string;
   group?: string;
+  short?: string;
+  /** Feature switch (Settings → Features) that controls this item for residents/vendors. */
+  feature?: string;
 }
 
 const NAV: Record<Role, NavItem[]> = {
   layout_admin: [
     { href: "/dashboard", label: "Dashboard", icon: "home" },
+    { href: "/tickets", label: "Service tickets", short: "Tickets", icon: "ticket", group: "Operations" },
     { href: "/maintenance", label: "Maintenance", icon: "wrench", group: "Operations" },
     { href: "/approvals", label: "Pending approvals", icon: "check", group: "Operations" },
     { href: "/gardening", label: "Gardening & cleaning", icon: "leaf", group: "Operations" },
@@ -43,6 +47,7 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   supervisor: [
     { href: "/dashboard", label: "Dashboard", icon: "home" },
+    { href: "/tickets", label: "Service tickets", short: "Tickets", icon: "ticket", group: "Review" },
     { href: "/approvals", label: "Pending approvals", icon: "check", group: "Review" },
     { href: "/maintenance", label: "Maintenance", icon: "wrench", group: "Review" },
     { href: "/gardening", label: "Gardening & cleaning", icon: "leaf", group: "Review" },
@@ -59,6 +64,7 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   staff: [
     { href: "/my-tasks", label: "My tasks", icon: "clipboard" },
+    { href: "/tickets", label: "Service tickets", short: "Tickets", icon: "ticket" },
     { href: "/scan", label: "Scan asset", icon: "qr" },
     { href: "/attendance", label: "Attendance", icon: "user" },
     { href: "/complaints", label: "Complaints", icon: "message" },
@@ -66,10 +72,12 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/offline", label: "Offline queue", icon: "sync" },
   ],
   vendor: [
-    { href: "/my-tasks", label: "My jobs", icon: "clipboard" },
-    { href: "/scan", label: "Scan asset", icon: "qr" },
-    { href: "/maintenance", label: "Job history", icon: "wrench" },
-    { href: "/offline", label: "Offline queue", icon: "sync" },
+    { href: "/tickets", label: "Service tickets", short: "Tickets", icon: "ticket", feature: "tickets" },
+    { href: "/my-tasks", label: "My jobs", icon: "clipboard", feature: "jobs" },
+    { href: "/scan", label: "Scan asset", icon: "qr", feature: "scan" },
+    { href: "/maintenance", label: "Job history", icon: "wrench", feature: "jobs" },
+    { href: "/records", label: "Records", icon: "search", feature: "records" },
+    { href: "/offline", label: "Offline queue", icon: "sync", feature: "offline" },
   ],
   guard: [
     { href: "/dashboard", label: "Gate", icon: "home" },
@@ -82,31 +90,39 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   resident: [
     { href: "/dashboard", label: "Home", icon: "home" },
-    { href: "/my-property", label: "My property", icon: "building" },
-    { href: "/inspections", label: "Property Watch", icon: "eye" },
-    { href: "/maintenance", label: "Maintenance history", icon: "wrench" },
-    { href: "/complaints", label: "Complaints", icon: "message" },
-    { href: "/visitors", label: "Visitors", icon: "users" },
-    { href: "/vehicles", label: "Vehicles", icon: "car" },
-    { href: "/billing", label: "Dues & payments", icon: "rupee" },
-    { href: "/notices", label: "Notices", icon: "bell" },
-    { href: "/sos", label: "SOS", icon: "sos" },
+    { href: "/tickets", label: "Service tickets", short: "Tickets", icon: "ticket", feature: "tickets" },
+    { href: "/my-property", label: "My property", icon: "building", feature: "property" },
+    { href: "/inspections", label: "Property Watch", icon: "eye", feature: "property_watch" },
+    { href: "/maintenance", label: "Maintenance history", icon: "wrench", feature: "maintenance" },
+    { href: "/complaints", label: "Complaints", icon: "message", feature: "complaints" },
+    { href: "/visitors", label: "Visitors", icon: "users", feature: "visitors" },
+    { href: "/vehicles", label: "Vehicles", icon: "car", feature: "vehicles" },
+    { href: "/billing", label: "Dues & payments", icon: "rupee", feature: "billing" },
+    { href: "/incidents", label: "Incidents", icon: "alert", feature: "incidents" },
+    { href: "/notices", label: "Notices", icon: "bell", feature: "notices" },
+    { href: "/sos", label: "SOS", icon: "sos", feature: "sos" },
+    { href: "/records", label: "Records", icon: "search", feature: "records" },
   ],
   super_admin: [{ href: "/tenants", label: "Tenants", icon: "layers" }],
 };
 
 const BOTTOM: Partial<Record<Role, string[]>> = {
   staff: ["/my-tasks", "/scan", "/attendance", "/offline"],
-  vendor: ["/my-tasks", "/scan", "/maintenance", "/offline"],
+  vendor: ["/tickets", "/my-tasks", "/scan", "/offline"],
   guard: ["/dashboard", "/visitors", "/patrol", "/incidents"],
-  resident: ["/dashboard", "/maintenance", "/complaints", "/billing", "/sos"],
-  supervisor: ["/dashboard", "/approvals", "/maintenance", "/records"],
-  layout_admin: ["/dashboard", "/maintenance", "/approvals", "/records"],
+  resident: ["/dashboard", "/tickets", "/maintenance", "/billing", "/sos"],
+  supervisor: ["/dashboard", "/tickets", "/approvals", "/maintenance"],
+  layout_admin: ["/dashboard", "/tickets", "/maintenance", "/approvals"],
 };
 
-export function homeFor(role?: Role) {
+/** The role's menu with switched-off features removed (customers and vendors share one app). */
+export function navFor(role: Role, features?: string[] | null): NavItem[] {
+  return NAV[role].filter((i) => !i.feature || !features || features.includes(i.feature));
+}
+
+export function homeFor(role?: Role, features?: string[] | null) {
   if (!role) return "/login";
-  return NAV[role][0].href;
+  return navFor(role, features)[0]?.href ?? "/profile";
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -123,6 +139,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [loading, me, router, path]);
 
   useEffect(() => setOpen(false), [path]);
+
+  // Roles that must use 2-step verification are kept on their profile until they set it up.
+  useEffect(() => {
+    if (me?.mfa_setup_required && path !== "/profile") router.replace("/profile?setup=2fa");
+  }, [me, path, router]);
+
+  // A page whose feature the layout switched off for this role sends the user home.
+  useEffect(() => {
+    if (!me?.features) return;
+    const hit = NAV[me.role].find((i) => i.feature && (path === i.href || path.startsWith(i.href + "/")));
+    if (hit && !me.features.includes(hit.feature!) && !navFor(me.role, me.features).some((i) => i.href === hit.href)) {
+      router.replace(homeFor(me.role, me.features));
+    }
+  }, [me, path, router]);
 
   useEffect(() => {
     if (!me) return;
@@ -142,7 +172,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (loading || !me) return <div className="auth-page"><span className="muted">Loading GreenPlot…</span></div>;
 
-  const items = NAV[me.role];
+  const items = navFor(me.role, me.features);
   const groups: (string | undefined)[] = [];
   items.forEach((i) => !groups.includes(i.group) && groups.push(i.group));
   const isActive = (href: string) => path === href || path.startsWith(href + "/");
@@ -152,7 +182,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="shell">
       {open ? <div className="scrim" onClick={() => setOpen(false)} /> : null}
       <aside className={`sidebar ${open ? "open" : ""}`} aria-label="Main navigation">
-        <Link href={homeFor(me.role)} className="brand" style={{ color: "inherit", textDecoration: "none" }}>
+        <Link href={homeFor(me.role, me.features)} className="brand" style={{ color: "inherit", textDecoration: "none" }}>
           <b>
             <span>Green</span>Plot
           </b>
@@ -215,7 +245,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {bottom.map((i) => (
               <Link key={i.href} href={i.href} className={isActive(i.href) ? "active" : ""}>
                 <Icon name={i.icon} size={22} />
-                {i.label.split(" ")[0]}
+                {i.short ?? i.label.split(" ")[0]}
               </Link>
             ))}
           </nav>

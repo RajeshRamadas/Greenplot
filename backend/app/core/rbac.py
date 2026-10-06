@@ -41,9 +41,17 @@ PERMISSIONS: dict[str, set[Role]] = {
     "complaints.read": ALL_TENANT_ROLES - {R.GUARD},
     "complaints.create": {R.RESIDENT, R.LAYOUT_ADMIN, R.SUPERVISOR, R.STAFF, R.GUARD},
     "complaints.manage": {R.LAYOUT_ADMIN, R.SUPERVISOR},
+    # customer tickets & vendor service management (ticketing requirements §4, §22)
+    "tickets.read": ALL_TENANT_ROLES - {R.GUARD},
+    "tickets.create": {R.RESIDENT, R.LAYOUT_ADMIN, R.SUPERVISOR},
+    "tickets.manage": {R.LAYOUT_ADMIN, R.SUPERVISOR},
+    "tickets.work": {R.STAFF, R.VENDOR, R.SUPERVISOR},
+    "tickets.verify": {R.SUPERVISOR, R.LAYOUT_ADMIN},
+    "tickets.configure": {R.LAYOUT_ADMIN},
     # assets
     "assets.read": ALL_TENANT_ROLES - {R.RESIDENT},
     "assets.manage": {R.LAYOUT_ADMIN, R.SUPERVISOR},
+    "assets.scan": {R.STAFF, R.VENDOR, R.SUPERVISOR, R.LAYOUT_ADMIN},
     # staff & vendors
     "staff.read": {R.LAYOUT_ADMIN, R.SUPERVISOR},
     "staff.manage": {R.LAYOUT_ADMIN},

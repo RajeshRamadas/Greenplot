@@ -19,9 +19,13 @@ from app.api.v1 import (
     public,
     reports,
     security,
+    signups,
+    sms,
     system,
     tenants,
+    tickets,
     users,
+    whatsapp,
 )
 from app.core.config import get_settings
 from app.core.deps import client_ip
@@ -90,6 +94,7 @@ def create_app() -> FastAPI:
         maintenance,
         media,
         complaints,
+        tickets,
         inspections,
         people,
         security,
@@ -98,6 +103,9 @@ def create_app() -> FastAPI:
         reports,
         system,
         public,
+        whatsapp,
+        signups,
+        sms,
     ):
         app.include_router(module.router, prefix=s.api_prefix)
     app.include_router(tenants.settings_router, prefix=s.api_prefix)

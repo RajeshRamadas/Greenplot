@@ -139,6 +139,7 @@ def run(reset: bool = False) -> None:
     db.flush()
     vendor_user = user(t, "vendor@greenvalley.example", Role.VENDOR, "Vikram Shetty", "9000000022", vendor_id=v_gate.id)
     resident = user(t, "resident@greenvalley.example", Role.RESIDENT, "Priya Nair", "9000000030")
+    resident.whatsapp_opt_in = True  # demo: ticket updates also go to WhatsApp (logged unless GP_WHATSAPP_PROVIDER=meta)
 
     props = {}
     for i, plot in enumerate(["101", "102", "103", "104", "105", "117", "204", "221", "89"] + [str(300 + n) for n in range(15)]):
@@ -330,6 +331,53 @@ def run(reset: bool = False) -> None:
     )
     db.add(comp)
     db.flush()
+
+    # Customer tickets (ticketing requirements): one new, one with the gate vendor, one closed
+    from app.services import tickets as tk
+
+    R = Actor(resident, None, "seed")
+    V = Actor(vendor_user, None, "seed")
+    tk.ensure_categories(db, t.id)
+    tk.create(
+        db,
+        R,
+        dict(
+            category="plumbing",
+            subcategory="Leak",
+            title="Water leaking near the meter box",
+            description="Water has been pooling next to the meter box since this morning.",
+            property_id=p117.id,
+            preferred_time="Weekdays after 5 pm",
+        ),
+    )
+    gate_ticket = tk.create(
+        db,
+        R,
+        dict(
+            category="gate_fence",
+            subcategory="Gate not closing",
+            title="Plot gate does not latch",
+            description="The gate swings open in the wind; the latch no longer catches.",
+            property_id=p117.id,
+        ),
+    )
+    tk.review(db, A, gate_ticket)
+    tk.assign(db, A, gate_ticket, None, v_gate.id, notes="Bring a replacement latch")
+    tk.accept(db, V, gate_ticket)
+    done = tk.create(
+        db,
+        R,
+        dict(
+            category="cleaning",
+            subcategory="Garbage not collected",
+            title="Garbage not collected on Monday",
+            description="The collection van skipped our lane.",
+            property_id=p117.id,
+            priority="low",
+        ),
+    )
+    tk.resolve(db, A, done, "The collection contractor covered the lane on Tuesday morning.")
+    tk.close(db, A, done)
 
     # Recurring schedules (§14-15)
     tpl = db.scalar(select(ChecklistTemplate).where(ChecklistTemplate.tenant_id == t.id, ChecklistTemplate.category == "gardening"))

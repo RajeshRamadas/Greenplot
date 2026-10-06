@@ -1,4 +1,4 @@
-"""Records search across maintenance, complaints, inspections, incidents, assets,
+"""Records search across maintenance, tickets, complaints, inspections, incidents, assets,
 properties, vendors and staff (requirements §23).
 
 Free text is interpreted for plot numbers, record IDs, categories, statuses and
@@ -14,11 +14,11 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.deps import Actor
-from app.models import Asset, Complaint, Incident, Inspection, MaintenanceTask, Property, User, Vendor
+from app.models import Asset, Complaint, Incident, Inspection, MaintenanceTask, Property, Ticket, TicketCategory, User, Vendor
 from app.models.base import utcnow
 from app.models.enums import Role
 from app.schemas.operations import SearchHit
-from app.services.access import resident_property_ids, scope_complaints, scope_inspections, scope_tasks, tenant_select
+from app.services.access import resident_property_ids, scope_complaints, scope_inspections, scope_tasks, scope_tickets, tenant_select
 
 CATEGORY_WORDS = {
     "gate": "gate_fence",
@@ -54,6 +54,10 @@ TYPE_WORDS = {
     "jobs": "maintenance",
     "complaint": "complaint",
     "complaints": "complaint",
+    "ticket": "ticket",
+    "tickets": "ticket",
+    "request": "ticket",
+    "requests": "ticket",
     "inspections": "inspection",
     "visit": "inspection",
     "visits": "inspection",
@@ -116,10 +120,11 @@ def interpret(q: str | None) -> dict:
     if not q:
         return out
     text = q.strip()
-    m = re.search(r"\bGP-(MNT|CMP|INS|INC)-\d{4}-\d{3,}\b", text, re.I)
+    m = re.search(r"\bGP-(MNT|CMP|TKT|INS|INC)-\d{4}-\d{3,}\b", text, re.I)
     if m:
         out["number"] = m.group(0).upper()
-        out["type"] = {"MNT": "maintenance", "CMP": "complaint", "INS": "inspection", "INC": "incident"}[m.group(1).upper()]
+        kinds = {"MNT": "maintenance", "CMP": "complaint", "TKT": "ticket", "INS": "inspection", "INC": "incident"}
+        out["type"] = kinds[m.group(1).upper()]
         return out
     m = re.search(r"\bplot\s*(?:no\.?|number|#)?\s*([A-Za-z0-9-]+)", text, re.I)
     if m:
@@ -279,6 +284,44 @@ def search(
                         date=c.created_at,
                     )
                 )
+
+    if want("ticket") and actor.can("tickets.read") and not asset_id:
+        stmt = scope_tickets(tenant_select(Ticket, actor), db, actor)
+        if number:
+            stmt = stmt.where(Ticket.number == number)
+        if prop_ids is not None:
+            stmt = stmt.where(Ticket.property_id.in_(prop_ids))
+        if statuses:
+            stmt = stmt.where(Ticket.status.in_(statuses))
+        if category:
+            cat_ids = select(TicketCategory.id).where(
+                TicketCategory.tenant_id == actor.tenant_id,
+                or_(TicketCategory.code == category, TicketCategory.task_category == category),
+            )
+            stmt = stmt.where(Ticket.category_id.in_(cat_ids))
+        if vendor_id:
+            stmt = stmt.where(Ticket.assigned_to_type == "vendor", Ticket.assigned_to_id == vendor_id)
+        if staff_id:
+            stmt = stmt.where(Ticket.assigned_to_type == "staff", Ticket.assigned_to_id == staff_id)
+        if date_from:
+            stmt = stmt.where(Ticket.created_at >= date_from)
+        if date_to:
+            stmt = stmt.where(Ticket.created_at <= date_to)
+        if text and not number:
+            stmt = stmt.where(text_match(Ticket.title, Ticket.description, Ticket.number))
+        for t in db.scalars(stmt.order_by(Ticket.created_at.desc()).limit(limit)):
+            hits.append(
+                SearchHit(
+                    type="ticket",
+                    id=t.id,
+                    number=t.number,
+                    title=t.title,
+                    status=t.status,
+                    category=t.subcategory,
+                    property_id=t.property_id,
+                    date=t.closed_at or t.created_at,
+                )
+            )
 
     if want("inspection") and actor.can("inspections.read") and not (asset_id or vendor_id) and (category in (None, "inspection")):
         stmt = scope_inspections(tenant_select(Inspection, actor), db, actor)

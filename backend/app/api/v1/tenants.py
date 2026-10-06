@@ -1,10 +1,12 @@
 import uuid
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import func, select
 
 from app.api.v1._util import Limit, Offset, apply, paginate
 from app.core.deps import DB, Perm
+from app.core.features import CONFIGURABLE_ROLES, ROLE_FEATURES, feature_state
 from app.models import Layout, MaintenanceTask, Media, Property, Tenant, User
 from app.models.enums import Role
 from app.schemas.common import Page
@@ -42,8 +44,11 @@ def create_tenant(body: TenantCreate, db: DB, actor: Perm("tenants.manage")):
         password=body.admin_password,
     )
     audit.record(db, actor, "tenant.created", "tenant", tenant.id, new=audit.snapshot(tenant), tenant_id=tenant.id)
+    from app.services.accounts import deliver_invite
+
+    sent = deliver_invite(db, admin, token)
     db.commit()
-    return InviteOut(user=UserOut.model_validate(admin), invite_token=token, invite_url=invite_url(token))
+    return InviteOut(user=UserOut.model_validate(admin), invite_token=token, invite_url=invite_url(token), sent_via=sent)
 
 
 @router.get("/stats")
@@ -110,3 +115,54 @@ def update_settings(body: TenantSettingsIn, db: DB, actor: Perm("settings.manage
     audit.record(db, actor, "settings.updated", "tenant", t.id, old=o, new=n)
     db.commit()
     return t
+
+
+# ------------------------------------------------------------- feature switches for customers and vendors
+
+
+class FeaturesIn(BaseModel):
+    role: str
+    features: dict[str, bool]
+
+
+def _features_view(t: Tenant) -> dict:
+    return {
+        role: [
+            {"key": key, "label": f["label"], "description": f["description"], "requires": f.get("requires", []), "enabled": on}
+            for key, f in ROLE_FEATURES[role].items()
+            for on in [feature_state(t.settings, role)[key]]
+        ]
+        for role in CONFIGURABLE_ROLES
+    }
+
+
+@settings_router.get("/features")
+def get_features(db: DB, actor: Perm("settings.manage")):
+    """What customers (residents) and vendors can use in this layout."""
+    return _features_view(db.get(Tenant, actor.tenant_id))
+
+
+@settings_router.put("/features")
+def update_features(body: FeaturesIn, db: DB, actor: Perm("settings.manage")):
+    if body.role not in ROLE_FEATURES:
+        raise HTTPException(422, f"Features can be set for: {', '.join(CONFIGURABLE_ROLES)}")
+    catalogue = ROLE_FEATURES[body.role]
+    unknown = set(body.features) - set(catalogue)
+    if unknown:
+        raise HTTPException(422, f"Unknown feature: {', '.join(sorted(unknown))}")
+    t = db.get(Tenant, actor.tenant_id)
+    settings = dict(t.settings or {})
+    all_roles = dict(settings.get("role_features") or {})
+    current = feature_state(settings, body.role)
+    new = {**current, **body.features}
+    for key, on in new.items():
+        for dep in catalogue[key].get("requires", []):
+            if on and not new[dep]:
+                raise HTTPException(422, f"{catalogue[key]['label']} needs {catalogue[dep]['label']} switched on")
+    all_roles[body.role] = new
+    settings["role_features"] = all_roles
+    t.settings = settings
+    old, changed = audit.diff(current, new)
+    audit.record(db, actor, "settings.features_changed", "tenant", t.id, old={"role": body.role, **old}, new=changed)
+    db.commit()
+    return _features_view(t)

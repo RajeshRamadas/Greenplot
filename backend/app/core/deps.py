@@ -1,5 +1,5 @@
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Annotated
 
 import jwt
@@ -8,8 +8,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
+from app.core.features import disabled_permissions
 from app.core.rbac import has_permission
-from app.models import Tenant, User
+from app.models import RefreshToken, Tenant, User
 from app.models.enums import Role
 
 bearer = HTTPBearer(auto_error=False)
@@ -22,6 +23,8 @@ class Actor:
     user: User
     ip: str | None
     user_agent: str | None
+    # Permissions removed by the layout's feature switches for this role (app.core.features).
+    disabled: frozenset[str] = field(default_factory=frozenset)
 
     @property
     def id(self) -> uuid.UUID:
@@ -38,7 +41,7 @@ class Actor:
         return self.user.role
 
     def can(self, permission: str) -> bool:
-        return has_permission(self.user.role, permission)
+        return has_permission(self.user.role, permission) and permission not in self.disabled
 
     def is_manager(self) -> bool:
         return self.user.role in (Role.LAYOUT_ADMIN, Role.SUPERVISOR)
@@ -69,11 +72,33 @@ def get_actor(
     user = db.get(User, user_id)
     if user is None or not user.is_active or payload.get("ver") != user.token_version:
         raise unauthorized
+    sid = payload.get("sid")
+    if sid:
+        # A session signed out from another device stops working immediately, not when its token expires.
+        session = db.get(RefreshToken, uuid.UUID(sid))
+        if session is None or session.revoked_at is not None or session.user_id != user.id:
+            raise unauthorized
+    disabled: frozenset[str] = frozenset()
     if user.tenant_id is not None:
         tenant = db.get(Tenant, user.tenant_id)
         if tenant is None or tenant.status != "active":
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Tenant is not active")
-    return Actor(user=user, ip=client_ip(request), user_agent=request.headers.get("user-agent"))
+        disabled = disabled_permissions(tenant.settings, user.role)
+    from app.core.config import get_settings
+
+    s = get_settings()
+    if user.role in s.mfa_roles and not user.totp_enabled and not request.url.path.startswith(f"{s.api_prefix}/auth/"):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            {"code": "mfa_setup_required", "message": "Set up 2-step verification in your profile to continue"},
+        )
+    return Actor(user=user, ip=client_ip(request), user_agent=request.headers.get("user-agent"), disabled=disabled)
+
+
+def actor_for(db: Session, user: User, ip: str | None = None, user_agent: str | None = None) -> Actor:
+    """An Actor outside a request (webhooks), with the layout's feature switches applied."""
+    tenant = db.get(Tenant, user.tenant_id) if user.tenant_id else None
+    return Actor(user=user, ip=ip, user_agent=user_agent, disabled=disabled_permissions(tenant.settings if tenant else None, user.role))
 
 
 CurrentActor = Annotated[Actor, Depends(get_actor)]

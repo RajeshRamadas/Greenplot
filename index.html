@@ -620,6 +620,8 @@ h1{font-size:58px;line-height:1.01;letter-spacing:-3.5px;margin:16px 0 20px;max-
 .proofChecks{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}.proofChecks span{font-size:10.5px;font-weight:800;padding:5px 9px;border-radius:20px;background:var(--green-soft);color:var(--green-dark)}
 .proofAudit{margin-top:14px;padding:10px 12px;border-radius:10px;background:var(--green-pale);font-size:11px;font-weight:700;color:#36584a}
 .proofFoot{margin-top:10px;font-size:10px;color:var(--muted)}
+.tickets{background:var(--green-pale);border-top:1px solid var(--line)}.tickets .proofItem{background:#fff}.ticketBtns{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+@media(max-width:580px){.ticketBtns{flex-direction:column}.ticketBtns .btn{width:100%;text-align:center}}
 /* For layouts */
 .layouts{background:var(--green-pale);border-top:1px solid var(--line)}
 .layoutRoles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
@@ -657,7 +659,7 @@ a.contactCard:hover{border-color:#b9d9cb;box-shadow:var(--shadow)}
 <body>
 <nav class="nav"><div class="container navin">
 <img class="brand-logo" src="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22600%22%20height=%22150%22%20viewBox=%220%200%20600%20150%22%3E%3Ctext%20x=%224%22%20y=%2291%22%20font-family=%22Arial,%20Helvetica,%20sans-serif%22%20font-size=%2294%22%20font-weight=%22900%22%20letter-spacing=%22-5%22%3E%3Ctspan%20fill=%22%23218b22%22%3EGreen%3C/tspan%3E%3Ctspan%20fill=%22%23202a2f%22%3EPlot%3C/tspan%3E%3C/text%3E%3Ctext%20x=%2210%22%20y=%22128%22%20font-family=%22Arial,%20Helvetica,%20sans-serif%22%20font-size=%2221%22%20font-weight=%22600%22%20letter-spacing=%220.15%22%20fill=%22%2353615d%22%3EProperty%20Management%20Made%20Simple%3C/text%3E%3C/svg%3E" alt="GreenPlot — Property Management Made Simple" />
-<div class="navlinks" id="navlinks"><a href="#services">Services</a><a href="#watch">Property Watch</a><a href="#proof">Proof of Work</a><a href="#records">Digital Records</a><a href="#how">How It Works</a><a href="#layouts">For Layouts</a><a href="#contact">Contact</a><a class="navlogin" href="/login">Login</a></div>
+<div class="navlinks" id="navlinks"><a href="#services">Services</a><a href="#watch">Property Watch</a><a href="#proof">Proof of Work</a><a href="#tickets">Service Tickets</a><a href="#records">Digital Records</a><a href="#how">How It Works</a><a href="#layouts">For Layouts</a><a href="#contact">Contact</a><a class="navlogin" href="/login">Login</a></div>
 <div class="actions"><a class="btn light" href="/login">Login</a><a class="btn primary" href="#demo">Request Demo</a><button class="menu" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navlinks" onclick="toggleNav(this)"><span></span><span></span><span></span></button></div>
 </div></nav>
 <header class="hero"><div class="container heroGrid">
@@ -839,6 +841,30 @@ a.contactCard:hover{border-color:#b9d9cb;box-shadow:var(--shadow)}
 </div>
 </div>
 </div></section>
+<section class="section tickets" id="tickets"><div class="container">
+<div class="center"><div class="eyebrow">Service tickets · Residents &amp; vendors</div><h2>Raise a ticket. Watch it get fixed.</h2><p class="lead">Residents report a problem from their phone. The layout office assigns it to a trusted vendor or staff member, the vendor does the work with proof, a supervisor verifies it — and you are notified the moment it is closed.</p></div>
+<div class="proofGrid">
+<div>
+<div class="proofList">
+<div class="proofItem"><b>Residents: raise &amp; track</b><span>Pick your plot and the problem, add photos, and get a ticket number like GP-TKT-2026-000127 to follow.</span></div>
+<div class="proofItem"><b>Office: review &amp; assign</b><span>Set the priority, assign staff or a vendor, and watch every ticket against its response and resolution SLA.</span></div>
+<div class="proofItem"><b>Vendors: accept &amp; deliver</b><span>New jobs arrive as notifications. Accept or decline with a reason, then submit before/after photos and the checklist.</span></div>
+<div class="proofItem"><b>Supervisors: verify</b><span>Approve the proof of work or send it back for rework. Nothing closes without evidence.</span></div>
+<div class="proofItem"><b>Closure you can see</b><span>Residents are told when work starts, finishes and closes — in the app, by push and by WhatsApp.</span></div>
+<div class="proofItem"><b>Feedback &amp; reopen</b><span>Rate the service, or tap “Still an issue” to reopen. Every ticket lands in the property’s history.</span></div>
+</div>
+<div class="ticketBtns"><a class="btn primary" href="/login?next=/tickets">Raise a service ticket →</a><a class="btn light" href="/login?next=/tickets">Vendor login</a></div>
+</div>
+<div class="proofRecord" aria-label="Sample service ticket">
+<div class="proofTag">SAMPLE TICKET · DEMO DATA</div>
+<div class="proofHead"><div><span class="mono">GP-TKT-2026-000127</span><h3>Water leaking near the meter box</h3><small>Plumbing · Leak · Plot 117</small></div><span class="approved">CLOSED</span></div>
+<dl class="proofMeta"><div><dt>Raised by</dt><dd>Resident · 7:40 AM</dd></div><div><dt>Assigned to</dt><dd>AquaFix Plumbing</dd></div><div><dt>Verified</dt><dd>Supervisor · 1:10 PM</dd></div><div><dt>SLA</dt><dd>Resolved in 5 h · met</dd></div></dl>
+<div class="proofChecks"><span>✓ Accepted</span><span>✓ Before photo</span><span>✓ After photo</span><span>✓ Checklist 4/4</span><span>✓ Supervisor verified</span><span>★★★★★ Rated</span></div>
+<div class="proofAudit">Raised → Reviewed → Assigned → Accepted → Work Started → Proof Submitted → Verified → Closed → Resident Notified</div>
+<div class="proofFoot">“GreenPlot Ticket Closed — Your service request GP-TKT-2026-000127 has been completed and closed.”</div>
+</div>
+</div>
+</div></section>
 <section class="section workflow" id="how"><div class="container"><div class="center"><div class="eyebrow">Operational workflow</div><h2>From property request to verified completion.</h2><p class="lead">The same workflow works for inspections, cleaning, repairs, gardening, incidents and vendor jobs.</p></div>
 <div class="steps"><div class="step"><div class="num">01 · REQUEST</div><h3>Request</h3><p>Resident, owner or admin creates a maintenance, inspection or service request.</p></div><div class="step"><div class="num">02 · ASSIGN</div><h3>Assign</h3><p>Staff, supervisor or vendor receives the job with location and instructions.</p></div><div class="step"><div class="num">03 · VISIT</div><h3>Visit property</h3><p>Field team arrives, records start time and captures initial evidence.</p></div><div class="step"><div class="num">04 · COMPLETE</div><h3>Complete work</h3><p>Checklist is completed and before/after photos or video are attached.</p></div><div class="step"><div class="num">05 · VERIFY</div><h3>Verify &amp; record</h3><p>Supervisor approves and the complete digital record becomes searchable history.</p></div></div>
 </div></section>
@@ -849,8 +875,8 @@ a.contactCard:hover{border-color:#b9d9cb;box-shadow:var(--shadow)}
 <div class="layoutRole"><b>Supervisors</b><span>Assign work, review evidence, approve or request rework and track overdue jobs.</span></div>
 <div class="layoutRole"><b>Maintenance staff</b><span>My tasks, asset scan, camera, checklists and notes — even with a weak signal.</span></div>
 <div class="layoutRole"><b>Guards</b><span>Visitors, vehicles, patrol checkpoints, incidents and SOS, working offline.</span></div>
-<div class="layoutRole"><b>Vendors</b><span>Receive jobs, submit service reports, invoices and proof of work.</span></div>
-<div class="layoutRole"><b>Owners &amp; residents</b><span>Property history, maintenance records, complaints, visitors, dues and notices.</span></div>
+<div class="layoutRole"><b>Vendors</b><span>Receive customer tickets and jobs, accept or decline, and submit service reports, invoices and proof of work.</span></div>
+<div class="layoutRole"><b>Owners &amp; residents</b><span>Service tickets, property history, maintenance records, visitors, dues and notices.</span></div>
 </div>
 <div class="layoutFacts"><span><b>Role-based access</b> — residents only see their own records</span><span><b>Private storage</b> — no public links to your photos</span><span><b>Audit trail</b> on every important action</span><span><b>Installable app</b> for Android &amp; iPhone</span></div>
 </div></section>
@@ -887,8 +913,8 @@ a.contactCard:hover{border-color:#b9d9cb;box-shadow:var(--shadow)}
       <a class="footer-contact" href="mailto:hello@greenplot.in">hello@greenplot.in <span aria-hidden="true">↗</span></a>
     </div>
     <nav class="footer-nav" aria-label="Footer navigation">
-      <div class="footer-col"><h3>Explore</h3><a href="#services">Services</a><a href="#watch">Property Watch</a><a href="#proof">Proof of Work</a><a href="#records">Digital Records</a><a href="#how">How It Works</a></div>
-      <div class="footer-col"><h3>Get started</h3><a href="#demo">Request a Demo</a><a href="#layouts">For Layouts</a><a href="#contact">Contact Us</a><a href="/login">Login</a></div>
+      <div class="footer-col"><h3>Explore</h3><a href="#services">Services</a><a href="#watch">Property Watch</a><a href="#proof">Proof of Work</a><a href="#tickets">Service Tickets</a><a href="#records">Digital Records</a><a href="#how">How It Works</a></div>
+      <div class="footer-col"><h3>Get started</h3><a href="#demo">Request a Demo</a><a href="#layouts">For Layouts</a><a href="#contact">Contact Us</a><a href="/login?next=/tickets">Raise a Ticket</a><a href="/register">Request Access</a><a href="/login">Login</a></div>
     </nav>
   </div>
   <div class="container footer-bottom">

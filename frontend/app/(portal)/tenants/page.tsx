@@ -5,6 +5,7 @@ import { Badge, Dialog, ErrorBox, Field, PageHead, useToast } from "@/components
 import { api } from "@/lib/api";
 import { fmtDateTime } from "@/lib/format";
 import { useAction, useApi } from "@/lib/hooks";
+import { announceInvite } from "@/lib/invites";
 
 interface Row {
   tenant_id: string;
@@ -98,17 +99,14 @@ export default function TenantsPage() {
           onSubmit={async (e) => {
             e.preventDefault();
             const r = await act.run(() =>
-              api<{ invite_url: string | null }>("/tenants", {
+              api<{ invite_url: string | null; sent_via?: string[] }>("/tenants", {
                 body: { name: f.name, slug: f.slug, city: f.city, plan: f.plan, admin_email: f.admin_email, admin_name: f.admin_name, contact_phone: f.phone || null },
               }),
             );
             if (r) {
               setOpen(false);
               reload();
-              if (r.invite_url) {
-                await navigator.clipboard?.writeText(r.invite_url).catch(() => {});
-                toast("Layout created. Admin invite link copied.");
-              }
+              await announceInvite(r, toast, "Layout admin invite");
             }
           }}
         >

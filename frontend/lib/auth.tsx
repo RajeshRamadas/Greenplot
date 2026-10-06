@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { api, getRefreshToken, login as apiLogin, logout as apiLogout, onAuthChange } from "./api";
+import { api, getRefreshToken, login as apiLogin, logout as apiLogout, onAuthChange, otpLogin, type SignInResult, verifyMfa } from "./api";
 import type { Me, Meta } from "./types";
 
 interface AuthState {
@@ -9,7 +9,10 @@ interface AuthState {
   meta: Meta | null;
   loading: boolean;
   can: (permission: string) => boolean;
-  login: (email: string, password: string) => Promise<void>;
+  /** Resolves with an mfa_token when a 2-step code is still needed. */
+  login: (email: string, password: string) => Promise<SignInResult>;
+  loginWithCode: (phone: string, code: string) => Promise<SignInResult>;
+  finishMfa: (mfaToken: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   reload: () => Promise<void>;
 }
@@ -60,7 +63,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     can: (p) => !!me?.permissions.includes(p),
     login: async (email, password) => {
-      await apiLogin(email, password);
+      const r = await apiLogin(email, password);
+      if (!r.mfa_token) await reload();
+      return r;
+    },
+    loginWithCode: async (phone, code) => {
+      const r = await otpLogin(phone, code);
+      if (!r.mfa_token) await reload();
+      return r;
+    },
+    finishMfa: async (mfaToken, code) => {
+      await verifyMfa(mfaToken, code);
       await reload();
     },
     logout: async () => {

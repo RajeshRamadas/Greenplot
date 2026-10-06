@@ -12,7 +12,8 @@ from collections.abc import Iterable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Notification, Tenant, User
+from app.models import Notification, NotificationDelivery, Tenant, User
+from app.models.base import utcnow
 from app.models.enums import Role
 
 log = logging.getLogger("greenplot.notify")
@@ -31,7 +32,14 @@ DEFAULT_CHANNELS: dict[str, list[str]] = {
     "sos": ["in_app", "push", "sms"],
     "announcement": ["in_app", "push"],
     "visitor": ["in_app", "push"],
+    "ticket_update": ["in_app", "push", "whatsapp"],
+    "ticket_assigned": ["in_app", "push", "whatsapp"],
+    "ticket_closed": ["in_app", "push", "whatsapp"],
+    "ticket_sla": ["in_app", "push"],
+    "signup_request": ["in_app", "push"],
 }
+
+MAX_DELIVERY_ATTEMPTS = 3
 
 
 class ChannelAdapter:
@@ -47,20 +55,37 @@ class PushAdapter(ChannelAdapter):
 
 
 class SmsAdapter(ChannelAdapter):
+    """MSG91 DLT template when GP_SMS_PROVIDER=msg91 (see app.services.sms), otherwise logs."""
+
     name = "sms"
 
-    def send(self, user: User, title: str, body: str | None) -> str:
-        if not user.phone:
-            return "skipped:no_phone"
-        return super().send(user, title, body)
+    def send(self, user: User, title: str, body: str | None) -> tuple[str, str | None]:
+        from app.services import sms
+
+        return sms.send_notification(user.phone, title, body)
 
 
-class WhatsAppAdapter(SmsAdapter):
+class WhatsAppAdapter(ChannelAdapter):
+    """WhatsApp Business Cloud API; see app.services.whatsapp (consent, 24-hour window, templates)."""
+
     name = "whatsapp"
+
+    def send(self, user: User, title: str, body: str | None) -> tuple[str, str | None]:
+        from app.services import whatsapp
+
+        return whatsapp.send_notification(user, title, body)
 
 
 class EmailAdapter(ChannelAdapter):
+    """SMTP when GP_SMTP_HOST is set (see app.services.messaging), otherwise logs."""
+
     name = "email"
+
+    def send(self, user: User, title: str, body: str | None) -> str:
+        from app.core.config import get_settings
+        from app.services.messaging import send_email
+
+        return send_email(user.email, title, f"{body or title}\n\nOpen GreenPlot: {get_settings().app_url}")
 
 
 ADAPTERS: dict[str, ChannelAdapter] = {
@@ -95,17 +120,8 @@ def notify(
         user = db.get(User, uid)
         if user is None or not user.is_active or user.tenant_id != tenant_id:
             continue
-        delivery = {}
-        for ch in chans:
-            if ch == "in_app":
-                delivery[ch] = "stored"
-                continue
-            adapter = ADAPTERS.get(ch)
-            try:
-                delivery[ch] = adapter.send(user, title, body) if adapter else "unsupported"
-            except Exception as exc:  # pragma: no cover - provider failures must not break workflows
-                delivery[ch] = f"failed:{exc}"
         n = Notification(
+            id=uuid.uuid4(),
             tenant_id=tenant_id,
             user_id=uid,
             kind=kind,
@@ -114,11 +130,73 @@ def notify(
             entity_type=entity_type,
             entity_id=entity_id,
             channels=chans,
-            delivery=delivery,
+            delivery={},
         )
+        delivery = {}
+        for ch in chans:
+            result, provider_id = ("stored", None) if ch == "in_app" else _send(ch, user, title, body)
+            delivery[ch] = result
+            db.add(_delivery_row(n, ch, result, provider_id))
+        n.delivery = delivery
         db.add(n)
         created.append(n)
     return created
+
+
+def _send(channel: str, user: User, title: str, body: str | None) -> tuple[str, str | None]:
+    """Returns (result, provider message id). Adapters may return a plain result string."""
+    adapter = ADAPTERS.get(channel)
+    if adapter is None:
+        return "unsupported", None
+    try:
+        out = adapter.send(user, title, body)
+    except Exception as exc:  # provider failures must not break workflows
+        log.warning("%s delivery to %s failed: %s", channel, user.id, exc)
+        return f"failed:{exc}", None
+    return out if isinstance(out, tuple) else (out, None)
+
+
+def _delivery_row(n: Notification, channel: str, result: str, provider_id: str | None = None) -> NotificationDelivery:
+    status, _, reason = result.partition(":")
+    now = utcnow()
+    return NotificationDelivery(
+        tenant_id=n.tenant_id,
+        notification_id=n.id,
+        user_id=n.user_id,
+        event_type=n.kind,
+        entity_type=n.entity_type,
+        entity_id=n.entity_id,
+        channel=channel,
+        status=status if status in ("stored", "sent", "delivered", "skipped", "failed") else "failed",
+        sent_at=now if status in ("stored", "sent", "delivered") else None,
+        delivered_at=now if status in ("stored", "delivered") else None,
+        failure_reason=reason or (None if status in ("stored", "sent", "delivered") else status),
+        provider_message_id=provider_id,
+    )
+
+
+def retry_failed_deliveries(db: Session) -> int:
+    """Resend failed external-channel deliveries, up to MAX_DELIVERY_ATTEMPTS each."""
+    n = 0
+    rows = db.scalars(
+        select(NotificationDelivery).where(NotificationDelivery.status == "failed", NotificationDelivery.attempts < MAX_DELIVERY_ATTEMPTS)
+    )
+    for d in rows:
+        user = db.get(User, d.user_id)
+        note = db.get(Notification, d.notification_id)
+        if user is None or note is None or not user.is_active:
+            continue
+        result, provider_id = _send(d.channel, user, note.title, note.body)
+        status, _, reason = result.partition(":")
+        d.provider_message_id = provider_id or d.provider_message_id
+        d.attempts += 1
+        d.status = status if status in ("sent", "delivered", "skipped") else "failed"
+        d.failure_reason = (reason or status) if d.status == "failed" else None
+        if d.status in ("sent", "delivered"):
+            d.sent_at = utcnow()
+        note.delivery = {**(note.delivery or {}), d.channel: result}
+        n += 1
+    return n
 
 
 def users_with_roles(db: Session, tenant_id: uuid.UUID, roles: Iterable[str]) -> list[uuid.UUID]:

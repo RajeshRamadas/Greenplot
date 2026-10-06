@@ -32,7 +32,7 @@ function LoginForm() {
   useEffect(() => {
     if (!loading && me) {
       const next = params.get("next");
-      router.replace(me.mfa_setup_required ? "/profile?setup=2fa" : next && next.startsWith("/") && !next.startsWith("//") ? next : homeFor(me.role));
+      router.replace(me.mfa_setup_required ? "/profile?setup=2fa" : next && next.startsWith("/") && !next.startsWith("//") ? next : homeFor(me.role, me.features));
     }
   }, [me, loading, router, params]);
 

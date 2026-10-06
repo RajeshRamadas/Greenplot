@@ -842,19 +842,70 @@ function Notifications() {
   );
 }
 
+type FeatureRow = { key: string; label: string; description: string; requires: string[]; enabled: boolean };
+
+/** What customers (residents) and vendors see and can do. Everyone uses the same app; the role picks the view. */
+function Features() {
+  const act = useAction();
+  const toast = useToast();
+  const { data, setData } = useApi<Record<"resident" | "vendor", FeatureRow[]>>("/settings/features");
+  if (!data) return null;
+  async function toggle(role: "resident" | "vendor", f: FeatureRow, on: boolean) {
+    const r = await act.run(() => api<Record<"resident" | "vendor", FeatureRow[]>>("/settings/features", { method: "PUT", body: { role, features: { [f.key]: on } } }));
+    if (r) {
+      setData(r);
+      toast(`${f.label} ${on ? "switched on" : "switched off"} for ${role === "resident" ? "customers" : "vendors"}`);
+    }
+  }
+  const col = (role: "resident" | "vendor", title: string, sub: string) => (
+    <div className="card">
+      <h2>{title}</h2>
+      <p className="small muted">{sub}</p>
+      <div className="list">
+        {data[role].map((f) => (
+          <label key={f.key} className="list-item" style={{ cursor: "pointer", alignItems: "flex-start" }}>
+            <div>
+              <div className="title">{f.label}</div>
+              <div className="small muted">
+                {f.description}
+                {f.requires.length ? ` · needs ${f.requires.map((k) => data[role].find((x) => x.key === k)?.label ?? k).join(", ")}` : ""}
+              </div>
+            </div>
+            <input type="checkbox" role="switch" aria-label={`${title}: ${f.label}`} checked={f.enabled} disabled={act.pending} onChange={(e) => toggle(role, f, e.target.checked)} style={{ width: 22, height: 22 }} />
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <div className="stack" style={{ gap: 16 }}>
+      <div className="alert info">
+        Customers and vendors sign in to the same GreenPlot app; each sees their own menu and home screen. Switch features off here to hide them from that
+        group — they disappear from the menu and are blocked, even by direct link. Changes apply the next time each person opens the app.
+      </div>
+      <ErrorBox error={act.error} />
+      <div className="grid two">
+        {col("resident", "Customers (residents & owners)", "What residents and plot owners can use.")}
+        {col("vendor", "Vendors", "What vendor logins can use for jobs assigned to their company.")}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const [tab, setTab] = useState("general");
   return (
     <>
       <PageHead title="Settings" sub="Layout configuration, service tickets, evidence rules, checklists, schedules and access." />
       <div className="tabs">
-        {["general", "tickets", "notifications", "evidence", "checklists", "schedules", "users"].map((t) => (
+        {["general", "features", "tickets", "notifications", "evidence", "checklists", "schedules", "users"].map((t) => (
           <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
             {label(t)}
           </button>
         ))}
       </div>
       {tab === "general" ? <General /> : null}
+      {tab === "features" ? <Features /> : null}
       {tab === "tickets" ? <Tickets /> : null}
       {tab === "notifications" ? <Notifications /> : null}
       {tab === "evidence" ? <Policies /> : null}

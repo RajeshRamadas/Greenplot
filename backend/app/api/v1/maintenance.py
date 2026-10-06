@@ -377,8 +377,10 @@ def list_tasks(
 
 
 @router.get("/scan/{code}")
-def scan_lookup(code: str, db: DB, actor: Perm("maintenance.read")):
+def scan_lookup(code: str, db: DB, actor: Perm("assets.scan")):
     """SCAN ASSET → CONFIRM ASSET: resolve a QR/NFC code to the asset and its open tasks."""
+    if not actor.can("maintenance.read"):
+        raise HTTPException(403, "Missing permission: maintenance.read")
     from app.schemas.core import AssetOut
 
     asset = db.scalar(tenant_select(Asset, actor).where(or_(Asset.qr_code == code, Asset.nfc_id == code, Asset.code == code)))

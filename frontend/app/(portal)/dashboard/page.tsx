@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { homeFor } from "@/components/AppShell";
 import { NewTicketDialog } from "@/components/Tickets";
 import { Badge, Empty, ErrorBox, Loading, PageHead, Stat } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
@@ -170,18 +171,20 @@ function GuardDashboard({ d }: { d: Dash }) {
 }
 
 function ResidentDashboard({ d }: { d: Dash }) {
-  const notices = useApi<Page<Notice>>("/notices", { limit: 3 });
-  const tickets = useApi<Page<TicketSummary>>("/tickets", { limit: 4 });
+  const { can } = useAuth();
+  const notices = useApi<Page<Notice>>(can("notices.read") ? "/notices" : null, { limit: 3 });
+  const tickets = useApi<Page<TicketSummary>>(can("tickets.read") ? "/tickets" : null, { limit: 4 });
   const [raise, setRaise] = useState(false);
   const openTickets = tickets.data?.items.filter((t) => !["closed", "cancelled", "rejected"].includes(t.status)).length ?? 0;
   return (
     <>
       <div className="stats">
-        <Stat label="Dues outstanding" value={inr(d.dues_outstanding)} href="/billing" kind={d.dues_outstanding ? "warn" : undefined} />
-        <Stat label="Open service tickets" value={openTickets} href="/tickets" />
-        <Stat label="Active maintenance" value={d.active_maintenance} href="/maintenance" />
-        <Stat label="Expected visitors" value={d.visitors_expected} href="/visitors" />
+        {can("billing.read") ? <Stat label="Dues outstanding" value={inr(d.dues_outstanding)} href="/billing" kind={d.dues_outstanding ? "warn" : undefined} /> : null}
+        {can("tickets.read") ? <Stat label="Open service tickets" value={openTickets} href="/tickets" /> : null}
+        {can("maintenance.read") ? <Stat label="Active maintenance" value={d.active_maintenance} href="/maintenance" /> : null}
+        {can("visitors.read") ? <Stat label="Expected visitors" value={d.visitors_expected} href="/visitors" /> : null}
       </div>
+      {can("tickets.read") ? (
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-head">
           <h2>Service tickets</h2>
@@ -209,14 +212,17 @@ function ResidentDashboard({ d }: { d: Dash }) {
           </Link>
         ))}
       </div>
+      ) : null}
       <NewTicketDialog open={raise} onClose={() => (setRaise(false), tickets.reload())} />
       <div className="grid two">
         <div className="card">
           <div className="card-head">
             <h2>My property</h2>
-            <Link href="/inspections" className="small">
-              Request Property Watch visit
-            </Link>
+            {can("inspections.request") ? (
+              <Link href="/inspections" className="small">
+                Request Property Watch visit
+              </Link>
+            ) : null}
           </div>
           {d.properties.map((p: Dash) => (
             <Link key={p.id} href={`/properties/${p.id}`} className="list-item">
@@ -231,6 +237,7 @@ function ResidentDashboard({ d }: { d: Dash }) {
           ))}
           {!d.properties.length ? <Empty title="No property linked yet">Ask your layout association to link your plot.</Empty> : null}
         </div>
+        {can("maintenance.read") ? (
         <div className="card">
           <h2>Recent maintenance</h2>
           {!d.recent_maintenance.length ? <Empty title="No maintenance yet" /> : null}
@@ -244,7 +251,9 @@ function ResidentDashboard({ d }: { d: Dash }) {
             </Link>
           ))}
         </div>
+        ) : null}
       </div>
+      {can("notices.read") ? (
       <div className="card" style={{ marginTop: 16 }}>
         <div className="card-head">
           <h2>Notices</h2>
@@ -263,6 +272,7 @@ function ResidentDashboard({ d }: { d: Dash }) {
         ))}
         {notices.data && !notices.data.items.length ? <Empty title="No notices" /> : null}
       </div>
+      ) : null}
     </>
   );
 }
@@ -275,7 +285,7 @@ export default function DashboardPage() {
   const { data, error, loading } = useApi<Dash>(me && !field && !super_ ? "/dashboard" : null);
 
   useEffect(() => {
-    if (field) router.replace("/my-tasks");
+    if (field && me) router.replace(homeFor(me.role, me.features));
     if (super_) router.replace("/tenants");
   }, [field, super_, router]);
 

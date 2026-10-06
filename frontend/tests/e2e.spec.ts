@@ -234,6 +234,33 @@ test("resident registers, the office approves, and accounts can reset and sign i
   expect(errors).toEqual([]);
 });
 
+test("admin switches a customer feature off and the resident's view follows", async ({ browser }) => {
+  const admin = await browser.newPage();
+  const errors = watchErrors(admin);
+  await login(admin, "admin@greenvalley.example");
+  await admin.goto("/settings");
+  await admin.getByRole("button", { name: "Features", exact: true }).click();
+  const vehicles = admin.getByRole("switch", { name: "Customers (residents & owners): Vehicles" });
+  if (!(await vehicles.isChecked())) {
+    await vehicles.click(); // start from "on" even if an earlier run was interrupted
+    await expect(vehicles).toBeChecked();
+  }
+  await vehicles.click(); // the switch flips once the server confirms
+  await expect(vehicles).not.toBeChecked();
+
+  const res = await browser.newPage();
+  errors.push(...watchErrors(res));
+  await login(res, "resident@greenvalley.example");
+  await expect(res.locator(".sidebar").getByRole("link", { name: "Vehicles" })).toHaveCount(0);
+  await expect(res.locator(".sidebar").getByRole("link", { name: "Service tickets" })).toHaveCount(1);
+  await res.goto("/vehicles");
+  await res.waitForURL(/\/dashboard$/); // a switched-off page sends them home
+
+  await vehicles.click();
+  await expect(vehicles).toBeChecked();
+  expect(errors.filter((e) => !e.includes("/vehicles"))).toEqual([]);
+});
+
 test("guard registers a visitor while offline and it syncs", async ({ page, context }) => {
   await login(page, "guard@greenvalley.example");
   await page.goto("/visitors");

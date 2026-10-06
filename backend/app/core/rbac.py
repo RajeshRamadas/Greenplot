@@ -51,6 +51,7 @@ PERMISSIONS: dict[str, set[Role]] = {
     # assets
     "assets.read": ALL_TENANT_ROLES - {R.RESIDENT},
     "assets.manage": {R.LAYOUT_ADMIN, R.SUPERVISOR},
+    "assets.scan": {R.STAFF, R.VENDOR, R.SUPERVISOR, R.LAYOUT_ADMIN},
     # staff & vendors
     "staff.read": {R.LAYOUT_ADMIN, R.SUPERVISOR},
     "staff.manage": {R.LAYOUT_ADMIN},

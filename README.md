@@ -62,6 +62,15 @@ To go live:
 3. Set the delivery-report webhook in MSG91 to `https://<your-domain>/api/v1/webhooks/msg91?token=<GP_MSG91_WEBHOOK_TOKEN>`.
 4. Check it under **Settings → Notifications → SMS (MSG91)** with *Send test SMS*.
 
+### One app, different views for customers and vendors
+
+Everyone signs in at the same `/login`. The account's role decides the menu, the home screen and what the API allows. Under **Settings → Features**, the layout admin switches features on or off separately for **customers** (residents and owners) and **vendors**:
+
+- **Customers:** service tickets, my property, maintenance history, Property Watch, complaints, visitors, vehicles, dues & payments, incidents, notices, SOS, records search.
+- **Vendors:** service tickets, work orders, scan asset, proof-of-work reports, offline mode, records search.
+
+A switched-off feature disappears from the menu and home screen, and its permissions are removed, so the API refuses it even by direct link. Dependencies are enforced: vendor service tickets need work orders. All features are on by default, and changes are audited. Office roles (admin, supervisor, staff, guard) aren't affected.
+
 ### Sign-in & accounts
 
 - **Ways to sign in:** email and password, or **mobile number + one-time code** (sent by WhatsApp, else SMS). Codes are 6 digits, valid for 10 minutes, limited to 5 attempts and 5 sends per hour, and stored only as hashes.
@@ -122,7 +131,7 @@ Put Cloudflare or another TLS reverse proxy in front of port 3000. For large vid
 ## Tests
 
 ```bash
-cd backend && pytest -q                                   # 83 tests on SQLite
+cd backend && pytest -q                                   # 87 tests on SQLite
 GP_TEST_DATABASE_URL=postgresql+psycopg://greenplot:greenplot@localhost/greenplot_test pytest -q
 ruff check app tests
 

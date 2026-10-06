@@ -25,6 +25,8 @@ export interface Me {
   totp_enabled: boolean;
   mfa_setup_required: boolean;
   recovery_codes_left: number;
+  /** Enabled feature switches for residents/vendors; null for office roles. */
+  features: string[] | null;
 }
 
 export interface User {

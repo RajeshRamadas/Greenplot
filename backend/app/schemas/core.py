@@ -59,6 +59,7 @@ class MeOut(UserOut):
     permissions: list[str] = []
     mfa_setup_required: bool = False
     recovery_codes_left: int = 0
+    features: list[str] | None = None  # enabled feature switches for residents/vendors (None: role not switchable)
     tenant_name: str | None = None
     tenant_modules: list[str] = []
 

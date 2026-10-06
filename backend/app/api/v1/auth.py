@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.deps import DB, Actor, CurrentActor, client_ip
+from app.core.features import ROLE_FEATURES, enabled_features
 from app.core.ratelimit import limiter
 from app.core.rbac import permissions_for
 from app.core.security import (
@@ -144,13 +145,15 @@ def logout_all(db: DB, actor: CurrentActor):
 @router.get("/me", response_model=MeOut)
 def me(actor: CurrentActor, db: DB):
     out = MeOut.model_validate(actor.user)
-    out.permissions = permissions_for(actor.role)
+    out.permissions = [p for p in permissions_for(actor.role) if actor.can(p)]
     out.mfa_setup_required = accounts.mfa_setup_required(actor.user)
     out.recovery_codes_left = len(actor.user.recovery_codes or [])
     if actor.user.tenant_id:
         t = db.get(Tenant, actor.user.tenant_id)
         out.tenant_name = t.name
         out.tenant_modules = t.modules or []
+        if actor.role in ROLE_FEATURES:
+            out.features = enabled_features(t.settings, actor.role)
     return out
 
 

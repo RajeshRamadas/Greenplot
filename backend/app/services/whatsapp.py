@@ -339,7 +339,7 @@ def _ticket_for(db: Session, msg: dict, text: str, users: list[User]) -> Ticket 
 
 
 def _handle_inbound(db: Session, msg: dict) -> int:
-    from app.core.deps import Actor
+    from app.core.deps import actor_for
     from app.services import tickets as tsvc
     from app.services.access import can_view_ticket, is_ticket_assignee
 
@@ -378,7 +378,7 @@ def _handle_inbound(db: Session, msg: dict) -> int:
 
     ticket = _ticket_for(db, msg, text, users)
     user = next((u for u in users if ticket and u.tenant_id == ticket.tenant_id), None)
-    actor = Actor(user=user, ip=None, user_agent="whatsapp") if user else None
+    actor = actor_for(db, user, user_agent="whatsapp") if user else None
     if ticket is None or actor is None or not can_view_ticket(db, actor, ticket):
         row.status = "ignored"
         base = get_settings().public_base_url.rstrip("/")

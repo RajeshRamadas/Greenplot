@@ -42,8 +42,11 @@ def create_tenant(body: TenantCreate, db: DB, actor: Perm("tenants.manage")):
         password=body.admin_password,
     )
     audit.record(db, actor, "tenant.created", "tenant", tenant.id, new=audit.snapshot(tenant), tenant_id=tenant.id)
+    from app.services.accounts import deliver_invite
+
+    sent = deliver_invite(db, admin, token)
     db.commit()
-    return InviteOut(user=UserOut.model_validate(admin), invite_token=token, invite_url=invite_url(token))
+    return InviteOut(user=UserOut.model_validate(admin), invite_token=token, invite_url=invite_url(token), sent_via=sent)
 
 
 @router.get("/stats")

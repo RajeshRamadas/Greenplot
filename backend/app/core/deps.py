@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.rbac import has_permission
-from app.models import Tenant, User
+from app.models import RefreshToken, Tenant, User
 from app.models.enums import Role
 
 bearer = HTTPBearer(auto_error=False)
@@ -69,10 +69,24 @@ def get_actor(
     user = db.get(User, user_id)
     if user is None or not user.is_active or payload.get("ver") != user.token_version:
         raise unauthorized
+    sid = payload.get("sid")
+    if sid:
+        # A session signed out from another device stops working immediately, not when its token expires.
+        session = db.get(RefreshToken, uuid.UUID(sid))
+        if session is None or session.revoked_at is not None or session.user_id != user.id:
+            raise unauthorized
     if user.tenant_id is not None:
         tenant = db.get(Tenant, user.tenant_id)
         if tenant is None or tenant.status != "active":
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Tenant is not active")
+    from app.core.config import get_settings
+
+    s = get_settings()
+    if user.role in s.mfa_roles and not user.totp_enabled and not request.url.path.startswith(f"{s.api_prefix}/auth/"):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            {"code": "mfa_setup_required", "message": "Set up 2-step verification in your profile to continue"},
+        )
     return Actor(user=user, ip=client_ip(request), user_agent=request.headers.get("user-agent"))
 
 

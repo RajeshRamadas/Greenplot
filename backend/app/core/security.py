@@ -39,7 +39,9 @@ def validate_password_strength(password: str) -> None:
         raise ValueError("Password must mix letters and numbers or symbols")
 
 
-def create_access_token(user_id: uuid.UUID, tenant_id: uuid.UUID | None, role: str, token_version: int) -> str:
+def create_access_token(
+    user_id: uuid.UUID, tenant_id: uuid.UUID | None, role: str, token_version: int, session_id: uuid.UUID | None = None
+) -> str:
     s = get_settings()
     now = datetime.now(UTC)
     payload = {
@@ -51,7 +53,31 @@ def create_access_token(user_id: uuid.UUID, tenant_id: uuid.UUID | None, role: s
         "exp": now + timedelta(minutes=s.access_token_minutes),
         "typ": "access",
     }
+    if session_id:
+        payload["sid"] = str(session_id)
     return jwt.encode(payload, s.secret_key, algorithm="HS256")
+
+
+def create_mfa_token(user_id: uuid.UUID, token_version: int, method: str) -> str:
+    """Short-lived proof that the first factor passed; exchanged for tokens with a 2-step code."""
+    s = get_settings()
+    now = datetime.now(UTC)
+    payload = {
+        "sub": str(user_id),
+        "ver": token_version,
+        "amr": method,
+        "iat": now,
+        "exp": now + timedelta(minutes=s.mfa_token_minutes),
+        "typ": "mfa",
+    }
+    return jwt.encode(payload, s.secret_key, algorithm="HS256")
+
+
+def decode_mfa_token(token: str) -> dict:
+    payload = jwt.decode(token, get_settings().secret_key, algorithms=["HS256"])
+    if payload.get("typ") != "mfa":
+        raise jwt.InvalidTokenError("wrong token type")
+    return payload
 
 
 def decode_access_token(token: str) -> dict:

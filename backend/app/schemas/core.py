@@ -16,10 +16,14 @@ class LoginIn(BaseModel):
 
 
 class TokenOut(BaseModel):
-    access_token: str
-    refresh_token: str
+    """Tokens, or (for accounts with 2-step verification) an mfa_token to finish at /auth/2fa/verify."""
+
+    access_token: str | None = None
+    refresh_token: str | None = None
     token_type: str = "bearer"
-    expires_in: int
+    expires_in: int | None = None
+    mfa_required: bool = False
+    mfa_token: str | None = None
 
 
 class RefreshIn(BaseModel):
@@ -46,10 +50,15 @@ class UserOut(Stamped):
     vendor_id: uuid.UUID | None
     last_login_at: datetime | None
     whatsapp_opt_in: bool = False
+    phone_verified_at: datetime | None = None
+    totp_enabled: bool = False
+    locked_until: datetime | None = None
 
 
 class MeOut(UserOut):
     permissions: list[str] = []
+    mfa_setup_required: bool = False
+    recovery_codes_left: int = 0
     tenant_name: str | None = None
     tenant_modules: list[str] = []
 
@@ -76,6 +85,7 @@ class InviteOut(BaseModel):
     user: UserOut
     invite_token: str | None = None
     invite_url: str | None = None
+    sent_via: list[str] = []
 
 
 # ---------------------------------------------------------------- tenants

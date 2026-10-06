@@ -11,6 +11,7 @@ import { fmtDate, label } from "@/lib/format";
 import { useAction, useApi } from "@/lib/hooks";
 import { linkFor } from "@/lib/links";
 import type { Asset, Page, Property, Resident, TimelineEntry } from "@/lib/types";
+import { announceInvite } from "@/lib/invites";
 
 /** Property profile + searchable history timeline (requirements §6). */
 export function PropertyView({ id }: { id: string }) {
@@ -180,17 +181,14 @@ export function PropertyView({ id }: { id: string }) {
           onSubmit={async (e) => {
             e.preventDefault();
             const r = await act.run(() =>
-              api<{ invite_url: string | null }>("/residents", {
+              api<{ invite_url: string | null; sent_via?: string[] }>("/residents", {
                 body: { property_id: p.id, name: f.name, phone: f.phone || null, email: f.email || null, relation: f.relation, invite: f.invite === "yes", in_directory: f.dir === "yes" },
               }),
             );
             if (r) {
               setAddRes(false);
               residents.reload();
-              if (r.invite_url) {
-                await navigator.clipboard?.writeText(r.invite_url).catch(() => {});
-                toast("Resident added. Invite link copied to clipboard.");
-              }
+              await announceInvite(r, toast, "Invite");
             }
           }}
         >

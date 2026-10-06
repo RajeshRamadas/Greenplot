@@ -7,7 +7,8 @@ import { useAuth } from "@/lib/auth";
 import { fmtDate, label, minutes, roleLabel } from "@/lib/format";
 import { useAction, useApi } from "@/lib/hooks";
 import { invalidateLookups, useLookups } from "@/lib/lookups";
-import type { Page, Tenant, TicketCategory, User } from "@/lib/types";
+import { announceInvite } from "@/lib/invites";
+import type { Page, Property, Tenant, TicketCategory, User, Vendor } from "@/lib/types";
 
 const POLICY_FIELDS = ["before_photo", "after_photo", "checklist", "gps", "video", "materials", "invoice", "qr_scan", "supervisor_approval", "resident_acknowledgement"] as const;
 type Policy = { category: string } & Record<(typeof POLICY_FIELDS)[number], boolean>;
@@ -213,12 +214,113 @@ function Schedules() {
   );
 }
 
+type Signup = {
+  id: string;
+  kind: "resident" | "vendor";
+  full_name: string;
+  email: string;
+  phone: string;
+  plot_number: string | null;
+  relation: string | null;
+  company_name: string | null;
+  service_categories: string[];
+  message: string | null;
+  created_at: string;
+  suggested_property_id: string | null;
+  suggested_vendor_id: string | null;
+};
+
+/** Residents and vendors who asked to join from the registration page. */
+function SignupRequests({ onApproved }: { onApproved: () => void }) {
+  const act = useAction();
+  const toast = useToast();
+  const { data, reload } = useApi<Page<Signup>>("/signups");
+  const props = useApi<Page<Property>>("/properties", { limit: 500 });
+  const vendors = useApi<Page<Vendor>>("/vendors", { limit: 500 });
+  const [choice, setChoice] = useState<Record<string, string>>({});
+  if (!data?.items.length) return null;
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <h2>Registration requests ({data.total})</h2>
+      <p className="small muted">The applicant&apos;s mobile number was verified with a code. Approving creates the account and sends them a link to set a password.</p>
+      <ErrorBox error={act.error} />
+      <div className="list">
+        {data.items.map((r) => {
+          const pick = choice[r.id] ?? (r.kind === "resident" ? r.suggested_property_id : r.suggested_vendor_id) ?? "";
+          return (
+            <div key={r.id} className="list-item" style={{ alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ minWidth: 220, flex: 1 }}>
+                <div className="title">
+                  {r.full_name} <Badge status="pending" text={r.kind === "resident" ? `Resident · plot ${r.plot_number} (${r.relation})` : `Vendor · ${r.company_name}`} />
+                </div>
+                <div className="small muted">
+                  {r.email} · {r.phone} · {fmtDate(r.created_at)}
+                  {r.service_categories.length ? ` · ${r.service_categories.join(", ")}` : ""}
+                </div>
+                {r.message ? <div className="small">“{r.message}”</div> : null}
+              </div>
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                {r.kind === "resident" ? (
+                  <Select
+                    aria-label="Property"
+                    value={pick}
+                    onChange={(v) => setChoice({ ...choice, [r.id]: v })}
+                    placeholder="Choose property…"
+                    options={(props.data?.items ?? []).map((p) => ({ value: p.id, label: `Plot ${p.plot_number}${p.owner_name ? ` · ${p.owner_name}` : ""}` }))}
+                    style={{ width: "auto" }}
+                  />
+                ) : (
+                  <Select
+                    aria-label="Vendor"
+                    value={pick}
+                    onChange={(v) => setChoice({ ...choice, [r.id]: v })}
+                    placeholder={`New vendor: ${r.company_name}`}
+                    options={(vendors.data?.items ?? []).map((v) => ({ value: v.id, label: v.name }))}
+                    style={{ width: "auto" }}
+                  />
+                )}
+                <button
+                  className="btn small primary"
+                  disabled={act.pending || (r.kind === "resident" && !pick)}
+                  onClick={async () => {
+                    const body = r.kind === "resident" ? { property_id: pick } : { vendor_id: pick || null };
+                    const out = await act.run(() => api<{ invite_url: string; sent_via: string[] }>(`/signups/${r.id}/approve`, { body }));
+                    if (out) {
+                      await announceInvite(out, toast, `${r.full_name} approved. Invite`);
+                      reload();
+                      onApproved();
+                    }
+                  }}
+                >
+                  Approve
+                </button>
+                <button
+                  className="btn small danger"
+                  disabled={act.pending}
+                  onClick={async () => {
+                    const reason = prompt(`Why can't ${r.full_name} be approved? (they will be told)`);
+                    if (reason && (await act.run(() => api(`/signups/${r.id}/reject`, { body: { reason } })))) reload();
+                  }}
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function Users() {
   const act = useAction();
   const toast = useToast();
   const [role, setRole] = useState("");
   const { data, reload } = useApi<Page<User>>("/users", { role, limit: 500 });
   return (
+    <>
+    <SignupRequests onApproved={reload} />
     <div className="card">
       <div className="card-head">
         <h2>Users & roles</h2>
@@ -266,20 +368,35 @@ function Users() {
                 <td className="small">{u.last_login_at ? fmtDate(u.last_login_at) : "Never"}</td>
                 <td>
                   <Badge status={u.is_active ? "good" : "cancelled"} text={u.is_active ? "Active" : "Disabled"} />
+                  {u.locked_until && new Date(u.locked_until) > new Date() ? <Badge status="failed" text="Locked" /> : null}
+                  {u.totp_enabled ? <Badge status="completed" text="2-step" /> : null}
                 </td>
                 <td className="row">
                   <button className="btn small ghost" onClick={() => act.run(() => api(`/users/${u.id}`, { method: "PATCH", body: { is_active: !u.is_active } })).then(reload)}>
                     {u.is_active ? "Disable" : "Enable"}
                   </button>
+                  {u.locked_until && new Date(u.locked_until) > new Date() ? (
+                    <button className="btn small ghost" onClick={() => act.run(() => api(`/users/${u.id}/unlock`, { method: "POST" })).then(() => (reload(), toast("Unlocked")))}>
+                      Unlock
+                    </button>
+                  ) : null}
+                  {u.totp_enabled ? (
+                    <button
+                      className="btn small ghost"
+                      onClick={() => {
+                        if (confirm(`Turn off 2-step verification for ${u.full_name}? Use this if they lost their phone.`))
+                          act.run(() => api(`/users/${u.id}/reset-2fa`, { method: "POST" })).then(() => (reload(), toast("2-step verification reset")));
+                      }}
+                    >
+                      Reset 2-step
+                    </button>
+                  ) : null}
                   {!u.last_login_at ? (
                     <button
                       className="btn small ghost"
                       onClick={async () => {
-                        const r = await act.run(() => api<{ invite_url: string }>(`/users/${u.id}/reinvite`, { method: "POST" }));
-                        if (r) {
-                          await navigator.clipboard?.writeText(r.invite_url).catch(() => {});
-                          toast("New invite link copied");
-                        }
+                        const r = await act.run(() => api<{ invite_url: string; sent_via: string[] }>(`/users/${u.id}/reinvite`, { method: "POST" }));
+                        await announceInvite(r, toast, "New invite");
                       }}
                     >
                       Re-invite
@@ -292,6 +409,7 @@ function Users() {
         </table>
       </div>
     </div>
+    </>
   );
 }
 

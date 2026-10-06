@@ -19,6 +19,7 @@ from app.api.v1 import (
     public,
     reports,
     security,
+    signups,
     system,
     tenants,
     tickets,
@@ -102,6 +103,7 @@ def create_app() -> FastAPI:
         system,
         public,
         whatsapp,
+        signups,
     ):
         app.include_router(module.router, prefix=s.api_prefix)
     app.include_router(tenants.settings_router, prefix=s.api_prefix)

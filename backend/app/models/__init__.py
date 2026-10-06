@@ -1,3 +1,4 @@
+from app.models.accounts import OtpCode, SignupRequest
 from app.models.core import (
     Asset,
     Attendance,
@@ -90,6 +91,7 @@ __all__ = [
     "Media",
     "Notice",
     "Notification",
+    "OtpCode",
     "NotificationDelivery",
     "PatrolCheckpoint",
     "PatrolRoute",
@@ -101,6 +103,7 @@ __all__ = [
     "PushSubscription",
     "RefreshToken",
     "Resident",
+    "SignupRequest",
     "SosAlert",
     "StaffProfile",
     "SyncOperation",

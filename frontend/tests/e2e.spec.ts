@@ -178,6 +178,62 @@ test("customer ticket reaches the vendor, returns to the office and closes with 
   expect(errors).toEqual([]);
 });
 
+test("resident registers, the office approves, and accounts can reset and sign in by phone", async ({ browser }) => {
+  // A new resident requests access, verifying their mobile number.
+  const applicant = await browser.newPage();
+  const errors = watchErrors(applicant);
+  const stamp = Date.now() % 1_000_000;
+  const email = `e2e.resident.${stamp}@example.com`;
+  const phone = `98${String(stamp).padStart(8, "0")}`;
+  await applicant.goto("/register");
+  await applicant.getByLabel("Your layout / association").fill("Green");
+  await applicant.getByRole("option", { name: /Green Valley/ }).click();
+  await applicant.getByLabel("Full name").fill("E2E Resident");
+  await applicant.getByLabel("Email").fill(email);
+  await applicant.getByLabel("Mobile number").fill(phone);
+  await applicant.getByLabel("Plot number").fill("118");
+  await applicant.getByRole("button", { name: "Verify mobile number" }).click();
+  const demo = (await applicant.locator(".alert.info").innerText()).match(/Demo code: (\d{6})/)![1];
+  await applicant.getByLabel("6-digit code").fill(demo);
+  await applicant.getByRole("button", { name: "Send request" }).click();
+  await expect(applicant.getByText("Your request has been sent")).toBeVisible();
+
+  // The layout admin approves it from Settings → Users.
+  const admin = await browser.newPage();
+  errors.push(...watchErrors(admin));
+  await login(admin, "admin@greenvalley.example");
+  await admin.goto("/settings");
+  await admin.getByRole("button", { name: "Users", exact: true }).click();
+  const row = admin.locator(".list-item").filter({ hasText: email });
+  await row.getByLabel("Property").selectOption({ index: 1 });
+  await row.getByRole("button", { name: "Approve" }).click();
+  await expect(admin.getByText(/E2E Resident approved/)).toBeVisible();
+
+  // Forgot password by email: request a code and set a password.
+  await applicant.goto("/forgot-password");
+  await applicant.getByLabel("Email or mobile number").fill(email);
+  await applicant.getByRole("button", { name: "Send code" }).click();
+  const reset = (await applicant.locator(".alert.info").innerText()).match(/Demo code: (\d{6})/)![1];
+  await applicant.getByLabel("Code").fill(reset);
+  await applicant.getByLabel("New password").fill("Resident#2026");
+  await applicant.getByRole("button", { name: "Set new password" }).click();
+  await expect(applicant.getByText("Your password has been changed")).toBeVisible();
+
+  // Sign in with the mobile number and a one-time code.
+  await applicant.goto("/login");
+  await applicant.getByRole("tab", { name: "Mobile number" }).click();
+  await applicant.getByLabel("Mobile number").fill(phone);
+  await applicant.getByRole("button", { name: "Send code" }).click();
+  const otp = (await applicant.locator(".alert.info").innerText()).match(/Demo code: (\d{6})/)![1];
+  await applicant.getByLabel("6-digit code").fill(otp);
+  await applicant.getByRole("button", { name: "Sign in" }).click();
+  await applicant.waitForURL((u) => !u.pathname.startsWith("/login"));
+  await applicant.goto("/profile");
+  await expect(applicant.getByText("Signed-in devices")).toBeVisible();
+  await expect(applicant.getByText("This device")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("guard registers a visitor while offline and it syncs", async ({ page, context }) => {
   await login(page, "guard@greenvalley.example");
   await page.goto("/visitors");

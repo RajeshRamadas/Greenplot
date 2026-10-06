@@ -183,6 +183,41 @@ def send_notification(user: User, title: str, body: str | None) -> tuple[str, st
     return "sent", _message_id(resp)
 
 
+def send_template(phone: str, title: str, body: str | None) -> str:
+    """Business-initiated message to a phone number (no user record needed), e.g. an invite link."""
+    if not enabled():
+        log.info("[whatsapp:log] -> %s: %s", phone, title)
+        return "sent"
+    try:
+        _post(template_payload(phone, title, body))
+    except WhatsAppError as e:
+        return f"failed:{e}"
+    return "sent"
+
+
+def send_otp(phone: str, code: str) -> str:
+    """One-time code via the approved Authentication template (body {{1}} = code, copy-code button)."""
+    s = get_settings()
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": phone,
+        "type": "template",
+        "template": {
+            "name": s.whatsapp_otp_template,
+            "language": {"code": s.whatsapp_template_language},
+            "components": [
+                {"type": "body", "parameters": [{"type": "text", "text": code}]},
+                {"type": "button", "sub_type": "url", "index": "0", "parameters": [{"type": "text", "text": code}]},
+            ],
+        },
+    }
+    try:
+        _post(payload)
+    except WhatsAppError as e:
+        return f"failed:{e}"
+    return "sent"
+
+
 def send_text(db: Session, phone: str, text: str, user: User | None = None, ticket_id=None, reply_to: str | None = None) -> None:
     """Free-form reply inside the 24-hour window (answers to inbound messages)."""
     row = WhatsAppMessage(

@@ -18,6 +18,25 @@ class Settings(BaseSettings):
     refresh_token_days: int = 14
     invite_token_hours: int = 72
 
+    # Account protection
+    lockout_threshold: int = 5  # failed sign-ins before a temporary lock
+    lockout_minutes: int = 15
+    otp_minutes: int = 10  # one-time codes (phone sign-in, password reset, phone check)
+    otp_max_attempts: int = 5
+    otp_per_hour: int = 5  # codes sent per destination per hour
+    mfa_token_minutes: int = 5
+    mfa_required_roles: str = ""  # e.g. "super_admin,layout_admin": these roles must enrol in 2-step verification
+    # Show one-time codes in API responses outside production, so demos work without SMS/WhatsApp/email.
+    dev_show_codes: bool = True
+
+    # Email (SMTP). Without a host, emails are only logged.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str = "GreenPlot <no-reply@greenplot.in>"
+    smtp_starttls: bool = True
+
     # CORS (comma separated)
     cors_origins: str = "http://localhost:3000"
 
@@ -64,7 +83,21 @@ class Settings(BaseSettings):
     whatsapp_verify_token: str | None = None  # answers Meta's webhook subscription challenge
     whatsapp_template: str = "greenplot_update"  # approved utility template with {{1}} title and {{2}} body
     whatsapp_template_language: str = "en"
+    whatsapp_otp_template: str = "greenplot_otp"  # approved Authentication template with a copy-code button
     default_country_code: str = "91"
+
+    @property
+    def mfa_roles(self) -> set[str]:
+        return {r.strip() for r in self.mfa_required_roles.split(",") if r.strip()}
+
+    @property
+    def show_codes(self) -> bool:
+        return self.dev_show_codes and self.environment != "production"
+
+    @property
+    def app_url(self) -> str:
+        """Where people open the web app (links in invites and emails)."""
+        return (self.cors_origin_list[0] if self.cors_origin_list else self.public_base_url).rstrip("/")
 
     @property
     def cors_origin_list(self) -> list[str]:

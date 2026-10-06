@@ -48,6 +48,15 @@ class User(Model):
     whatsapp_opt_in: Mapped[bool] = mapped_column(Boolean, default=False)
     whatsapp_opt_in_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     whatsapp_last_inbound_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    phone_verified_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    # Lockout after repeated failed sign-ins
+    failed_login_count: Mapped[int] = mapped_column(Integer, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    # 2-step verification (TOTP); the secret is Fernet-encrypted with a key derived from GP_SECRET_KEY
+    totp_secret_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    totp_enabled_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    recovery_codes: Mapped[list] = mapped_column(JSON, default=list)  # sha256 hashes of unused codes
 
 
 class RefreshToken(Model):
@@ -58,6 +67,8 @@ class RefreshToken(Model):
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime())
     revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     device: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
 
 class Layout(TenantModel, SoftDelete):

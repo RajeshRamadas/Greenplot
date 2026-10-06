@@ -129,6 +129,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => setOpen(false), [path]);
 
+  // Roles that must use 2-step verification are kept on their profile until they set it up.
+  useEffect(() => {
+    if (me?.mfa_setup_required && path !== "/profile") router.replace("/profile?setup=2fa");
+  }, [me, path, router]);
+
   useEffect(() => {
     if (!me) return;
     startSyncLoop();

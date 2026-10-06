@@ -40,8 +40,20 @@ Every V1 module in the requirements:
 These are built behind adapters and need credentials or a provider choice (see §47 open questions):
 
 - **Payments**: a real Razorpay (or other) order call and checkout. The demo has a "simulate payment" button that is disabled in production.
-- **Notifications**: push, SMS and email adapters currently log the message. WhatsApp is implemented (below) and logs until it is configured.
+- **Notifications**: push and SMS adapters currently log the message. Email sends over SMTP once `GP_SMTP_*` is set. WhatsApp is implemented (below) and logs until it is configured.
 - **Malware scanning**: plug ClamAV or a provider into `scan_for_malware`.
+
+### Sign-in & accounts
+
+- **Ways to sign in:** email and password, or **mobile number + one-time code** (sent by WhatsApp, else SMS). Codes are 6 digits, valid for 10 minutes, limited to 5 attempts and 5 sends per hour, and stored only as hashes.
+- **2-step verification:** works with any authenticator app (TOTP, RFC 6238), with 10 single-use recovery codes. The secret is encrypted at rest. `GP_MFA_REQUIRED_ROLES` makes it mandatory per role: until they enrol, those users can only reach their profile. Admins can reset it for someone who lost their phone.
+- **Forgot password:** self-service, with a code sent to the account's email or mobile. Every other session is signed out. Responses never reveal whether an account exists.
+- **Lockout:** after 5 failed sign-ins (password or 2-step code), the account is locked for 15 minutes. It's stored in the database, so it works across API processes. The user gets an email alert, and an admin can unlock early.
+- **Sessions:** Profile lists the signed-in devices; sign out one, or all of them. A device that's signed out loses access at once, not when its token expires.
+- **Invites are sent automatically** by email and WhatsApp/SMS whenever an admin adds a user, resident or layout, or re-invites someone. The link is also copied, as a fallback.
+- **Self-registration** (`/register`): residents and vendors find their layout and confirm their mobile with a code. The layout office then approves the request in **Settings → Users**, linking it to a plot or a vendor company (a new vendor is created if needed), and the invite goes out. Rejected applicants are told why.
+- **Phone numbers changed by the user** must be confirmed with a code, since they are also used to sign in.
+- **Outside production**, code responses include `dev_code`, so these flows work without SMS, WhatsApp or email providers (`GP_DEV_SHOW_CODES`).
 
 ### WhatsApp (two-way)
 
@@ -91,7 +103,7 @@ Put Cloudflare or another TLS reverse proxy in front of port 3000. For large vid
 ## Tests
 
 ```bash
-cd backend && pytest -q                                   # 65 tests on SQLite
+cd backend && pytest -q                                   # 77 tests on SQLite
 GP_TEST_DATABASE_URL=postgresql+psycopg://greenplot:greenplot@localhost/greenplot_test pytest -q
 ruff check app tests
 

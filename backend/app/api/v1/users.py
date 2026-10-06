@@ -10,7 +10,7 @@ from app.models.base import utcnow
 from app.models.enums import Role
 from app.schemas.common import Page
 from app.schemas.core import InviteOut, UserCreate, UserOut, UserUpdate
-from app.services import audit
+from app.services import accounts, audit
 from app.services.access import get_scoped
 from app.services.users import create_user, invite_url
 
@@ -69,8 +69,9 @@ def create(body: UserCreate, db: DB, actor: Perm("users.manage")):
                 relation="owner",
             )
         )
+    sent = accounts.deliver_invite(db, user, token)
     db.commit()
-    return InviteOut(user=UserOut.model_validate(user), invite_token=token, invite_url=invite_url(token))
+    return InviteOut(user=UserOut.model_validate(user), invite_token=token, invite_url=invite_url(token), sent_via=sent)
 
 
 @router.get("/{user_id}", response_model=UserOut)
@@ -92,6 +93,8 @@ def update_user(user_id: uuid.UUID, body: UserUpdate, db: DB, actor: Perm("users
     if u.id == actor.id and ("role" in data or data.get("is_active") is False):
         raise HTTPException(422, "You cannot change your own role or deactivate yourself")
     before = audit.snapshot(u)
+    if "phone" in data and data["phone"] != u.phone:
+        u.phone_verified_at = None
     for k, v in data.items():
         setattr(u, k, v)
     if "role" in data or data.get("is_active") is False:
@@ -117,5 +120,36 @@ def reinvite(user_id: uuid.UUID, db: DB, actor: Perm("users.manage")):
     u.invite_token_hash = hash_token(token)
     u.invite_expires_at = utcnow() + timedelta(hours=get_settings().invite_token_hours)
     audit.record(db, actor, "user.reinvited", "user", u.id)
+    sent = accounts.deliver_invite(db, u, token)
     db.commit()
-    return InviteOut(user=UserOut.model_validate(u), invite_token=token, invite_url=invite_url(token))
+    return InviteOut(user=UserOut.model_validate(u), invite_token=token, invite_url=invite_url(token), sent_via=sent)
+
+
+def _tenant_user(db, actor, user_id: uuid.UUID) -> User:
+    u = db.get(User, user_id)
+    if not u or u.tenant_id != actor.tenant_id:
+        raise HTTPException(404, "User not found")
+    return u
+
+
+@router.post("/{user_id}/unlock", response_model=UserOut)
+def unlock(user_id: uuid.UUID, db: DB, actor: Perm("users.manage")):
+    """Clear a temporary lock after repeated failed sign-ins."""
+    u = _tenant_user(db, actor, user_id)
+    accounts.unlock(u)
+    audit.record(db, actor, "user.unlocked", "user", u.id)
+    db.commit()
+    return u
+
+
+@router.post("/{user_id}/reset-2fa", response_model=UserOut)
+def reset_2fa(user_id: uuid.UUID, db: DB, actor: Perm("users.manage")):
+    """For a lost phone: turn off the user's 2-step verification and sign them out everywhere."""
+    u = _tenant_user(db, actor, user_id)
+    if u.id == actor.id:
+        raise HTTPException(422, "Use your profile to change your own 2-step verification")
+    u.totp_enabled, u.totp_secret_enc, u.recovery_codes, u.totp_enabled_at = False, None, [], None
+    u.token_version += 1
+    audit.record(db, actor, "user.2fa_reset", "user", u.id)
+    db.commit()
+    return u

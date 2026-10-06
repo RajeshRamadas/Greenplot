@@ -270,8 +270,13 @@ def create_resident(body: ResidentIn, db: DB, actor: Perm("residents.manage")):
     db.add(r)
     db.flush()
     audit.record(db, actor, "resident.created", "resident", r.id, new=audit.snapshot(r))
+    sent = []
+    if invite:
+        from app.services.accounts import deliver_invite
+
+        sent = deliver_invite(db, user, invite)
     db.commit()
-    return {"resident": ResidentOut.model_validate(r), "invite_token": invite, "invite_url": invite_url(invite)}
+    return {"resident": ResidentOut.model_validate(r), "invite_token": invite, "invite_url": invite_url(invite), "sent_via": sent}
 
 
 @router.patch("/residents/{resident_id}", response_model=ResidentOut)

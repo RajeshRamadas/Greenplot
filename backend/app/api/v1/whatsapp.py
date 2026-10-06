@@ -124,10 +124,10 @@ class ConsentIn(BaseModel):
 def consent(body: ConsentIn, db: DB, actor: CurrentActor):
     """The user's own consent to receive WhatsApp updates."""
     u = actor.user
-    if body.phone is not None:
-        if body.phone and not wa.normalize_phone(body.phone):
-            raise HTTPException(422, "Enter a valid mobile number")
-        u.phone = body.phone or None
+    if body.phone is not None and wa.normalize_phone(body.phone) != wa.normalize_phone(u.phone):
+        # A self-service number change must be proven with a code (/auth/phone/request + /confirm),
+        # because the number is also used for phone sign-in.
+        raise HTTPException(422, "Verify your new mobile number first")
     if body.whatsapp_opt_in and not wa.normalize_phone(u.phone):
         raise HTTPException(422, "Add your mobile number to receive WhatsApp updates")
     old = u.whatsapp_opt_in

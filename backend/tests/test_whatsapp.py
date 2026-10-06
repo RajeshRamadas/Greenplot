@@ -55,6 +55,11 @@ def receipt(wamid, status, errors=None):
     return {"entry": [{"changes": [{"value": {"statuses": [st]}}]}]}
 
 
+def verify_phone(api, phone):
+    code = api.ok("post", "/auth/phone/request", {"phone": phone})["dev_code"]
+    api.ok("post", "/auth/phone/confirm", {"phone": phone, "code": code})
+
+
 def test_phone_normalisation():
     assert wa.normalize_phone("98450 12345") == "919845012345"
     assert wa.normalize_phone("09845012345") == "919845012345"
@@ -215,13 +220,17 @@ def test_consent_endpoint_and_admin_status(as_, world, db, meta):
     resident, admin = as_(world.resident), as_(world.admin)
     r = resident.put("/whatsapp/consent", json={"whatsapp_opt_in": True})
     assert r.status_code == 422  # no phone on file
-    out = resident.ok("put", "/whatsapp/consent", {"whatsapp_opt_in": True, "phone": "98450 12345"})
+    # A new number must be verified with a code before it can be used.
+    assert resident.put("/whatsapp/consent", json={"whatsapp_opt_in": True, "phone": "98450 12345"}).status_code == 422
+    verify_phone(resident, "98450 12345")
+    out = resident.ok("put", "/whatsapp/consent", {"whatsapp_opt_in": True})
     assert out == {"whatsapp_opt_in": True, "phone": "98450 12345"}
     assert resident.ok("get", "/auth/me")["whatsapp_opt_in"] is True
     assert resident.get("/whatsapp/status").status_code == 403
 
     st = admin.ok("get", "/whatsapp/status")
     assert st["opted_in_users"] == 1 and st["live"] is True and st["webhook_path"] == "/api/v1/webhooks/whatsapp"
-    admin.ok("put", "/whatsapp/consent", {"whatsapp_opt_in": True, "phone": "9000000099"})
+    verify_phone(admin, "9000000099")
+    admin.ok("put", "/whatsapp/consent", {"whatsapp_opt_in": True})
     assert admin.ok("post", "/whatsapp/test", {})["result"] == "sent"
     assert meta[-1]["to"] == "919000000099"

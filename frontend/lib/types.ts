@@ -21,6 +21,10 @@ export interface Me {
   tenant_name: string | null;
   tenant_modules: string[];
   whatsapp_opt_in: boolean;
+  phone_verified_at: string | null;
+  totp_enabled: boolean;
+  mfa_setup_required: boolean;
+  recovery_codes_left: number;
 }
 
 export interface User {
@@ -32,6 +36,9 @@ export interface User {
   is_active: boolean;
   vendor_id: UUID | null;
   last_login_at: string | null;
+  totp_enabled?: boolean;
+  locked_until?: string | null;
+  phone_verified_at?: string | null;
 }
 
 export interface Property {

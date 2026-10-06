@@ -36,6 +36,7 @@ DEFAULT_CHANNELS: dict[str, list[str]] = {
     "ticket_assigned": ["in_app", "push", "whatsapp"],
     "ticket_closed": ["in_app", "push", "whatsapp"],
     "ticket_sla": ["in_app", "push"],
+    "signup_request": ["in_app", "push"],
 }
 
 MAX_DELIVERY_ATTEMPTS = 3
@@ -74,7 +75,15 @@ class WhatsAppAdapter(ChannelAdapter):
 
 
 class EmailAdapter(ChannelAdapter):
+    """SMTP when GP_SMTP_HOST is set (see app.services.messaging), otherwise logs."""
+
     name = "email"
+
+    def send(self, user: User, title: str, body: str | None) -> str:
+        from app.core.config import get_settings
+        from app.services.messaging import send_email
+
+        return send_email(user.email, title, f"{body or title}\n\nOpen GreenPlot: {get_settings().app_url}")
 
 
 ADAPTERS: dict[str, ChannelAdapter] = {

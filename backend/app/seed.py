@@ -456,7 +456,9 @@ def run(reset: bool = False) -> None:
     # Billing
     plan = BillingPlan(tenant_id=t.id, name="Quarterly maintenance", basis="per_sqft", rate=2, frequency_months=3, due_days=15)
     db.add(plan)
-    db.add(BillingPlan(tenant_id=t.id, name="Plot cleaning", basis="per_plot", rate=1000, frequency_months=1, due_days=7, subscribable=True))
+    db.add(
+        BillingPlan(tenant_id=t.id, name="Plot cleaning", basis="per_plot", rate=1000, frequency_months=1, due_days=7, subscribable=True)
+    )
     db.flush()
     first_of_month = date.today().replace(day=1)
     billing.generate_invoices(db, A, plan, first_of_month)

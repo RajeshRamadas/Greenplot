@@ -18,7 +18,10 @@ let contact: Promise<string | null> | null = null;
 /** The support WhatsApp number from the API's config (GP_WHATSAPP_NUMBER), fetched once per page load. */
 function loadNumber(): Promise<string | null> {
   contact ??= fetch("/api/v1/public/contact")
-    .then((r) => (r.ok ? r.json() : null))
+    .then((r) => {
+      if (!r.ok) throw new Error(`contact lookup failed (${r.status})`);
+      return r.json();
+    })
     .then((d: { whatsapp_number?: string } | null) => d?.whatsapp_number?.replace(/\D/g, "") || null)
     .catch(() => {
       contact = null; // try again on the next page
@@ -140,7 +143,8 @@ export function ReportProblemForm() {
   const [photos, setPhotos] = useState(0);
 
   const active = (cats.data ?? []).filter((c) => c.is_active);
-  const fallback = active.find((c) => c.code === FALLBACK_CATEGORY)?.code ?? active[active.length - 1]?.code;
+  // Without an active "Other" category the customer must pick one, so reports are never misfiled.
+  const fallback = active.find((c) => c.code === FALLBACK_CATEGORY)?.code;
 
   function reset() {
     setText("");
@@ -217,13 +221,13 @@ export function ReportProblemForm() {
       <Field label="What's wrong?" hint="Say what you noticed and where, e.g. “Garbage dumped near the back fence of my plot.”">
         <textarea required minLength={5} maxLength={5000} rows={5} value={text} onChange={(e) => setText(e.target.value)} />
       </Field>
-      <Field label="What kind of problem? (optional)">
-        <Select value={kind} onChange={setKind} placeholder="Not sure" options={active.map((c) => ({ value: c.code, label: c.name }))} />
+      <Field label={fallback ? "What kind of problem? (optional)" : "What kind of problem?"}>
+        <Select required={!fallback} value={kind} onChange={setKind} placeholder={fallback ? "Not sure" : "Choose…"} options={active.map((c) => ({ value: c.code, label: c.name }))} />
       </Field>
       <ErrorBox error={act.error || cats.error} />
       {!online ? <div className="alert warn">You are offline. The report will be sent when you reconnect.</div> : null}
       <div className="actions">
-        <button className="btn primary" disabled={act.pending || !fallback || text.trim().length < 5}>
+        <button className="btn primary" disabled={act.pending || !(kind || fallback) || text.trim().length < 5}>
           Send report
         </button>
       </div>

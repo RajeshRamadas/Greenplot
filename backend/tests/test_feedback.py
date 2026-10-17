@@ -2,6 +2,7 @@
 
 import uuid
 
+from app.core.config import get_settings
 from app.models import MaintenanceTask, Notification
 from app.services.numbering import next_number
 from tests.test_tickets import do_vendor_work, raise_ticket
@@ -89,7 +90,11 @@ def test_ticket_jobs_are_rated_on_the_ticket(as_, world):
     assert low[0].entity_type == "ticket" and low[0].entity_id == uuid.UUID(t["id"])
     assert t["number"] in low[0].title and "Took too long" in low[0].body
 
+    # Sending feedback again does not alert the office a second time.
+    resident.post(f"/tickets/{t['id']}/feedback", {"rating": 1, "comment": "Again"})
+    assert len(alerts(world)) == len(low)
+
 
 def test_public_contact_returns_configured_whatsapp_number(client):
     r = client.get("/api/v1/public/contact")
-    assert r.status_code == 200 and r.json()["whatsapp_number"].isdigit()
+    assert r.status_code == 200 and r.json() == {"whatsapp_number": get_settings().whatsapp_number}

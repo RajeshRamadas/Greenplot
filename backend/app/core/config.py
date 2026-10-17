@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     routine_media_retention_days: int = 90
     incident_media_retention_days: int = 365 * 3
 
+    # Malware scanning: "clamav" (self-hosted daemon), "eicar" (test stub, the default) or "none"
+    malware_scanner: str = "eicar"
+    clamav_host: str = "clamav"
+    clamav_port: int = 3310
+    clamav_timeout_seconds: float = 60
+
     # Rate limiting
     login_rate_per_minute: int = 10
     api_rate_per_minute: int = 600

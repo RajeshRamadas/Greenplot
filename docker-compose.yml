@@ -19,15 +19,34 @@ services:
       interval: 5s
       retries: 10
 
+  # Malware scanning of uploads. Uses about 1.1 GB of RAM once signatures load (the largest service on a
+  # 4 GB host); ConcurrentDatabaseReload=no keeps signature updates from briefly doubling that, at the cost of
+  # a short pause in scanning while they reload. Uploads finished during startup or a pause get a "try again".
+  clamav:
+    image: clamav/clamav:1.4
+    restart: unless-stopped
+    environment:
+      CLAMD_CONF_StreamMaxLength: 110M  # largest upload is a 100 MB video
+      CLAMD_CONF_MaxFileSize: 110M
+      CLAMD_CONF_MaxScanSize: 400M
+      CLAMD_CONF_ConcurrentDatabaseReload: "no"
+    volumes:
+      - clamav:/var/lib/clamav  # keep signatures across restarts instead of re-downloading ~300 MB
+    mem_limit: 1600m
+
   api:
     build: ./backend
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+      clamav:
+        condition: service_started
     env_file: .env
     environment:
       GP_DATABASE_URL: postgresql+psycopg://greenplot:${POSTGRES_PASSWORD}@db/greenplot
+      GP_MALWARE_SCANNER: ${GP_MALWARE_SCANNER:-clamav}
+      GP_CLAMAV_HOST: clamav
     volumes:
       - media:/data/storage
 
@@ -56,3 +75,4 @@ services:
 volumes:
   pgdata:
   media:
+  clamav:

@@ -91,6 +91,7 @@ const NAV: Record<Role, NavItem[]> = {
   resident: [
     { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/tickets", label: "Service tickets", short: "Tickets", icon: "ticket", feature: "tickets" },
+    { href: "/report", label: "Report a problem", icon: "alert", feature: "tickets" },
     { href: "/my-property", label: "My property", icon: "building", feature: "property" },
     { href: "/inspections", label: "Property Watch", icon: "eye", feature: "property_watch" },
     { href: "/maintenance", label: "Maintenance history", icon: "wrench", feature: "maintenance" },
@@ -176,6 +177,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const groups: (string | undefined)[] = [];
   items.forEach((i) => !groups.includes(i.group) && groups.push(i.group));
   const isActive = (href: string) => path === href || path.startsWith(href + "/");
+  const canReport = items.some((i) => i.href === "/report");
   const bottom = (BOTTOM[me.role] || []).map((h) => items.find((i) => i.href === h)).filter(Boolean) as NavItem[];
 
   return (
@@ -225,6 +227,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <span className="small muted">{roleLabel[me.role]}</span>
           </div>
           <div className="who">
+            {canReport && !isActive("/report") ? (
+              <Link href="/report" className="btn small" aria-label="Report a problem">
+                <Icon name="alert" /> <span className="hide-sm">Report a problem</span>
+              </Link>
+            ) : null}
             {pending ? (
               <Link href="/offline" className="badge amber">
                 {pending} to sync

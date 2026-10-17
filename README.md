@@ -33,6 +33,7 @@ Every V1 module in the requirements:
 - **Dashboards & reports, search, audit** (§22–23, §38): role dashboards, filterable reports with CSV export, and natural-language search ("Show all gate repairs for Plot 117 in the last 12 months"). Append-only audit logging covers every important action.
 - **RBAC & multi-tenancy** (§24–25): seven roles, a permission matrix plus row-level scoping, and `tenant_id` on every record. Cross-tenant access returns 404.
 - **Offline / PWA** (§30): installable app, service-worker app shell, and an IndexedDB queue (`QUEUED → SYNCING → SYNCED / FAILED / RETRY`) that replays to an idempotent `/sync` endpoint. Queued work covers visitors, vehicles, patrols, incidents, SOS, attendance, maintenance steps and photos.
+- **Ratings & support**: after each job the plot's customer is asked to rate it from 1 to 5 with a comment (jobs from a service ticket are rated once, on the ticket). Any rating below 4 sends a "Low rating" alert to supervisors and admins. A WhatsApp chat button on every page uses the configured `GP_WHATSAPP_NUMBER`, and residents have a short **Report a problem** form (menu, top bar and the website) that raises a service ticket for the office to assign.
 - **Public website** (§32): the existing page, plus the Proof of Work section, For Layouts, a Request Demo form (stored for the platform admin, with a WhatsApp fallback), Contact and a mobile menu.
 
 ### Integrations that need provider accounts

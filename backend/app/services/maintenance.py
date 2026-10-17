@@ -23,6 +23,8 @@ from app.models import (
     MaintenanceEvidence,
     MaintenanceTask,
     Media,
+    Property,
+    Resident,
     Tenant,
     User,
     Vendor,
@@ -561,6 +563,7 @@ def _approve(db, actor, task, comment):
     recipients = [task.assigned_staff_id, *notifications.vendor_users(db, task.tenant_id, task.vendor_id)]
     notifications.notify(db, task.tenant_id, recipients, "task_approved", f"{task.number} approved", comment, "maintenance_task", task.id)
     tickets_svc.on_task_event(db, actor, task, "approved")
+    _ask_for_rating(db, task)
     if tenant_setting(db, task.tenant_id, "auto_close_on_approval", True):
         close(db, actor, task)
 
@@ -637,6 +640,58 @@ def acknowledge(db, actor, task, note: str | None):
     task.resident_ack_by = actor.id
     task.resident_ack_note = note
     audit.record(db, actor, "maintenance.resident_acknowledged", "maintenance_task", task.id, new={"note": note})
+
+
+def property_customers(db: Session, task: MaintenanceTask) -> list[uuid.UUID]:
+    """The owner and residents of the task's plot: the people who can rate the job."""
+    if task.property_id is None:
+        return []
+    prop = db.get(Property, task.property_id)
+    ids = [prop.owner_user_id] if prop else []
+    ids += db.scalars(
+        select(Resident.user_id).where(
+            Resident.property_id == task.property_id, Resident.user_id.is_not(None), Resident.deleted_at.is_(None)
+        )
+    )
+    return ids
+
+
+def can_rate(task: MaintenanceTask) -> bool:
+    # Ticket jobs are rated on the ticket, so the customer is asked once.
+    return task.status in (S.APPROVED, S.CLOSED) and task.ticket_id is None and task.property_id is not None and task.rated_at is None
+
+
+def _ask_for_rating(db: Session, task: MaintenanceTask) -> None:
+    if not can_rate(task):
+        return
+    notifications.notify(
+        db,
+        task.tenant_id,
+        property_customers(db, task),
+        "job_feedback",
+        f"How did we do? Rate {task.number}",
+        f"{task.title} is done. Tap to rate the job from 1 to 5 and tell us anything we should fix.",
+        "maintenance_task",
+        task.id,
+    )
+
+
+def rate(db: Session, actor: Actor, task: MaintenanceTask, rating: int, comment: str | None) -> None:
+    """Customer rating after a job (1-5 plus a comment); anything below 4 alerts the office."""
+    if task.ticket_id:
+        raise http(409, "Rate this job on its service ticket")
+    if task.status not in (S.APPROVED, S.CLOSED):
+        raise http(409, "You can rate a job once the work is approved")
+    if task.rated_at:
+        raise http(409, "This job has already been rated")
+    task.rating = rating
+    task.rating_comment = (comment or "").strip() or None
+    task.rated_at = utcnow()
+    task.rated_by = actor.id
+    audit.record(db, actor, "maintenance.rated", "maintenance_task", task.id, new={"rating": rating, "comment": task.rating_comment})
+    notifications.alert_low_rating(
+        db, task.tenant_id, rating, task.rating_comment, f"{task.number} {task.title}", "maintenance_task", task.id
+    )
 
 
 def _sync_complaint(db: Session, task: MaintenanceTask, target: ComplaintStatus):

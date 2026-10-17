@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { CaptureButton } from "@/components/Capture";
 import { QrScanner } from "@/components/QrScanner";
+import { StarInput, Stars } from "@/components/Support";
 import { Badge, Dialog, Empty, ErrorBox, Field, Loading, PageHead, Select, useToast } from "@/components/ui";
 import { api, download } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -233,6 +234,25 @@ export default function TaskPage() {
                 ) : null}
                 {A.has("approve") ? <CaptureButton entityType="maintenance_task" entityId={t.id} evidenceType="supervisor" text="Add review photo" onDone={reload} /> : null}
               </div>
+            </div>
+          ) : null}
+
+          {A.has("rate") ? (
+            <div className="card">
+              <h2>How did we do?</h2>
+              <p className="muted" style={{ marginBottom: 6 }}>Rate this job from 1 to 5. Anything below 4 goes straight to the layout office so they can put it right.</p>
+              <form className="form" onSubmit={(e) => (e.preventDefault(), call("/rate", { rating: Number(form.rating), comment: form.rating_comment || null }))}>
+                <StarInput value={Number(form.rating || 0)} onChange={(n) => set("rating", String(n))} />
+                <Field label={Number(form.rating || 5) < 4 ? "What went wrong?" : "Anything to add? (optional)"}>
+                  <textarea maxLength={2000} value={form.rating_comment || ""} onChange={(e) => set("rating_comment", e.target.value)} />
+                </Field>
+                <ErrorBox error={act.error} />
+                <div className="actions">
+                  <button className="btn primary" disabled={act.pending || !form.rating}>
+                    Send rating
+                  </button>
+                </div>
+              </form>
             </div>
           ) : null}
 
@@ -509,6 +529,15 @@ export default function TaskPage() {
                   <dt>Complaint</dt>
                   <dd>
                     <Link href={`/complaints/${t.complaint_id}`}>View complaint</Link>
+                  </dd>
+                </>
+              ) : null}
+              {t.rating ? (
+                <>
+                  <dt>Customer rating</dt>
+                  <dd>
+                    <Stars rating={t.rating} />
+                    {t.rating_comment ? <div className="small">{t.rating_comment}</div> : null}
                   </dd>
                 </>
               ) : null}

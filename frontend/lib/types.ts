@@ -198,6 +198,9 @@ export interface TaskDetail extends TaskSummary {
   estimated_cost: number | null;
   resident_ack_at: string | null;
   resident_ack_note: string | null;
+  rating: number | null;
+  rating_comment: string | null;
+  rated_at: string | null;
   checklist: ChecklistItem[];
   materials: Material[];
   evidence: Evidence[];

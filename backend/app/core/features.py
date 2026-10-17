@@ -49,7 +49,12 @@ ROLE_FEATURES: dict[str, dict[str, dict]] = {
         "billing": {
             "label": "Dues & payments",
             "description": "See dues, pay online and download receipts",
-            "permissions": ["billing.read", "payments.create"],
+            "permissions": ["billing.read", "payments.create", "subscriptions.manage"],
+        },
+        "referrals": {
+            "label": "Refer a neighbour",
+            "description": "Refer neighbours and earn a free cleaning when they join",
+            "permissions": ["referrals.read", "referrals.create"],
         },
         "notices": {"label": "Notices", "description": "Announcements, alerts and events", "permissions": ["notices.read"]},
         "sos": {"label": "SOS", "description": "Emergency alert to the guards and office", "permissions": ["sos.raise"]},

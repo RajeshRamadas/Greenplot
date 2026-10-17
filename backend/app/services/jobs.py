@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.models import AuditLog, MaintenanceSchedule, MaintenanceTask, Media, SosAlert, Tenant
 from app.models.base import utcnow
 from app.models.enums import MediaStatus, Role, SosStatus
-from app.services import audit, billing, notifications
+from app.services import audit, billing, notifications, referrals, subscriptions
 from app.services import maintenance as msvc
 from app.services import tickets as tickets_svc
 from app.services.storage import get_storage
@@ -153,6 +153,8 @@ def run_all(db: Session) -> dict:
     result["scheduled_tasks"] = len(generate_scheduled_tasks(db))
     result["overdue_notified"] = remind_due_and_overdue(db)
     result["sos_escalated"] = escalate_sos(db)
+    result["subscriptions_billed"] = len(subscriptions.bill_due(db))
+    result["referral_credits_applied"] = referrals.apply_all_credits(db)
     result["dues_reminded"] = billing.refresh_overdue(db)
     result["media_purged"] = purge_expired_media(db)
     result["ticket_sla_alerts"] = tickets_svc.run_sla_checks(db)

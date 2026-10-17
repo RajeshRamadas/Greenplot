@@ -53,3 +53,24 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - name: Build images
+        run: docker compose build
+      - name: Start the stack
+        run: docker compose up -d --wait --wait-timeout 180
+      - name: Health checks
+        run: |
+          docker compose exec -T api python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health').read().decode())"
+          curl -fsS -o /dev/null http://localhost:3000/
+          # The web app proxies /api/v1 to the API; an unauthenticated call must reach FastAPI.
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/v1/public/demo-requests)" = 401
+      - name: Logs
+        if: always()
+        run: docker compose logs --no-color
+      - if: always()
+        run: docker compose down -v

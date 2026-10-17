@@ -69,6 +69,16 @@ jobs:
           curl -fsS -o /dev/null http://localhost:3000/
           # The web app proxies /api/v1 to the API; an unauthenticated call must reach FastAPI.
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/v1/public/demo-requests)" = 401
+      - name: Worker's first job pass succeeds
+        run: |
+          # The worker logs and swallows job errors, so check its output.
+          for _ in $(seq 60); do
+            logs="$(docker compose logs worker)"
+            if grep -q "job run failed" <<<"$logs"; then echo "$logs"; exit 1; fi
+            if grep -q "greenplot.worker jobs:" <<<"$logs"; then exit 0; fi
+            sleep 1
+          done
+          echo "worker did not finish a job pass"; exit 1
       - name: Logs
         if: always()
         run: docker compose logs --no-color

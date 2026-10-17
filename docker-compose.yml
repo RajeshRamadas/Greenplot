@@ -30,12 +30,14 @@ services:
       GP_DATABASE_URL: postgresql+psycopg://greenplot:${POSTGRES_PASSWORD}@db/greenplot
     volumes:
       - media:/data/storage
-    # Healthy once migrations have run and uvicorn is serving.
+    # Healthy once migrations have run and uvicorn is serving. The long start
+    # period leaves room for slow production migrations; failures during it
+    # don't count, and the first success marks the service healthy at once.
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 5s
       timeout: 5s
-      start_period: 30s
+      start_period: 600s
       retries: 10
 
   worker:

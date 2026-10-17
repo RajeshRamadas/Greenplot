@@ -28,7 +28,7 @@ Every V1 module in the requirements:
 - **Property Watch / inspections**: resident visit requests, inspection-point checklist, photos, an owner report, and one-click follow-up maintenance.
 - **Properties & residents, assets with QR/NFC labels, complaints** (auto-linked to maintenance), **cleaning & gardening schedules**, **staff** (shifts, attendance, work history) and **vendors** (with performance).
 - **Security**: visitors with resident approval and pre-approval, vehicle register and gate log, QR patrol routes, incidents, and SOS with escalation.
-- **Billing**: per plot, unit, sq ft, fixed or custom plans; dues generated without duplicates; payments with idempotency keys; Razorpay-style signed webhooks processed once; receipts (PDF); reconciliation; defaulters; and basic expenses.
+- **Billing**: per plot, unit, sq ft, fixed or custom plans; dues generated without duplicates; payments with idempotency keys; Razorpay-style signed webhooks processed once; receipts (PDF); reconciliation; defaulters; and basic expenses. Every maintenance job on a plot is billed to its owner when it is created; the supervisor sets or changes the charge until it is paid, the owner pays online or staff record cash/UPI, and the job closes only once the bill is paid or waived (jobs with no plot are the association's cost; set the tenant setting `job_payment_required` to false to turn this off).
 - **Communication**: announcements, notices, alerts, events and outages to targeted audiences. In-app notifications, plus push, SMS, WhatsApp and email adapters.
 - **Dashboards & reports, search, audit** (§22–23, §38): role dashboards, filterable reports with CSV export, and natural-language search ("Show all gate repairs for Plot 117 in the last 12 months"). Append-only audit logging covers every important action.
 - **RBAC & multi-tenancy** (§24–25): seven roles, a permission matrix plus row-level scoping, and `tenant_id` on every record. Cross-tenant access returns 404.
@@ -39,9 +39,15 @@ Every V1 module in the requirements:
 
 These are built behind adapters and need credentials or a provider choice (see §47 open questions):
 
-- **Payments**: a real Razorpay (or other) order call and checkout. The demo has a "simulate payment" button that is disabled in production.
+- **Payments**: Razorpay orders, Checkout and webhooks are built in; set `GP_RAZORPAY_KEY_ID`, `GP_RAZORPAY_KEY_SECRET` and `GP_PAYMENT_WEBHOOK_SECRET` (below). Without keys the demo has a "simulate payment" button, which is disabled in production and whenever keys are set.
 - **Notifications**: the push adapter logs until a push provider is added. Email sends over SMTP once `GP_SMTP_*` is set, SMS through MSG91 and WhatsApp through the Cloud API (below); each logs until it is configured.
 - **Malware scanning**: plug ClamAV or a provider into `scan_for_malware`.
+
+### Payments (Razorpay)
+
+1. In the Razorpay Dashboard, create API keys (test keys work before KYC is complete) and set `GP_RAZORPAY_KEY_ID` and `GP_RAZORPAY_KEY_SECRET`.
+2. Add a webhook to `https://<your domain>/api/v1/payments/webhook` with the `payment.captured` and `payment.failed` events, and put its secret in `GP_PAYMENT_WEBHOOK_SECRET`.
+3. "Pay" creates a Razorpay order and opens Razorpay Checkout in the browser. The payment is applied when the checkout's signed response is verified (the API also confirms it with Razorpay and captures it if needed) or when the webhook arrives, whichever comes first; both are processed once.
 
 ### SMS (MSG91)
 

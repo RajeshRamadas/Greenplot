@@ -210,6 +210,7 @@ export interface TaskDetail extends TaskSummary {
   completed_by_name: string | null;
   reviewed_by_name: string | null;
   materials_cost: number;
+  payment: JobPayment | null;
 }
 
 export interface Complaint {
@@ -414,6 +415,7 @@ export interface Invoice {
   amount_paid: number;
   due_date: string;
   status: string;
+  maintenance_task_id: UUID | null;
   overdue: boolean;
 }
 
@@ -428,7 +430,28 @@ export interface Payment {
   provider_order_id: string | null;
   reference: string | null;
   created_at: string;
-  checkout: { provider: string; order_id: string; amount_paise: number; note: string } | null;
+  checkout: {
+    provider: string;
+    key_id: string | null;
+    order_id: string;
+    amount_paise: number;
+    currency: string;
+    name: string;
+    description: string | null;
+    prefill: { name: string | null; email: string | null; contact: string | null };
+    note: string;
+  } | null;
+}
+
+export interface JobPayment {
+  invoice_id: UUID;
+  invoice_number: string;
+  amount: number;
+  amount_paid: number;
+  status: string;
+  due_date: string;
+  /** Why the job cannot close yet; null once paid or waived. */
+  blocking: string | null;
 }
 
 export interface Plan {

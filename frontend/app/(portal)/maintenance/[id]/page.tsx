@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { CaptureButton } from "@/components/Capture";
+import { PayDialog } from "@/components/Pay";
 import { QrScanner } from "@/components/QrScanner";
 import { Badge, Dialog, Empty, ErrorBox, Field, Loading, PageHead, Select, useToast } from "@/components/ui";
 import { api, download } from "@/lib/api";
@@ -62,14 +63,15 @@ function EvidenceGrid({ items }: { items: Evidence[] }) {
 
 export default function TaskPage() {
   const { id } = useParams<{ id: string }>();
-  const { me, meta } = useAuth();
+  const { me, meta, can } = useAuth();
   const toast = useToast();
   const online = useOnline();
   const lookups = useLookups();
   const { data: t, error, loading, reload, setData } = useApi<TaskDetail>(`/maintenance/${id}`);
   const audit = useApi<AuditEntry[]>(me?.role !== "resident" ? `/maintenance/${id}/audit` : null);
   const act = useAction();
-  const [dialog, setDialog] = useState<null | "assign" | "reject" | "approve" | "exception" | "material" | "scan" | "reopen" | "cancel" | "decline" | "ack">(null);
+  const [dialog, setDialog] = useState<null | "assign" | "reject" | "approve" | "exception" | "material" | "scan" | "reopen" | "cancel" | "decline" | "ack" | "charge">(null);
+  const [paying, setPaying] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
   const [reasonFor, setReasonFor] = useState<ChecklistItem | null>(null);
   const [notes, setNotes] = useState<Record<string, string> | null>(null);
@@ -440,6 +442,55 @@ export default function TaskPage() {
 
         {/* ---------- sidebar ---------- */}
         <div className="stack" style={{ gap: 16 }}>
+          {t.payment || A.has("set_charge") ? (
+            <div className="card">
+              <h2>Payment</h2>
+              {t.payment ? (
+                <>
+                  <div className="req">
+                    <span>
+                      Charge · <span className="mono">{t.payment.invoice_number}</span>
+                    </span>
+                    <b>{inr(t.payment.amount)}</b>
+                  </div>
+                  <div className="req">
+                    <span>Paid</span>
+                    <span>
+                      {inr(t.payment.amount_paid)} <Badge status={t.payment.status} />
+                    </span>
+                  </div>
+                  {t.payment.blocking && ["approved", "completed"].includes(t.status) ? <div className="alert warn small">{t.payment.blocking}</div> : null}
+                  <p className="small muted">{t.payment.blocking ? "The job closes once this is paid or waived." : "Settled."}</p>
+                </>
+              ) : (
+                <p className="small muted">No charge set yet.</p>
+              )}
+              <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
+                {A.has("set_charge") ? (
+                  <button className="btn small" onClick={() => (set("charge", t.payment ? String(t.payment.amount) : ""), setDialog("charge"))}>
+                    {t.payment?.amount ? "Change charge" : "Set charge"}
+                  </button>
+                ) : null}
+                {t.payment && t.payment.amount > t.payment.amount_paid && ["unpaid", "partial"].includes(t.payment.status) && can("payments.create") && !can("billing.manage") ? (
+                  <button className="btn small primary" onClick={() => setPaying(true)}>
+                    Pay {inr(t.payment.amount - t.payment.amount_paid)}
+                  </button>
+                ) : null}
+                {t.payment && ["unpaid", "partial"].includes(t.payment.status) && can("billing.manage") ? (
+                  <>
+                    <Link className="btn small" href="/billing">
+                      Record payment
+                    </Link>
+                    {t.payment.status === "unpaid" ? (
+                      <button className="btn small ghost" onClick={() => act.run(() => api(`/billing/invoices/${t.payment!.invoice_id}/waive`, { method: "POST" })).then(reload)}>
+                        Waive (free job)
+                      </button>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           {t.proof ? (
             <div className="card">
               <h2>Proof of work</h2>
@@ -609,6 +660,40 @@ export default function TaskPage() {
             </button>
             <button className="btn primary" disabled={act.pending}>
               Assign
+            </button>
+          </div>
+        </form>
+      </Dialog>
+
+      <PayDialog
+        invoice={paying && t.payment ? { id: t.payment.invoice_id, description: `${t.number} · ${t.title}`, outstanding: t.payment.amount - t.payment.amount_paid } : null}
+        onClose={() => setPaying(false)}
+        onPaid={() => reload()}
+      />
+
+      <Dialog title="Charge to owner" open={dialog === "charge"} onClose={() => setDialog(null)}>
+        <form
+          className="form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const res = await act.run(() => api<TaskDetail>(`/maintenance/${t.id}`, { method: "PATCH", body: { charge: Number(form.charge || 0) } }));
+            if (res) {
+              setData(res);
+              audit.reload();
+              setDialog(null);
+            }
+          }}
+        >
+          <Field label="Amount (₹)" hint="Billed to the plot owner. The job closes once it is paid; waive the bill if the job is free.">
+            <input required type="number" min="0" step="0.01" value={form.charge || ""} onChange={(e) => set("charge", e.target.value)} />
+          </Field>
+          <ErrorBox error={act.error} />
+          <div className="actions">
+            <button type="button" className="btn" onClick={() => setDialog(null)}>
+              Cancel
+            </button>
+            <button className="btn primary" disabled={act.pending}>
+              Save
             </button>
           </div>
         </form>

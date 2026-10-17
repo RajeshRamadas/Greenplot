@@ -22,6 +22,7 @@ from app.schemas.operations import (
     PaymentCreateIn,
     PaymentOut,
     PaymentRecordIn,
+    PaymentVerifyIn,
     PlanIn,
     PlanOut,
 )
@@ -128,11 +129,7 @@ def create_invoice(body: InvoiceIn, db: DB, actor: Perm("billing.manage")):
 @router.post("/billing/invoices/{invoice_id}/waive", response_model=InvoiceOut)
 def waive(invoice_id: uuid.UUID, db: DB, actor: Perm("billing.manage")):
     inv = _get_invoice(db, actor, invoice_id)
-    if inv.status == InvoiceStatus.PAID:
-        raise HTTPException(409, "Invoice is already paid")
-    old = inv.status
-    inv.status = InvoiceStatus.WAIVED
-    audit.record(db, actor, "billing.invoice_waived", "invoice", inv.id, old={"status": old}, new={"status": inv.status})
+    svc.waive_invoice(db, actor, inv)
     db.commit()
     return _inv_out(db, [inv])[0]
 
@@ -195,11 +192,18 @@ def billing_summary(db: DB, actor: Perm("billing.manage")):
 # ------------------------------------------------------------------ payments
 
 
-def _pay_out(p: Payment, checkout=False) -> PaymentOut:
+def _pay_out(p: Payment, checkout=False, db=None) -> PaymentOut:
     o = PaymentOut.model_validate(p)
     if checkout and p.status == PaymentStatus.CREATED and p.method == "online":
-        o.checkout = svc.checkout_payload(p)
+        o.checkout = svc.checkout_payload(db, p)
     return o
+
+
+def _get_payment(db, actor, payment_id) -> Payment:
+    p = get_scoped(db, Payment, payment_id, actor, "Payment")
+    if actor.role == Role.RESIDENT and p.property_id not in resident_property_ids(db, actor):
+        raise not_found("Payment")
+    return p
 
 
 @router.post("/payments", response_model=PaymentOut, status_code=201)
@@ -213,7 +217,16 @@ def create_payment(
     inv = _get_invoice(db, actor, body.invoice_id)
     p = svc.create_online_payment(db, actor, inv, body.amount, idempotency_key)
     db.commit()
-    return _pay_out(p, checkout=True)
+    return _pay_out(p, checkout=True, db=db)
+
+
+@router.post("/payments/{payment_id}/verify", response_model=PaymentOut)
+def verify_payment(payment_id: uuid.UUID, body: PaymentVerifyIn, db: DB, actor: Perm("payments.create")):
+    """Confirm an online payment from Razorpay Checkout's signed response."""
+    p = _get_payment(db, actor, payment_id)
+    svc.verify_checkout(db, p, body.razorpay_order_id, body.razorpay_payment_id, body.razorpay_signature)
+    db.commit()
+    return _pay_out(p)
 
 
 @router.post("/payments/record", response_model=PaymentOut, status_code=201)
@@ -268,11 +281,9 @@ async def payment_webhook(request: Request, db: DB, x_razorpay_signature: str | 
 @router.post("/payments/{payment_id}/simulate", response_model=PaymentOut)
 def simulate_capture(payment_id: uuid.UUID, db: DB, actor: CurrentActor):
     """Development only: behave as if the gateway captured this payment (sends a signed webhook)."""
-    if get_settings().environment == "production":
+    if get_settings().environment == "production" or svc.gateway_live():
         raise HTTPException(404, "Not found")
-    p = get_scoped(db, Payment, payment_id, actor, "Payment")
-    if actor.role == Role.RESIDENT and p.property_id not in resident_property_ids(db, actor):
-        raise not_found("Payment")
+    p = _get_payment(db, actor, payment_id)
     event = {
         "id": f"evt_{uuid.uuid4().hex[:14]}",
         "event": "payment.captured",

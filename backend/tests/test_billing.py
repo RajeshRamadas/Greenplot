@@ -1,7 +1,13 @@
 """Billing & dues (requirements §19)."""
 
+import hashlib
+import hmac
 import json
 
+import pytest
+
+from app.core.config import get_settings
+from app.services import billing as billing_svc
 from app.services.billing import sign_payload
 
 
@@ -108,3 +114,117 @@ def test_offline_payment_partial_and_defaulters(as_, world):
         .status_code
         == 403
     )
+
+
+@pytest.fixture
+def razorpay(monkeypatch):
+    """A fake Razorpay API: orders get ids, payments are reported as given in `state`."""
+    s = get_settings()
+    monkeypatch.setattr(s, "razorpay_key_id", "rzp_test_key")
+    monkeypatch.setattr(s, "razorpay_key_secret", "rzp_test_secret")
+    state = {"calls": [], "payments": {}}
+
+    def transport(method, path, payload):
+        state["calls"].append((method, path, payload))
+        if path == "orders":
+            return {"id": f"order_rzp{len(state['calls'])}", "amount": payload["amount"], "status": "created"}
+        pay_id = path.split("/")[1]
+        remote = state["payments"][pay_id]
+        if path.endswith("/capture"):
+            remote["status"] = "captured"
+        return remote
+
+    billing_svc.set_transport(transport)
+    yield state
+    billing_svc.set_transport(None)
+
+
+def _rzp_sign(order_id, pay_id, secret="rzp_test_secret"):
+    return hmac.new(secret.encode(), f"{order_id}|{pay_id}".encode(), hashlib.sha256).hexdigest()
+
+
+def test_razorpay_order_checkout_and_verify(as_, world, razorpay):
+    admin, resident = as_(world.admin), as_(world.resident)
+    inv = admin.ok(
+        "post", "/billing/invoices", {"property_id": str(world.p117.id), "description": "Q4 dues", "amount": 1200, "due_date": "2026-10-15"}
+    )
+    p = resident.ok("post", "/payments", {"invoice_id": inv["id"]}, headers={"Idempotency-Key": "rzp-117-0001"})
+    assert razorpay["calls"][0][:2] == ("POST", "orders") and razorpay["calls"][0][2]["amount"] == 120000
+    co = p["checkout"]
+    assert co["key_id"] == "rzp_test_key" and co["order_id"] == p["provider_order_id"] and co["currency"] == "INR"
+    assert resident.post(f"/payments/{p['id']}/simulate", {}).status_code == 404, "no simulation with a live gateway"
+
+    order = p["provider_order_id"]
+    body = {"razorpay_order_id": order, "razorpay_payment_id": "pay_1", "razorpay_signature": "forged"}
+    assert resident.post(f"/payments/{p['id']}/verify", body).status_code == 401
+    # Authorized but not yet captured: GreenPlot captures it, then applies it
+    razorpay["payments"]["pay_1"] = {"id": "pay_1", "order_id": order, "amount": 120000, "status": "authorized"}
+    body["razorpay_signature"] = _rzp_sign(order, "pay_1")
+    out = resident.ok("post", f"/payments/{p['id']}/verify", body)
+    assert out["status"] == "succeeded" and out["provider_payment_id"] == "pay_1" and out["receipt_number"]
+    assert ("POST", "payments/pay_1/capture", {"amount": 120000, "currency": "INR"}) in razorpay["calls"]
+    assert resident.ok("get", "/billing/invoices")["items"][0]["status"] == "paid"
+    # Verifying again is harmless
+    assert resident.ok("post", f"/payments/{p['id']}/verify", body)["status"] == "succeeded"
+
+
+def test_razorpay_verify_rejects_wrong_amount(as_, world, razorpay):
+    admin, resident = as_(world.admin), as_(world.resident)
+    inv = admin.ok(
+        "post", "/billing/invoices", {"property_id": str(world.p117.id), "description": "Dues", "amount": 500, "due_date": "2026-10-15"}
+    )
+    p = resident.ok("post", "/payments", {"invoice_id": inv["id"]}, headers={"Idempotency-Key": "rzp-117-0002"})
+    order = p["provider_order_id"]
+    razorpay["payments"]["pay_2"] = {"id": "pay_2", "order_id": order, "amount": 100, "status": "captured"}
+    body = {"razorpay_order_id": order, "razorpay_payment_id": "pay_2", "razorpay_signature": _rzp_sign(order, "pay_2")}
+    assert resident.ok("post", f"/payments/{p['id']}/verify", body)["status"] == "created"
+    assert resident.ok("get", "/billing/invoices")["items"][0]["status"] == "unpaid"
+
+
+def test_jobs_on_a_plot_are_billed_and_close_only_when_paid(as_, world):
+    admin, sup, resident = as_(world.admin), as_(world.supervisor), as_(world.resident)
+    job = {"title": "Fix tap", "category": "plumbing", "property_id": str(world.p117.id), "charge": 800}
+    t = sup.ok("post", "/maintenance", job)
+    pay = t["payment"]
+    assert pay["amount"] == 800.0 and pay["status"] == "unpaid" and "set_charge" in t["allowed_actions"]
+    inv = next(i for i in resident.ok("get", "/billing/invoices")["items"] if i["id"] == pay["invoice_id"])
+    assert inv["maintenance_task_id"] == t["id"] and t["number"] in inv["description"]
+
+    # Changing the charge voids a checkout opened for the old amount
+    resident.ok("post", "/payments", {"invoice_id": pay["invoice_id"]}, headers={"Idempotency-Key": "job-tap-0001"})
+    t = sup.ok("patch", f"/maintenance/{t['id']}", {"charge": 950})
+    assert t["payment"]["amount"] == 950.0
+    assert resident.ok("get", "/payments", params={"invoice_id": pay["invoice_id"]})["items"][0]["status"] == "failed"
+    assert as_(world.resident).patch(f"/maintenance/{t['id']}", {"charge": 1}).status_code in (403, 404)
+
+    # Partly paid: the charge cannot drop below what was paid
+    admin.ok(
+        "post",
+        "/payments/record",
+        {"invoice_id": pay["invoice_id"], "amount": 400, "method": "cash"},
+        headers={"Idempotency-Key": "cash-tap-01"},
+    )
+    assert sup.patch(f"/maintenance/{t['id']}", {"charge": 300}).status_code == 422
+    assert "550" in sup.ok("get", f"/maintenance/{t['id']}")["payment"]["blocking"]
+
+    # Cancelling an unpaid job drops its bill
+    t2 = sup.ok("post", "/maintenance", {**job, "title": "Fix gate"})
+    sup.ok("post", f"/maintenance/{t2['id']}/cancel", {"reason": "Duplicate"})
+    assert sup.ok("get", f"/maintenance/{t2['id']}")["payment"]["status"] == "waived"
+
+
+def test_jobs_without_a_plot_are_not_billed(as_, world):
+    sup = as_(world.supervisor)
+    t = sup.ok("post", "/maintenance", {"title": "Sweep main road", "category": "cleaning"})
+    assert t["payment"] is None and "set_charge" not in t["allowed_actions"]
+    assert sup.patch(f"/maintenance/{t['id']}", {"charge": 100}).status_code == 422
+
+
+def test_job_payment_can_be_switched_off(as_, world):
+    from app.models import Tenant
+
+    tenant = world.db.get(Tenant, world.admin.tenant_id)
+    tenant.settings = {**(tenant.settings or {}), "job_payment_required": False}
+    world.db.commit()
+    t = as_(world.supervisor).ok("post", "/maintenance", {"title": "Fix tap", "category": "plumbing", "property_id": str(world.p117.id)})
+    assert t["payment"] is None

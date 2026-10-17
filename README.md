@@ -94,6 +94,14 @@ To go live:
 3. Set `GP_WHATSAPP_PROVIDER=meta` and the `GP_WHATSAPP_*` variables (see `.env.example`).
 4. In the app's WhatsApp → Configuration, set the callback URL to `https://<your-domain>/api/v1/webhooks/whatsapp`, use the same verify token, and subscribe to **messages**.
 
+### Owner updates: photo proof, plot-due reminders and monthly reports
+
+- **Photo proof when a job closes.** When a job on a plot is approved and closed with at least one after photo, the owner gets a message with a link to a page showing the before and after photos (`/proof/<token>`). The link is signed and expires with routine media retention. Owners who messaged the business number in the last 24 hours also get the two photos in the WhatsApp chat. Supervisors can resend it with `POST /api/v1/maintenance/{id}/send-proof`. Respects *resident evidence visibility*; turn it off with the tenant setting `job_proof_enabled: false`.
+- **"Your plot is due" reminders.** For every recurring schedule on a plot that repeats every 14 days or longer, the owner is reminded once per visit, 7 days ahead by default (`plot_due_reminder_days`, 0 turns it off). If the plot has unpaid dues the message carries a one-tap pay link. The default link opens the bill in the app (`/billing?invoice=<id>`); a payment gateway can supply its own link with `owner_contact.set_pay_link_builder()` (for example a Razorpay Payment Link).
+- **Monthly plot health report.** On the first worker run of each month, every plot with an owner gets last month's report: visits done (jobs and property-watch inspections), photos, issues spotted (inspection findings, incidents, complaints), next visit and dues, as a short message plus a PDF link. Owners also find them on their property page. Admins can rebuild and resend a month with `POST /api/v1/properties/{id}/plot-reports {"month": "2026-09"}`. Turn it off with `plot_report_enabled: false`.
+
+These go to owners with an account through their notification channels (event kinds `job_proof`, `plot_due` and `plot_report`, default in-app + WhatsApp + email, changeable per tenant under notification channels). Owners recorded only by phone or email on the property get email and SMS. They use the same providers as everything else, so nothing extra is needed beyond `GP_WHATSAPP_*`, `GP_MSG91_*` and `GP_SMTP_*` above. Links point at the first `GP_CORS_ORIGINS` entry, and with local storage WhatsApp fetches photos from `GP_PUBLIC_BASE_URL`, so both must be reachable from the internet.
+
 ## Run it locally
 
 Requirements: Python 3.11+, Node 22+, PostgreSQL 16 (or SQLite for a quick look).

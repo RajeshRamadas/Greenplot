@@ -5,13 +5,19 @@ import { useState } from "react";
 import { CaptureButton } from "@/components/Capture";
 import { MediaGallery } from "@/components/MediaGallery";
 import { Badge, Dialog, Empty, ErrorBox, Field, Loading, PageHead, Select, useToast } from "@/components/ui";
-import { api } from "@/lib/api";
+import { api, download } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { fmtDate, label } from "@/lib/format";
 import { useAction, useApi } from "@/lib/hooks";
 import { linkFor } from "@/lib/links";
 import type { Asset, Page, Property, Resident, TimelineEntry } from "@/lib/types";
 import { announceInvite } from "@/lib/invites";
+
+type PlotReport = {
+  id: string;
+  period_start: string;
+  summary: { visit_count: number; photo_count: number; issues: { text: string }[] };
+};
 
 /** Property profile + searchable history timeline (requirements §6). */
 export function PropertyView({ id }: { id: string }) {
@@ -21,6 +27,7 @@ export function PropertyView({ id }: { id: string }) {
   const history = useApi<TimelineEntry[]>(`/properties/${id}/history`, { limit: 200 });
   const residents = useApi<Page<Resident>>(can("residents.read") ? "/residents" : null, { property_id: id });
   const assets = useApi<Asset[]>(can("assets.read") ? `/properties/${id}/assets` : null);
+  const reports = useApi<PlotReport[]>(`/properties/${id}/plot-reports`);
   const act = useAction();
   const [kind, setKind] = useState("");
   const [edit, setEdit] = useState(false);
@@ -124,6 +131,24 @@ export function PropertyView({ id }: { id: string }) {
                       {label(r.relation)} {r.phone ? `· ${r.phone}` : ""} {r.user_id ? "· has login" : ""}
                     </div>
                   </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {reports.data?.length ? (
+            <div className="card">
+              <h2>Monthly reports</h2>
+              {reports.data.map((r) => (
+                <div key={r.id} className="list-item">
+                  <div>
+                    <div className="title">{new Date(r.period_start).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</div>
+                    <div className="small muted">
+                      {r.summary.visit_count} visits · {r.summary.photo_count} photos · {r.summary.issues.length ? `${r.summary.issues.length} issues` : "no issues"}
+                    </div>
+                  </div>
+                  <button className="btn small" onClick={() => act.run(() => download(`/properties/${id}/plot-reports/${r.id}/report.pdf`))}>
+                    PDF
+                  </button>
                 </div>
               ))}
             </div>

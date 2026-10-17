@@ -193,6 +193,8 @@ class MaintenanceSchedule(TenantModel, SoftDelete):
     vendor_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("vendors.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_generated_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    # The run date the owner was last reminded about (one "your plot is due" message per visit)
+    owner_reminded_for: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
 class Media(TenantModel):

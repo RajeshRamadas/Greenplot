@@ -51,6 +51,7 @@ from app.models.operations import (
     VehicleLog,
     Visitor,
 )
+from app.models.owner_updates import PlotReport
 from app.models.tickets import (
     NotificationDelivery,
     Ticket,
@@ -99,6 +100,7 @@ __all__ = [
     "PatrolScan",
     "Payment",
     "PaymentWebhookEvent",
+    "PlotReport",
     "Property",
     "PushSubscription",
     "RefreshToken",

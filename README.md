@@ -97,7 +97,7 @@ To go live:
 
 Every upload (photos, videos, PDFs) is scanned before it is accepted. In `docker compose` this uses a self-hosted **ClamAV** daemon (the `clamav` service), so no account or API key is needed and its virus signatures update themselves. An infected file is deleted, the person sees which threat was found, and the attempt is recorded in the audit log. If the scanner is down or still starting (it takes about a minute to load signatures after a restart), the upload is refused with "try again" and the file is kept, so finishing it later works without re-sending.
 
-ClamAV needs about **1.1 GB of RAM** with signatures loaded, the most of any service on a 4 GB server. It is capped at 1.6 GB, and signature reloads are not run side by side, so they don't double memory. Outside Docker, the default scanner (`GP_MALWARE_SCANNER=eicar`) only catches the EICAR test file; set `GP_MALWARE_SCANNER=clamav` and `GP_CLAMAV_HOST` to use a ClamAV you run yourself.
+ClamAV needs about **1.1 GB of RAM** with signatures loaded, the most of any service on a 4 GB server. It is capped at 1.6 GB, and signature reloads are not run side by side, so they don't double memory. Outside Docker and production, the default scanner (`eicar`) only catches the EICAR test file; set `GP_MALWARE_SCANNER=clamav` and `GP_CLAMAV_HOST` to use a ClamAV you run yourself. Give that clamd the same limits as `docker-compose.yml` (`StreamMaxLength 110M`, `MaxFileSize 110M`, `MaxScanSize 400M`, `AlertExceedsMax yes`); with clamd's 25 MB default, larger videos are refused. With `GP_ENVIRONMENT=production` and no scanner set, ClamAV is used.
 
 ## Run it locally
 

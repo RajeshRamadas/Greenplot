@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from sqlalchemy import select
 
@@ -115,7 +116,8 @@ async def direct_upload(
     m, _ = svc.create_upload(db, actor, req)
     if m.status != MediaStatus.READY:
         get_storage().put(m.storage_key, data, m.content_type)
-        svc.finalize(db, actor, m, caption)
+        # Scanning can take seconds for a large file; keep it off the event loop.
+        await run_in_threadpool(svc.finalize, db, actor, m, caption)
     db.commit()
     return present(db, m)
 

@@ -149,9 +149,16 @@ def finalize(db: Session, actor: Actor, m: Media, caption: str | None = None) ->
         _fail(db, m, "The malware scanner is unavailable right now. Please try again in a few minutes.", 503)
     m.scan_status = result.status
     if result.status == "infected":
-        storage.delete(m.storage_key)
+        reason = f"File rejected by malware scan: it contains {result.signature or 'malware'} and was deleted."
+        m.status = MediaStatus.FAILED
+        m.error = reason
         audit.record(db, actor, "media.malware_detected", m.entity_type, m.entity_id, new={"media_id": m.id, "signature": result.signature})
-        _fail(db, m, f"File rejected by malware scan: it contains {result.signature or 'malware'} and was deleted.")
+        db.commit()  # record the rejection before removing the file
+        try:
+            storage.delete(m.storage_key)
+        except Exception:
+            log.exception("Could not delete infected media %s at %s", m.id, m.storage_key)
+        raise HTTPException(422, reason)
     m.sha256 = digest
     m.size_bytes = len(data)
     if ALLOWED_TYPES[m.content_type] == "image":

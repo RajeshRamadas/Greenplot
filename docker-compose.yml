@@ -29,6 +29,7 @@ services:
       CLAMD_CONF_StreamMaxLength: 110M  # largest upload is a 100 MB video
       CLAMD_CONF_MaxFileSize: 110M
       CLAMD_CONF_MaxScanSize: 400M
+      CLAMD_CONF_AlertExceedsMax: "yes"  # content past the limits is rejected, not passed as clean
       CLAMD_CONF_ConcurrentDatabaseReload: "no"
     volumes:
       - clamav:/var/lib/clamav  # keep signatures across restarts instead of re-downloading ~300 MB

@@ -70,10 +70,12 @@ function Invoices({ admin }: { admin: boolean }) {
                             Waive
                           </button>
                         </div>
-                      ) : (
+                      ) : i.amount > i.amount_paid ? (
                         <button className="btn small primary" onClick={() => setPay(i)}>
                           Pay {inr(i.amount - i.amount_paid)}
                         </button>
+                      ) : (
+                        <span className="small muted">Charge not set yet</span>
                       )
                     ) : null}
                   </td>
@@ -247,7 +249,7 @@ function Plans() {
 
 function Defaulters() {
   const d = useApi<{ property: string; owner: string | null; phone: string | null; invoices: number; outstanding: number; oldest_due: string }[]>("/billing/defaulters");
-  const rec = useApi<{ stale_orders: unknown[]; invoice_mismatches: unknown[] }>("/payments/reconciliation");
+  const rec = useApi<{ stale_orders: unknown[]; invoice_mismatches: unknown[]; needs_refund: unknown[] }>("/payments/reconciliation");
   return (
     <div className="stack" style={{ gap: 16 }}>
       <div className="card">
@@ -287,9 +289,10 @@ function Defaulters() {
       <div className="card">
         <h2>Reconciliation</h2>
         {rec.data ? (
-          rec.data.stale_orders.length || rec.data.invoice_mismatches.length ? (
+          rec.data.stale_orders.length || rec.data.invoice_mismatches.length || rec.data.needs_refund.length ? (
             <div className="alert warn">
-              {rec.data.stale_orders.length} stale payment orders · {rec.data.invoice_mismatches.length} invoices whose totals disagree with payments
+              {rec.data.stale_orders.length} stale payment orders · {rec.data.invoice_mismatches.length} invoices whose totals disagree with payments ·{" "}
+              {rec.data.needs_refund.length} payments to refund or apply by hand in the Razorpay dashboard
             </div>
           ) : (
             <div className="alert ok">All payments reconcile with invoices.</div>

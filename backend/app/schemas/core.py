@@ -133,6 +133,7 @@ class TenantOut(Stamped):
 
 class TenantSettingsIn(BaseModel):
     auto_close_on_approval: bool | None = None
+    job_payment_required: bool | None = None  # bill each job on a plot to its owner; close only once paid or waived
     routine_media_retention_days: int | None = Field(None, ge=7, le=3650)
     incident_media_retention_days: int | None = Field(None, ge=30, le=3650)
     resident_evidence_visibility: str | None = Field(None, pattern="^(none|after_approval|all)$")

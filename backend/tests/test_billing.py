@@ -178,7 +178,10 @@ def test_razorpay_verify_rejects_wrong_amount(as_, world, razorpay):
     razorpay["payments"]["pay_2"] = {"id": "pay_2", "order_id": order, "amount": 100, "status": "captured"}
     body = {"razorpay_order_id": order, "razorpay_payment_id": "pay_2", "razorpay_signature": _rzp_sign(order, "pay_2")}
     assert resident.ok("post", f"/payments/{p['id']}/verify", body)["status"] == "created"
+    assert ("GET", "payments/pay_2", None) in razorpay["calls"], "verification asked Razorpay"
     assert resident.ok("get", "/billing/invoices")["items"][0]["status"] == "unpaid"
+    flagged = admin.ok("get", "/payments/reconciliation")["needs_refund"]
+    assert [(f["payment_id"], f["reason"]) for f in flagged] == [(p["id"], "amount_mismatch")]
 
 
 def test_jobs_on_a_plot_are_billed_and_close_only_when_paid(as_, world):
@@ -228,3 +231,74 @@ def test_job_payment_can_be_switched_off(as_, world):
     world.db.commit()
     t = as_(world.supervisor).ok("post", "/maintenance", {"title": "Fix tap", "category": "plumbing", "property_id": str(world.p117.id)})
     assert t["payment"] is None
+
+
+def test_sample_webhook_secret_is_refused_once_live(client, razorpay):
+    raw = json.dumps({"id": "evt_forged", "event": "payment.captured", "payload": {}}).encode()
+    r = client.post("/api/v1/payments/webhook", content=raw, headers={"X-Razorpay-Signature": sign_payload(raw)})
+    assert r.status_code == 401, "whsec-dev is public; it must not verify webhooks with live keys"
+
+
+def test_zero_bills_and_unconfigured_production_cannot_be_paid_online(as_, world, monkeypatch):
+    resident = as_(world.resident)
+    t = as_(world.supervisor).ok("post", "/maintenance", {"title": "Fix tap", "category": "plumbing", "property_id": str(world.p117.id)})
+    inv_id = as_(world.admin).ok("get", f"/maintenance/{t['id']}")["payment"]["invoice_id"]
+    assert resident.post("/payments", {"invoice_id": inv_id}, headers={"Idempotency-Key": "zero-bill-01"}).status_code == 409
+    as_(world.supervisor).ok("patch", f"/maintenance/{t['id']}", {"charge": 200})
+    monkeypatch.setattr(get_settings(), "environment", "production")
+    assert resident.post("/payments", {"invoice_id": inv_id}, headers={"Idempotency-Key": "prod-nokeys-1"}).status_code == 503
+
+
+def test_waived_bill_voids_open_checkout_and_late_capture_is_flagged(as_, client, world):
+    admin, sup, resident = as_(world.admin), as_(world.supervisor), as_(world.resident)
+    t = sup.ok("post", "/maintenance", {"title": "Fix tap", "category": "plumbing", "property_id": str(world.p117.id), "charge": 300})
+    inv_id = t["payment"]["invoice_id"]
+    p = resident.ok("post", "/payments", {"invoice_id": inv_id}, headers={"Idempotency-Key": "late-cap-01"})
+    admin.ok("post", f"/billing/invoices/{inv_id}/waive", {})
+    assert resident.ok("get", "/payments", params={"invoice_id": inv_id})["items"][0]["status"] == "failed"
+    # The owner still completes the old checkout: the money is recorded, the bill stays waived, and it is flagged
+    raw = json.dumps(
+        {
+            "id": "evt_late",
+            "event": "payment.captured",
+            "payload": {"payment": {"entity": {"id": "pay_late", "order_id": p["provider_order_id"], "amount": 30000}}},
+        }
+    ).encode()
+    client.post("/api/v1/payments/webhook", content=raw, headers={"X-Razorpay-Signature": sign_payload(raw)})
+    assert sup.ok("get", f"/maintenance/{t['id']}")["payment"]["status"] == "waived"
+    assert [f["reason"] for f in admin.ok("get", "/payments/reconciliation")["needs_refund"]] == ["overpaid"]
+
+
+def test_cancelling_a_partly_paid_job_drops_the_balance(as_, world):
+    admin, sup = as_(world.admin), as_(world.supervisor)
+    t = sup.ok("post", "/maintenance", {"title": "Fix tap", "category": "plumbing", "property_id": str(world.p117.id), "charge": 1000})
+    admin.ok(
+        "post",
+        "/payments/record",
+        {"invoice_id": t["payment"]["invoice_id"], "amount": 400, "method": "cash"},
+        headers={"Idempotency-Key": "partial-cancel-1"},
+    )
+    sup.ok("post", f"/maintenance/{t['id']}/cancel", {"reason": "Owner fixed it"})
+    assert sup.ok("get", f"/maintenance/{t['id']}")["payment"]["status"] == "waived"
+
+
+def test_job_bill_is_hidden_from_the_worker_and_follows_the_complaint_plot(as_, world):
+    sup, staff, resident = as_(world.supervisor), as_(world.staff), as_(world.resident)
+    t = sup.ok(
+        "post",
+        "/maintenance",
+        {
+            "title": "Fix tap",
+            "category": "plumbing",
+            "property_id": str(world.p117.id),
+            "charge": 500,
+            "assigned_staff_id": str(world.staff.id),
+        },
+    )
+    assert staff.ok("get", f"/maintenance/{t['id']}")["payment"] is None
+    assert resident.ok("get", f"/maintenance/{t['id']}")["payment"]["amount"] == 500.0
+    c = resident.ok("post", "/complaints", {"category": "gate", "title": "Gate stuck", "property_id": str(world.p117.id)})
+    r = sup.post(
+        "/maintenance", {"title": "Fix gate", "category": "gate_fence", "complaint_id": c["id"], "property_id": str(world.p204.id)}
+    )
+    assert r.status_code == 422

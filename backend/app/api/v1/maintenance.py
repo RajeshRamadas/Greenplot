@@ -165,8 +165,10 @@ def detail(db, actor: Actor, task: MaintenanceTask) -> TaskDetail:
         d.proof = svc.proof_status(db, task)
     else:
         d.work_notes = d.work_notes if evidence_visible_to(db, actor, task) else None
-    d.payment = billing.job_payment_summary(db, task)
-    d.allowed_actions = allowed_actions(actor, task, d.payment["blocking"] if d.payment else None)
+    # The owner's bill is shown to billing roles and supervisors, not to the staff or vendor doing the work.
+    if actor.can("billing.read") or actor.can("maintenance.assign"):
+        d.payment = billing.job_payment_summary(db, task)
+    d.allowed_actions = allowed_actions(actor, task, billing.job_payment_block(db, task))
     if actor.can("maintenance.assign") and task.property_id and task.status not in (S.CLOSED, S.CANCELLED):
         if not d.payment or d.payment["status"] in ("unpaid", "partial"):
             d.allowed_actions.append("set_charge")
@@ -300,6 +302,8 @@ def create_task(body: TaskCreate, db: DB, actor: Perm("maintenance.create")):
         get_scoped(db, Property, body.property_id, actor, "Property")
     if body.complaint_id:
         c = get_scoped(db, Complaint, body.complaint_id, actor, "Complaint")
+        if body.property_id and c.property_id and body.property_id != c.property_id:
+            raise HTTPException(422, "The task's property must match the complaint's")
         data["source"] = "complaint"
         data["property_id"] = data["property_id"] or c.property_id
     if body.inspection_id:

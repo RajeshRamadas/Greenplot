@@ -79,8 +79,13 @@ def _gateway(method: str, path: str, payload: dict | None = None) -> dict:
             return json.loads(r.read() or b"{}")
     except urllib.error.HTTPError as e:
         raise GatewayError(f"HTTP {e.code}: {e.read().decode(errors='replace')[:300]}") from e
-    except (urllib.error.URLError, TimeoutError) as e:
+    except (urllib.error.URLError, TimeoutError, ValueError) as e:
         raise GatewayError(str(e)) from e
+
+
+def _locked_invoice(db: Session, invoice_id) -> Invoice:
+    """The invoice, row-locked and re-read, so payments and charge changes see each other's writes."""
+    return db.get(Invoice, invoice_id, with_for_update=True, populate_existing=True)
 
 
 def money(x) -> Decimal:
@@ -159,9 +164,16 @@ def generate_invoices(
 
 
 def _apply_payment(db: Session, payment: Payment, actor: Actor | None):
-    inv = db.get(Invoice, payment.invoice_id)
+    inv = _locked_invoice(db, payment.invoice_id)
+    # Money that reached the gateway is always recorded; anything beyond the bill is flagged for a refund.
+    excess = money(payment.amount) - (Decimal("0") if inv.status == InvoiceStatus.WAIVED else max(outstanding(inv), Decimal("0")))
     inv.amount_paid = money(Decimal(str(inv.amount_paid)) + money(payment.amount))
-    inv.status = InvoiceStatus.PAID if money(inv.amount_paid) >= money(inv.amount) else InvoiceStatus.PARTIAL
+    if inv.status != InvoiceStatus.WAIVED:
+        inv.status = InvoiceStatus.PAID if money(inv.amount_paid) >= money(inv.amount) else InvoiceStatus.PARTIAL
+    if excess > 0:
+        audit.record(
+            db, actor, "payment.overpaid", "payment", payment.id, new={"invoice": inv.number, "excess": excess}, tenant_id=payment.tenant_id
+        )
     payment.status = PaymentStatus.SUCCEEDED
     payment.paid_at = payment.paid_at or utcnow()
     payment.receipt_number = payment.receipt_number or next_number(db, payment.tenant_id, "RCT")
@@ -200,9 +212,13 @@ def create_online_payment(db: Session, actor: Actor, inv: Invoice, amount: Decim
     if inv.status in (InvoiceStatus.PAID, InvoiceStatus.WAIVED):
         raise HTTPException(409, f"Invoice is {inv.status}")
     due = outstanding(inv)
+    if due <= 0:
+        raise HTTPException(409, "Nothing is due on this bill")
     amount = money(amount) if amount else due
     if amount > due:
         raise HTTPException(422, f"Amount exceeds the outstanding ₹{due}")
+    if not gateway_live() and get_settings().environment == "production":
+        raise HTTPException(503, "Online payments are not set up yet; please pay the association directly")
     if gateway_live():
         try:
             order = _gateway(
@@ -215,6 +231,8 @@ def create_online_payment(db: Session, actor: Actor, inv: Invoice, amount: Decim
                     "notes": {"invoice": inv.number, "tenant": str(inv.tenant_id)},
                 },
             )
+            if not order.get("id"):
+                raise GatewayError(f"order response without an id: {str(order)[:200]}")
         except GatewayError as e:
             log.warning("razorpay order failed for %s: %s", inv.number, e)
             raise HTTPException(502, "The payment provider is unavailable; please try again shortly") from e
@@ -332,10 +350,18 @@ def record_offline_payment(db: Session, actor: Actor, inv: Invoice, amount, meth
     return p
 
 
+DEV_WEBHOOK_SECRETS = {"", "whsec-dev", "change-me"}
+
+
 def verify_signature(raw_body: bytes, signature: str | None) -> bool:
+    s = get_settings()
     if not signature:
         return False
-    expected = hmac.new(get_settings().payment_webhook_secret.encode(), raw_body, hashlib.sha256).hexdigest()
+    if s.payment_webhook_secret in DEV_WEBHOOK_SECRETS and (s.environment == "production" or (s.razorpay_key_id and s.razorpay_key_secret)):
+        # A sample secret is public: refuse webhooks rather than accept forgeable ones.
+        log.error("payment webhook rejected: set GP_PAYMENT_WEBHOOK_SECRET to the secret from the Razorpay dashboard")
+        return False
+    expected = hmac.new(s.payment_webhook_secret.encode(), raw_body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
 
@@ -413,6 +439,15 @@ def reconciliation(db: Session, tenant_id: uuid.UUID) -> dict:
             {"payment_id": p.id, "order_id": p.provider_order_id, "amount": float(p.amount), "created_at": p.created_at} for p in stale
         ],
         "invoice_mismatches": mismatched,
+        # Money taken that the bills don't account for: refund it (or apply it by hand) in the Razorpay dashboard.
+        "needs_refund": [
+            {"payment_id": a.entity_id, "reason": a.action.removeprefix("payment."), "details": a.new_value, "at": a.timestamp}
+            for a in db.scalars(
+                select(AuditLog)
+                .where(AuditLog.tenant_id == tenant_id, AuditLog.action.in_(["payment.overpaid", "payment.amount_mismatch"]))
+                .order_by(AuditLog.timestamp.desc())
+            )
+        ],
     }
 
 
@@ -500,6 +535,7 @@ def set_job_charge(db: Session, actor: Actor, task: MaintenanceTask, charge) -> 
     inv = job_invoice(db, task)
     if inv is None:
         return raise_job_invoice(db, actor, task, charge)
+    inv = _locked_invoice(db, inv.id)
     charge = money(charge)
     if inv.status in (InvoiceStatus.PAID, InvoiceStatus.WAIVED):
         if charge == money(inv.amount):
@@ -507,9 +543,7 @@ def set_job_charge(db: Session, actor: Actor, task: MaintenanceTask, charge) -> 
         raise HTTPException(409, f"The job's bill is already {inv.status}")
     if charge < money(inv.amount_paid):
         raise HTTPException(422, f"₹{money(inv.amount_paid)} is already paid; the charge cannot be lower")
-    # A checkout opened for the old amount no longer matches; money it still collects is applied as paid.
-    for p in db.scalars(select(Payment).where(Payment.invoice_id == inv.id, Payment.status == PaymentStatus.CREATED)):
-        p.status = PaymentStatus.FAILED
+    _void_open_checkouts(db, inv)
     old = money(inv.amount)
     inv.amount = charge
     if money(inv.amount_paid) > 0:
@@ -517,6 +551,18 @@ def set_job_charge(db: Session, actor: Actor, task: MaintenanceTask, charge) -> 
     audit.record(
         db, actor, "billing.job_charge_changed", "invoice", inv.id, old={"amount": old}, new={"amount": charge, "job": task.number}
     )
+    if charge != old and outstanding(inv) > 0:
+        prop = db.get(Property, inv.property_id)
+        notifications.notify(
+            db,
+            inv.tenant_id,
+            [prop.owner_user_id],
+            "payment_due",
+            f"Job charge: ₹{charge}",
+            f"{inv.description} · ₹{outstanding(inv)} due by {inv.due_date:%d %b %Y}",
+            "invoice",
+            inv.id,
+        )
     if inv.status == InvoiceStatus.PAID:
         _on_job_invoice_settled(db, inv, actor)
     return inv
@@ -566,7 +612,8 @@ def _on_job_invoice_settled(db: Session, inv: Invoice, actor: Actor | None) -> N
 def on_job_cancelled(db: Session, actor: Actor | None, task: MaintenanceTask) -> None:
     """A cancelled job owes nothing that is still unpaid."""
     inv = job_invoice(db, task)
-    if inv and inv.status == InvoiceStatus.UNPAID:
+    if inv and inv.status in (InvoiceStatus.UNPAID, InvoiceStatus.PARTIAL):
+        _void_open_checkouts(db, inv)
         inv.status = InvoiceStatus.WAIVED
         audit.record(
             db,
@@ -580,9 +627,17 @@ def on_job_cancelled(db: Session, actor: Actor | None, task: MaintenanceTask) ->
 
 
 def waive_invoice(db: Session, actor: Actor, inv: Invoice) -> None:
+    inv = _locked_invoice(db, inv.id)
     if inv.status == InvoiceStatus.PAID:
         raise HTTPException(409, "Invoice is already paid")
     old = inv.status
+    _void_open_checkouts(db, inv)
     inv.status = InvoiceStatus.WAIVED
     audit.record(db, actor, "billing.invoice_waived", "invoice", inv.id, old={"status": old}, new={"status": inv.status})
     _on_job_invoice_settled(db, inv, actor)
+
+
+def _void_open_checkouts(db: Session, inv: Invoice) -> None:
+    """Checkouts opened before the bill changed are dropped; money they still collect is flagged for a refund."""
+    for p in db.scalars(select(Payment).where(Payment.invoice_id == inv.id, Payment.status == PaymentStatus.CREATED)):
+        p.status = PaymentStatus.FAILED

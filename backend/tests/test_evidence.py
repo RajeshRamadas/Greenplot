@@ -90,7 +90,9 @@ def test_supervisor_approval_not_required_auto_closes(as_, world):
     t = staff.ok("post", f"/maintenance/{t['id']}/complete", {})
     assert t["status"] == "approved" and t["review_decision"] == "approved" and t["reviewed_by"] is None
     # A free job closes once its bill is waived
-    admin.ok("post", f"/billing/invoices/{t['payment']['invoice_id']}/waive", {})
+    assert t["payment"] is None, "the worker does not see the owner's bill"
+    bill = admin.ok("get", f"/maintenance/{t['id']}")["payment"]
+    admin.ok("post", f"/billing/invoices/{bill['invoice_id']}/waive", {})
     assert sup.ok("get", f"/maintenance/{t['id']}")["status"] == "closed"
 
 

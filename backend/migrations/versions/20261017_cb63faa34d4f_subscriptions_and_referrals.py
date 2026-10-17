@@ -1,7 +1,7 @@
 """subscriptions and referrals
 
 Revision ID: cb63faa34d4f
-Revises: 8ee631a554bb
+Revises: 9c3ac232ce52
 Create Date: 2026-10-17 20:13:19.198425
 
 """
@@ -15,7 +15,7 @@ import app.models.base  # noqa: F401 - custom column types
 
 # revision identifiers, used by Alembic.
 revision: str = 'cb63faa34d4f'
-down_revision: Union[str, Sequence[str], None] = '8ee631a554bb'
+down_revision: Union[str, Sequence[str], None] = '9c3ac232ce52'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

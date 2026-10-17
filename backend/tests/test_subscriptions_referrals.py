@@ -111,3 +111,15 @@ def test_referral_reward_settles_the_referrers_dues(as_, world, db):
     assert admin.ok("post", f"/referrals/{other['id']}/decline")["status"] == "declined"
     assert admin.post(f"/referrals/{ref['id']}/decline").status_code == 409
     assert {r["status"] for r in admin.ok("get", "/referrals")["items"]} == {"converted", "declined"}
+
+
+def test_referral_reward_pays_for_a_plot_job(as_, world):
+    admin, sup, resident = as_(world.admin), as_(world.supervisor), as_(world.resident)
+    ref = resident.ok("post", "/referrals", {"neighbour_name": "Kiran", "neighbour_phone": "9845012345"})
+    t = sup.ok(
+        "post", "/maintenance", {"title": "Clear the plot", "category": "cleaning", "property_id": str(world.p117.id), "charge": 500}
+    )
+    assert t["payment"]["status"] == "unpaid"
+    admin.ok("post", f"/referrals/{ref['id']}/convert", {"property_id": str(world.p204.id)})
+    t = sup.ok("get", f"/maintenance/{t['id']}")
+    assert t["payment"]["status"] == "paid" and t["payment"]["blocking"] is None

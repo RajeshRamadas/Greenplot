@@ -6,6 +6,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.core.deps import DB, CurrentActor, Perm
 from app.core.security import verify_signed_value
 from app.models import Media
@@ -32,6 +33,10 @@ def present(db, m: Media) -> MediaOut:
 
 @router.post("/upload-url", response_model=UploadUrlOut, status_code=201)
 def upload_url(body: UploadUrlIn, db: DB, actor: Perm("media.upload")):
+    if get_settings().storage_backend == "s3" and not body.sha256:
+        # The presigned PUT stays valid for a few minutes; binding the checksum stops the scanned object
+        # from being swapped for different bytes after it is accepted.
+        raise HTTPException(422, "sha256 is required for uploads")
     m, upload = svc.create_upload(db, actor, body)
     db.commit()
     return UploadUrlOut(media_id=m.id, status=m.status, upload=upload)

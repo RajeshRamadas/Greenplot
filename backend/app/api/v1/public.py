@@ -5,6 +5,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
 from app.api.v1._util import Limit, Offset, paginate
+from app.core.config import get_settings
 from app.core.deps import DB, Perm, client_ip
 from app.core.ratelimit import limiter
 from app.models import DemoRequest
@@ -33,6 +34,12 @@ class DemoOut(Stamped):
     city: str | None
     message: str | None
     status: str
+
+
+@router.get("/public/contact")
+def contact():
+    """Support contact shown on every page (the WhatsApp chat button)."""
+    return {"whatsapp_number": get_settings().whatsapp_number}
 
 
 @router.post("/public/demo-requests", status_code=201)

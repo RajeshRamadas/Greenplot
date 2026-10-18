@@ -266,7 +266,10 @@ def run(reset: bool = False) -> None:
 
     # 2. A cleaning job awaiting approval
     clean = m.create_task(
-        db, S, t.id, dict(title="Plot cleaning and weed removal", category="cleaning", property_id=p117.id, assigned_staff_id=staff.id)
+        db,
+        S,
+        t.id,
+        dict(title="Plot cleaning and weed removal", category="cleaning", property_id=p117.id, assigned_staff_id=staff.id, charge=1500),
     )
     m.start(db, W, clean)
     for item in clean.checklist:
@@ -288,6 +291,7 @@ def run(reset: bool = False) -> None:
             vendor_id=v_gate.id,
             priority="high",
             due_at=utcnow() + timedelta(days=2),
+            charge=3500,
         ),
     )
     m.create_task(
@@ -452,6 +456,9 @@ def run(reset: bool = False) -> None:
     # Billing
     plan = BillingPlan(tenant_id=t.id, name="Quarterly maintenance", basis="per_sqft", rate=2, frequency_months=3, due_days=15)
     db.add(plan)
+    db.add(
+        BillingPlan(tenant_id=t.id, name="Plot cleaning", basis="per_plot", rate=1000, frequency_months=1, due_days=7, subscribable=True)
+    )
     db.flush()
     first_of_month = date.today().replace(day=1)
     billing.generate_invoices(db, A, plan, first_of_month)

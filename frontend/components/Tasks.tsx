@@ -106,6 +106,7 @@ export function NewTaskDialog({ open, onClose, preset }: { open: boolean; onClos
             category: f.category,
             priority: f.priority,
             property_id: f.property_id || null,
+            charge: f.property_id && f.charge ? Number(f.charge) : null,
             asset_id: f.asset_id || null,
             location_note: f.location_note || null,
             assigned_staff_id: f.staff || null,
@@ -129,6 +130,11 @@ export function NewTaskDialog({ open, onClose, preset }: { open: boolean; onClos
         <Field label="Property">
           <Select value={f.property_id || ""} onChange={(v) => set("property_id", v)} placeholder="Common area / none" options={lookups.properties.map((p) => ({ value: p.id, label: `Plot ${p.plot_number} (${p.code})` }))} />
         </Field>
+        {f.property_id ? (
+          <Field label="Charge to owner (₹)" hint="The owner is billed this; the job closes once it is paid. Can be set later.">
+            <input type="number" min="0" step="0.01" value={f.charge || ""} onChange={(e) => set("charge", e.target.value)} />
+          </Field>
+        ) : null}
         <Field label="Location note">
           <input placeholder="e.g. Park A, main gate" value={f.location_note || ""} onChange={(e) => set("location_note", e.target.value)} />
         </Field>

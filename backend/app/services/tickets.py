@@ -697,12 +697,15 @@ def feedback(db: Session, actor: Actor, t: Ticket, outcome: str | None, rating: 
     if outcome == "still_issue":
         reopen(db, actor, t, comment or "Customer reports the issue is not fixed")
         return
+    first_rating = t.rating is None
     if rating is not None:
         t.rating = rating
     if comment:
         t.feedback = comment
     t.feedback_at = utcnow()
     audit.record(db, actor, "ticket.feedback", "ticket", t.id, new={"rating": rating, "comment": comment, "outcome": outcome})
+    if first_rating:  # a repeated submission must not alert the office twice
+        notifications.alert_low_rating(db, t.tenant_id, rating, comment, f"{t.number} {t.title}", "ticket", t.id)
     if outcome == "resolved":
         t.customer_confirmation = "resolved"
         if t.status == S.RESOLVED:

@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { PayDialog } from "@/components/Pay";
+import { useEffect, useState } from "react";
+import { MySubscriptions, ReferNeighbour, ReferralsAdmin, SubscriptionsAdmin } from "@/components/Rewards";
 import { Badge, Dialog, Empty, ErrorBox, Field, PageHead, Select, Stat, useToast } from "@/components/ui";
 import { api, download } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -15,11 +18,22 @@ function Invoices({ admin }: { admin: boolean }) {
   const [status, setStatus] = useState("");
   const invoices = useApi<Page<Invoice>>("/billing/invoices", { status, limit: 200 });
   const payments = useApi<Page<Payment>>("/payments", { limit: 100 });
-  const [pay, setPay] = useState<{ invoice: Invoice; payment?: Payment } | null>(null);
+  const [pay, setPay] = useState<Invoice | null>(null);
   const [record, setRecord] = useState<Invoice | null>(null);
   const [f, setF] = useState<Record<string, string>>({ method: "upi" });
-  // One idempotency key per payment attempt so double-clicks never create two charges.
+  // One idempotency key per recorded payment so double-clicks never record it twice.
   const [key, setKey] = useState("");
+
+  // Pay links in owner reminders open here with ?invoice=<id>: go straight to payment.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("invoice");
+    const inv = wanted ? invoices.data?.items.find((i) => i.id === wanted) : undefined;
+    if (inv && (inv.status === "unpaid" || inv.status === "partial")) {
+      setPay(inv);
+      setKey(newId("pay"));
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [invoices.data]);
 
   return (
     <>
@@ -48,7 +62,7 @@ function Invoices({ admin }: { admin: boolean }) {
                 <tr key={i.id}>
                   <td className="mono">{i.number}</td>
                   <td>{i.property_label}</td>
-                  <td>{i.description}</td>
+                  <td>{i.maintenance_task_id ? <Link href={`/maintenance/${i.maintenance_task_id}`}>{i.description}</Link> : i.description}</td>
                   <td>{inr(i.amount)}</td>
                   <td>{inr(i.amount_paid)}</td>
                   <td>
@@ -68,10 +82,12 @@ function Invoices({ admin }: { admin: boolean }) {
                             Waive
                           </button>
                         </div>
-                      ) : (
-                        <button className="btn small primary" onClick={() => (setPay({ invoice: i }), setKey(newId("pay")))}>
+                      ) : i.amount > i.amount_paid ? (
+                        <button className="btn small primary" onClick={() => setPay(i)}>
                           Pay {inr(i.amount - i.amount_paid)}
                         </button>
+                      ) : (
+                        <span className="small muted">Charge not set yet</span>
                       )
                     ) : null}
                   </td>
@@ -107,49 +123,11 @@ function Invoices({ admin }: { admin: boolean }) {
         ))}
       </div>
 
-      <Dialog title="Pay dues" open={!!pay} onClose={() => setPay(null)}>
-        {pay && !pay.payment ? (
-          <div className="stack">
-            <p>
-              {pay.invoice.description} · <b>{inr(pay.invoice.amount - pay.invoice.amount_paid)}</b>
-            </p>
-            <p className="small muted">Payment is completed on the payment provider&apos;s secure page. GreenPlot never sees or stores your card details.</p>
-            <ErrorBox error={act.error} />
-            <button
-              className="btn primary big"
-              disabled={act.pending}
-              onClick={async () => {
-                const p = await act.run(() => api<Payment>("/payments", { body: { invoice_id: pay.invoice.id }, headers: { "Idempotency-Key": key } }));
-                if (p) setPay({ ...pay, payment: p });
-              }}
-            >
-              Continue to payment
-            </button>
-          </div>
-        ) : pay?.payment ? (
-          <div className="stack">
-            <div className="alert info">
-              Order <span className="mono">{pay.payment.checkout?.order_id}</span> created for {inr((pay.payment.checkout?.amount_paise ?? 0) / 100)}. In production the
-              provider checkout opens here and confirms via a signed webhook.
-            </div>
-            <button
-              className="btn primary"
-              onClick={async () => {
-                const r = await act.run(() => api<Payment>(`/payments/${pay.payment!.id}/simulate`, { method: "POST" }));
-                if (r) {
-                  toast(`Payment received · ${r.receipt_number}`);
-                  setPay(null);
-                  invoices.reload();
-                  payments.reload();
-                }
-              }}
-            >
-              Simulate successful payment (demo)
-            </button>
-            <ErrorBox error={act.error} />
-          </div>
-        ) : null}
-      </Dialog>
+      <PayDialog
+        invoice={pay ? { id: pay.id, description: pay.description, outstanding: pay.amount - pay.amount_paid } : null}
+        onClose={() => setPay(null)}
+        onPaid={() => (invoices.reload(), payments.reload())}
+      />
 
       <Dialog title={`Record payment · ${record?.number}`} open={!!record} onClose={() => setRecord(null)}>
         <form
@@ -217,7 +195,7 @@ function Plans() {
             <div className="title">{p.name}</div>
             <div className="small muted">
               {label(p.basis)} · {inr(p.rate)}
-              {p.basis === "per_sqft" ? "/sq ft" : ""} · every {p.frequency_months} month(s) · due in {p.due_days} days
+              {p.basis === "per_sqft" ? "/sq ft" : ""} · every {p.frequency_months} month(s) · due in {p.due_days} days{p.subscribable ? " · offered as a subscription" : ""}
             </div>
           </div>
           <button className="btn small" onClick={() => setGen(p)}>
@@ -231,7 +209,7 @@ function Plans() {
           className="form two"
           onSubmit={async (e) => {
             e.preventDefault();
-            if (await act.run(() => api("/billing/plans", { body: { name: f.name, basis: f.basis, rate: Number(f.rate), frequency_months: Number(f.frequency_months), due_days: Number(f.due_days) } }))) {
+            if (await act.run(() => api("/billing/plans", { body: { name: f.name, basis: f.basis, rate: Number(f.rate), frequency_months: Number(f.frequency_months), due_days: Number(f.due_days), subscribable: f.subscribable === "yes" } }))) {
               setOpen(false);
               plans.reload();
             }
@@ -248,6 +226,9 @@ function Plans() {
           </Field>
           <Field label="Every (months)">
             <input type="number" min="1" max="12" value={f.frequency_months} onChange={(e) => setF({ ...f, frequency_months: e.target.value })} />
+          </Field>
+          <Field label="Offer as subscription" hint="Owners can take it monthly or quarterly at a discount">
+            <Select value={f.subscribable || "no"} onChange={(v) => setF({ ...f, subscribable: v })} options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
           </Field>
           <Field label="Due after (days)">
             <input type="number" min="0" value={f.due_days} onChange={(e) => setF({ ...f, due_days: e.target.value })} />
@@ -283,7 +264,7 @@ function Plans() {
 
 function Defaulters() {
   const d = useApi<{ property: string; owner: string | null; phone: string | null; invoices: number; outstanding: number; oldest_due: string }[]>("/billing/defaulters");
-  const rec = useApi<{ stale_orders: unknown[]; invoice_mismatches: unknown[] }>("/payments/reconciliation");
+  const rec = useApi<{ stale_orders: unknown[]; invoice_mismatches: unknown[]; needs_refund: unknown[] }>("/payments/reconciliation");
   return (
     <div className="stack" style={{ gap: 16 }}>
       <div className="card">
@@ -323,9 +304,10 @@ function Defaulters() {
       <div className="card">
         <h2>Reconciliation</h2>
         {rec.data ? (
-          rec.data.stale_orders.length || rec.data.invoice_mismatches.length ? (
+          rec.data.stale_orders.length || rec.data.invoice_mismatches.length || rec.data.needs_refund.length ? (
             <div className="alert warn">
-              {rec.data.stale_orders.length} stale payment orders · {rec.data.invoice_mismatches.length} invoices whose totals disagree with payments
+              {rec.data.stale_orders.length} stale payment orders · {rec.data.invoice_mismatches.length} invoices whose totals disagree with payments ·{" "}
+              {rec.data.needs_refund.length} payments to refund or apply by hand in the Razorpay dashboard
             </div>
           ) : (
             <div className="alert ok">All payments reconcile with invoices.</div>
@@ -379,6 +361,7 @@ export default function BillingPage() {
   const { can } = useAuth();
   const admin = can("billing.manage");
   const [tab, setTab] = useState("dues");
+  const [rev, setRev] = useState(0);
   const summary = useApi<{ billed: number; collected: number; outstanding: number; overdue_invoices: number; expenses: number }>(admin ? "/billing/summary" : null);
   return (
     <>
@@ -394,15 +377,19 @@ export default function BillingPage() {
       ) : null}
       {admin ? (
         <div className="tabs">
-          {["dues", "plans", "defaulters", "expenses"].map((t) => (
+          {["dues", "plans", "subscriptions", "referrals", "defaulters", "expenses"].map((t) => (
             <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
               {label(t)}
             </button>
           ))}
         </div>
       ) : null}
-      {tab === "dues" ? <Invoices admin={admin} /> : null}
+      {!admin && can("subscriptions.manage") ? <MySubscriptions onChange={() => setRev((r) => r + 1)} /> : null}
+      {!admin && can("referrals.create") ? <ReferNeighbour /> : null}
+      {tab === "dues" ? <Invoices key={rev} admin={admin} /> : null}
       {tab === "plans" ? <Plans /> : null}
+      {tab === "subscriptions" ? <SubscriptionsAdmin /> : null}
+      {tab === "referrals" ? <ReferralsAdmin /> : null}
       {tab === "defaulters" ? <Defaulters /> : null}
       {tab === "expenses" ? <Expenses /> : null}
     </>

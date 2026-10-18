@@ -109,6 +109,11 @@ class AckIn(BaseModel):
     note: str | None = Field(None, max_length=2000)
 
 
+class RateIn(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str | None = Field(None, max_length=2000)
+
+
 class CommentBody(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
 
@@ -229,6 +234,9 @@ class TaskDetail(TaskSummary):
     estimated_cost: float | None
     resident_ack_at: datetime | None
     resident_ack_note: str | None
+    rating: int | None = None
+    rating_comment: str | None = None
+    rated_at: datetime | None = None
     checklist: list[ChecklistItemOut] = []
     materials: list[MaterialOut] = []
     evidence: list[EvidenceOut] = []

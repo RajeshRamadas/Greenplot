@@ -43,6 +43,7 @@ from app.schemas.maintenance import (
     MaterialOut,
     PolicyIn,
     PolicyOut,
+    RateIn,
     RejectIn,
     ReviewIn,
     ScanIn,
@@ -119,6 +120,8 @@ def allowed_actions(actor: Actor, task: MaintenanceTask, payment_block: str | No
         acts += ["edit_checklist", "add_material", "edit_notes"]
     if actor.role == Role.RESIDENT and task.status in (S.APPROVED, S.CLOSED) and not task.resident_ack_at:
         acts.append("acknowledge")
+    if actor.role == Role.RESIDENT and svc.can_rate(task):
+        acts.append("rate")
     if actor.can("reports.proof") and task.status in (S.APPROVED, S.CLOSED, S.COMPLETED):
         acts.append("download_report")
     return acts
@@ -602,6 +605,13 @@ def cancel(task_id: uuid.UUID, body: ReasonIn, db: DB, actor: Perm("maintenance.
 def acknowledge(task_id: uuid.UUID, body: AckIn, db: DB, actor: Perm("maintenance.acknowledge")):
     task = get_task(db, actor, task_id)
     svc.acknowledge(db, actor, task, body.note)
+    return _commit_detail(db, actor, task)
+
+
+@router.post("/{task_id}/rate", response_model=TaskDetail)
+def rate(task_id: uuid.UUID, body: RateIn, db: DB, actor: Perm("maintenance.acknowledge")):
+    task = get_task(db, actor, task_id)
+    svc.rate(db, actor, task, body.rating, body.comment)
     return _commit_detail(db, actor, task)
 
 

@@ -942,7 +942,7 @@ a.contactCard:hover{border-color:#b9d9cb;box-shadow:var(--shadow)}
 <div class="proofItem"><b>Closure you can see</b><span>Residents are told when work starts, finishes and closes — in the app, by push and by WhatsApp.</span></div>
 <div class="proofItem"><b>Feedback &amp; reopen</b><span>Rate the service, or tap “Still an issue” to reopen. Every ticket lands in the property’s history.</span></div>
 </div>
-<div class="ticketBtns"><a class="btn primary" href="/login?next=/tickets">Raise a service ticket →</a><a class="btn light" href="/login?next=/tickets">Vendor login</a></div>
+<div class="ticketBtns"><a class="btn primary" href="/login?next=/report">Report a problem →</a><a class="btn light" href="/login?next=/tickets">Raise a service ticket</a><a class="btn light" href="/login?next=/tickets">Vendor login</a></div>
 </div>
 <div class="proofRecord" aria-label="Sample service ticket">
 <div class="proofTag">SAMPLE TICKET · DEMO DATA</div>
@@ -987,7 +987,7 @@ a.contactCard:hover{border-color:#b9d9cb;box-shadow:var(--shadow)}
 <section class="section contact" id="contact"><div class="container contactGrid">
 <div><div class="eyebrow">Contact</div><h2>Talk to us.</h2><p class="lead" style="margin:0">Questions about GreenPlot for your layout or property? We usually reply within a working day.</p></div>
 <div class="contactCards">
-<a class="contactCard" href="https://wa.me/918105568225?text=Hi%20GreenPlot%2C%20I%E2%80%99d%20like%20to%20know%20more%20about%20your%20property%20management%20services." target="_blank" rel="noopener noreferrer"><b>WhatsApp</b><span>+91 81055 68225</span></a>
+<a class="contactCard" href="https://wa.me/918105568225?text=Hi%20GreenPlot%2C%20I%E2%80%99d%20like%20to%20know%20more%20about%20your%20property%20management%20services." target="_blank" rel="noopener noreferrer"><b>WhatsApp</b><span data-wa-number>+91 81055 68225</span></a>
 <a class="contactCard" href="tel:+918105568225"><b>Call</b><span>+91 81055 68225</span></a>
 <a class="contactCard" href="mailto:hello@greenplot.in?subject=GreenPlot%20Enquiry"><b>Email</b><span>hello@greenplot.in</span></a>
 <div class="contactCard"><b>Location</b><span>Bangalore, Karnataka</span></div>
@@ -1004,6 +1004,8 @@ a.contactCard:hover{border-color:#b9d9cb;box-shadow:var(--shadow)}
     <nav class="footer-nav" aria-label="Footer navigation">
       <div class="footer-col"><h3>Explore</h3><a href="#why">Why GreenPlot</a><a href="#services">Services</a><a href="#watch">Property Watch</a><a href="#proof">Proof of Work</a><a href="#tickets">Service Tickets</a><a href="#records">Digital Records</a><a href="#how">How It Works</a></div>
       <div class="footer-col"><h3>Get started</h3><a href="#demo">Request a Demo</a><a href="#layouts">For Layouts</a><a href="#contact">Contact Us</a><a href="/login?next=/tickets">Raise a Ticket</a><a href="/register">Request Access</a><a href="/login">Login</a></div>
+      <div class="footer-col"><h3>Explore</h3><a href="#services">Services</a><a href="#watch">Property Watch</a><a href="#proof">Proof of Work</a><a href="#tickets">Service Tickets</a><a href="#records">Digital Records</a><a href="#how">How It Works</a></div>
+      <div class="footer-col"><h3>Get started</h3><a href="#demo">Request a Demo</a><a href="#layouts">For Layouts</a><a href="#contact">Contact Us</a><a href="/login?next=/report">Report a Problem</a><a href="/login?next=/tickets">Raise a Ticket</a><a href="/register">Request Access</a><a href="/login">Login</a></div>
     </nav>
   </div>
   <div class="container footer-bottom">
@@ -1132,12 +1134,24 @@ a.contactCard:hover{border-color:#b9d9cb;box-shadow:var(--shadow)}
   <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M16.02 3.2C9.03 3.2 3.35 8.84 3.34 15.78c0 2.22.59 4.39 1.71 6.31L3.2 28.8l6.89-1.8a12.8 12.8 0 0 0 5.92 1.45h.01c6.98 0 12.66-5.64 12.67-12.58A12.48 12.48 0 0 0 25 6.96a12.6 12.6 0 0 0-8.98-3.76Zm0 23.1h-.01a10.6 10.6 0 0 1-5.39-1.47l-.39-.23-4.09 1.07 1.09-3.96-.25-.4a10.4 10.4 0 0 1-1.62-5.53c0-5.88 4.79-10.66 10.67-10.66 2.85 0 5.53 1.11 7.55 3.13a10.56 10.56 0 0 1 3.12 7.54c0 5.88-4.79 10.66-10.67 10.66Zm5.86-7.98c-.32-.16-1.9-.94-2.19-1.05-.29-.11-.51-.16-.72.16-.21.32-.83 1.05-1.02 1.27-.19.21-.38.24-.7.08-.32-.16-1.35-.5-2.57-1.59-.95-.84-1.59-1.88-1.78-2.2-.19-.32-.02-.49.14-.65.14-.14.32-.38.48-.57.16-.19.21-.32.32-.54.11-.21.05-.4-.03-.56-.08-.16-.72-1.73-.99-2.37-.26-.62-.52-.54-.72-.55h-.61c-.21 0-.56.08-.85.4-.29.32-1.12 1.09-1.12 2.66s1.15 3.09 1.31 3.3c.16.21 2.26 3.44 5.47 4.82.76.33 1.36.52 1.83.67.77.24 1.47.21 2.02.13.62-.09 1.9-.78 2.17-1.53.27-.75.27-1.39.19-1.53-.08-.13-.29-.21-.61-.37Z"/></svg>
 </a>
 <script>
+// Use the support WhatsApp number from the API's config (GP_WHATSAPP_NUMBER) for every WhatsApp link on the page.
+(function(){
+  fetch('/api/v1/public/contact').then(function(r){ return r.ok?r.json():null; }).then(function(d){
+    var n=d&&String(d.whatsapp_number||'').replace(/\D/g,''); if(!n) return;
+    window.GP_WA=n;
+    document.querySelectorAll('a[href^="https://wa.me/"]').forEach(function(a){ a.href=a.href.replace(/wa\.me\/\d+/,'wa.me/'+n); });
+    var shown=document.querySelector('[data-wa-number]');
+    if(shown) shown.textContent=n.length===12&&n.indexOf('91')===0?'+91 '+n.slice(2,7)+' '+n.slice(7):'+'+n;
+  }).catch(function(){});
+})();
+</script>
+<script>
 (function(){
   var f=document.getElementById('demoForm'); if(!f) return;
   var status=f.querySelector('.demoStatus');
-  var wa='https://wa.me/918105568225?text=';
   f.addEventListener('submit',function(e){
     e.preventDefault();
+    var wa='https://wa.me/'+(window.GP_WA||'918105568225')+'?text=';
     if(!f.reportValidity()) return;
     var d=Object.fromEntries(new FormData(f).entries());
     Object.keys(d).forEach(function(k){ if(d[k]==='') d[k]=null; });

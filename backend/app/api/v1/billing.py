@@ -26,7 +26,7 @@ from app.schemas.operations import (
     PlanIn,
     PlanOut,
 )
-from app.services import audit
+from app.services import audit, referrals
 from app.services import billing as svc
 from app.services.access import get_scoped, not_found, resident_property_ids, tenant_select
 from app.services.numbering import next_number
@@ -85,6 +85,8 @@ def update_plan(plan_id: uuid.UUID, body: PlanIn, db: DB, actor: Perm("billing.m
 def generate(body: GenerateIn, db: DB, actor: Perm("billing.manage")):
     plan = get_scoped(db, BillingPlan, body.plan_id, actor, "Plan")
     created, skipped = svc.generate_invoices(db, actor, plan, body.period_start, body.property_ids)
+    for property_id in {i.property_id for i in created}:
+        referrals.apply_credits(db, property_id)
     db.commit()
     return {"created": len(created), "skipped": skipped, "invoices": _inv_out(db, created)}
 

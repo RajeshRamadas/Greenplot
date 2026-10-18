@@ -31,9 +31,9 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.deps import Actor
-from app.models import AuditLog, BillingPlan, Invoice, MaintenanceTask, Payment, PaymentWebhookEvent, Property, User
+from app.models import AuditLog, BillingPlan, Invoice, MaintenanceTask, Payment, PaymentWebhookEvent, Property, Subscription, User
 from app.models.base import utcnow
-from app.models.enums import BillingBasis, InvoiceStatus, PaymentStatus
+from app.models.enums import BillingBasis, InvoiceStatus, PaymentStatus, SubscriptionStatus
 from app.services import audit, notifications
 from app.services.numbering import next_number
 
@@ -122,7 +122,15 @@ def generate_invoices(
     if property_ids:
         stmt = stmt.where(Property.id.in_(property_ids))
     created, skipped = [], []
+    subscribed = set(
+        db.scalars(
+            select(Subscription.property_id).where(Subscription.plan_id == plan.id, Subscription.status == SubscriptionStatus.ACTIVE)
+        )
+    )
     for prop in db.scalars(stmt.order_by(Property.plot_number)):
+        if prop.id in subscribed:
+            skipped.append(f"{prop.code}: billed by its subscription")
+            continue
         exists = db.scalar(
             select(Invoice.id).where(Invoice.plan_id == plan.id, Invoice.property_id == prop.id, Invoice.period_start == period_start)
         )

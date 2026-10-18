@@ -78,6 +78,9 @@ PERMISSIONS: dict[str, set[Role]] = {
     "billing.manage": {R.LAYOUT_ADMIN},
     "payments.create": {R.RESIDENT, R.LAYOUT_ADMIN},
     "payments.record": {R.LAYOUT_ADMIN},
+    "subscriptions.manage": {R.RESIDENT, R.LAYOUT_ADMIN},
+    "referrals.read": {R.RESIDENT, R.LAYOUT_ADMIN},
+    "referrals.create": {R.RESIDENT},
     # communication
     "notices.read": ALL_TENANT_ROLES,
     "notices.manage": {R.LAYOUT_ADMIN},

@@ -71,9 +71,15 @@ class Settings(BaseSettings):
     login_rate_per_minute: int = 10
     api_rate_per_minute: int = 600
 
-    # Payments (Razorpay-compatible webhook signature)
+    # Payments through Razorpay. Without key id and secret, orders are local placeholders
+    # (development only: pay them with the "simulate" endpoint).
     payment_provider: str = "razorpay"
     payment_webhook_secret: str = "whsec-dev"
+    razorpay_api_url: str = "https://api.razorpay.com/v1"
+    razorpay_key_id: str | None = None
+    razorpay_key_secret: str | None = None
+    payment_brand_name: str = "GreenPlot"
+    job_payment_due_days: int = 7  # due date of the bill raised for a maintenance job
 
     # Background worker inside the API process
     worker_enabled: bool = False

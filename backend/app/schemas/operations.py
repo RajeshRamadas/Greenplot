@@ -282,6 +282,7 @@ class InvoiceOut(Stamped):
     amount_paid: float
     due_date: date
     status: str
+    maintenance_task_id: uuid.UUID | None = None
     property_label: str | None = None
     overdue: bool = False
 
@@ -289,6 +290,12 @@ class InvoiceOut(Stamped):
 class PaymentCreateIn(BaseModel):
     invoice_id: uuid.UUID
     amount: float | None = Field(None, gt=0)
+
+
+class PaymentVerifyIn(BaseModel):
+    razorpay_order_id: str = Field(max_length=100)
+    razorpay_payment_id: str = Field(max_length=100)
+    razorpay_signature: str = Field(max_length=200)
 
 
 class PaymentRecordIn(BaseModel):

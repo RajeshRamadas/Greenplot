@@ -185,6 +185,10 @@ class Invoice(TenantModel, SoftDelete):
     amount_paid: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     due_date: Mapped[date] = mapped_column(Date, index=True)
     status: Mapped[str] = mapped_column(String(20), default="unpaid", index=True)
+    # Set when the invoice bills a maintenance job; the job closes only once this is paid or waived.
+    maintenance_task_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("maintenance_tasks.id"), unique=True, index=True, nullable=True
+    )
 
 
 class Payment(TenantModel):

@@ -266,7 +266,10 @@ def run(reset: bool = False) -> None:
 
     # 2. A cleaning job awaiting approval
     clean = m.create_task(
-        db, S, t.id, dict(title="Plot cleaning and weed removal", category="cleaning", property_id=p117.id, assigned_staff_id=staff.id)
+        db,
+        S,
+        t.id,
+        dict(title="Plot cleaning and weed removal", category="cleaning", property_id=p117.id, assigned_staff_id=staff.id, charge=1500),
     )
     m.start(db, W, clean)
     for item in clean.checklist:
@@ -288,6 +291,7 @@ def run(reset: bool = False) -> None:
             vendor_id=v_gate.id,
             priority="high",
             due_at=utcnow() + timedelta(days=2),
+            charge=3500,
         ),
     )
     m.create_task(

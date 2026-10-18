@@ -39,7 +39,7 @@ from app.models.enums import (
     TaskCategory,
     TaskStatus,
 )
-from app.services import audit, notifications
+from app.services import audit, billing, notifications
 from app.services import tickets as tickets_svc
 from app.services.access import is_task_worker
 from app.services.numbering import next_number
@@ -197,6 +197,7 @@ def checklist_items_for(db: Session, tenant_id: uuid.UUID, category: str, templa
 def create_task(db: Session, actor: Actor | None, tenant_id: uuid.UUID, data: dict) -> MaintenanceTask:
     checklist = data.pop("checklist_items", None)
     template_id = data.pop("checklist_template_id", None)
+    charge = data.pop("charge", None)
     staff_id = data.get("assigned_staff_id")
     vendor_id = data.get("vendor_id")
     _validate_assignees(db, tenant_id, staff_id, vendor_id)
@@ -213,6 +214,7 @@ def create_task(db: Session, actor: Actor | None, tenant_id: uuid.UUID, data: di
     db.add(task)
     db.flush()
     audit.record(db, actor, "maintenance.created", "maintenance_task", task.id, new=audit.snapshot(task), tenant_id=tenant_id)
+    billing.raise_job_invoice(db, actor, task, charge or 0)
     if staff_id or vendor_id:
         task.assigned_staff_id = None
         task.vendor_id = None
@@ -561,7 +563,7 @@ def _approve(db, actor, task, comment):
     recipients = [task.assigned_staff_id, *notifications.vendor_users(db, task.tenant_id, task.vendor_id)]
     notifications.notify(db, task.tenant_id, recipients, "task_approved", f"{task.number} approved", comment, "maintenance_task", task.id)
     tickets_svc.on_task_event(db, actor, task, "approved")
-    if tenant_setting(db, task.tenant_id, "auto_close_on_approval", True):
+    if tenant_setting(db, task.tenant_id, "auto_close_on_approval", True) and not billing.job_payment_block(db, task):
         close(db, actor, task)
 
 
@@ -597,6 +599,8 @@ def reject(db, actor, task, comment: str, decision: str = "rework"):
 
 
 def close(db, actor, task):
+    if task.status == S.APPROVED and (block := billing.job_payment_block(db, task)):
+        raise http(409, block, reason="payment_pending")
     _transition(db, actor, task, "close")
     task.closed_at = utcnow()
     _sync_complaint(db, task, ComplaintStatus.RESOLVED)
@@ -627,6 +631,7 @@ def reopen(db, actor, task, reason: str):
 def cancel(db, actor, task, reason: str):
     _transition(db, actor, task, "cancel", {"reason": reason})
     task.review_comment = reason
+    billing.on_job_cancelled(db, actor, task)
     tickets_svc.on_task_event(db, actor, task, "cancelled", reason=reason)
 
 

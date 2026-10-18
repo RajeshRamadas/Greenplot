@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+import { PayDialog } from "@/components/Pay";
 import { Badge, Dialog, Empty, ErrorBox, Field, PageHead, Select, Stat, useToast } from "@/components/ui";
 import { api, download } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -15,10 +17,10 @@ function Invoices({ admin }: { admin: boolean }) {
   const [status, setStatus] = useState("");
   const invoices = useApi<Page<Invoice>>("/billing/invoices", { status, limit: 200 });
   const payments = useApi<Page<Payment>>("/payments", { limit: 100 });
-  const [pay, setPay] = useState<{ invoice: Invoice; payment?: Payment } | null>(null);
+  const [pay, setPay] = useState<Invoice | null>(null);
   const [record, setRecord] = useState<Invoice | null>(null);
   const [f, setF] = useState<Record<string, string>>({ method: "upi" });
-  // One idempotency key per payment attempt so double-clicks never create two charges.
+  // One idempotency key per recorded payment so double-clicks never record it twice.
   const [key, setKey] = useState("");
 
   return (
@@ -48,7 +50,7 @@ function Invoices({ admin }: { admin: boolean }) {
                 <tr key={i.id}>
                   <td className="mono">{i.number}</td>
                   <td>{i.property_label}</td>
-                  <td>{i.description}</td>
+                  <td>{i.maintenance_task_id ? <Link href={`/maintenance/${i.maintenance_task_id}`}>{i.description}</Link> : i.description}</td>
                   <td>{inr(i.amount)}</td>
                   <td>{inr(i.amount_paid)}</td>
                   <td>
@@ -68,10 +70,12 @@ function Invoices({ admin }: { admin: boolean }) {
                             Waive
                           </button>
                         </div>
-                      ) : (
-                        <button className="btn small primary" onClick={() => (setPay({ invoice: i }), setKey(newId("pay")))}>
+                      ) : i.amount > i.amount_paid ? (
+                        <button className="btn small primary" onClick={() => setPay(i)}>
                           Pay {inr(i.amount - i.amount_paid)}
                         </button>
+                      ) : (
+                        <span className="small muted">Charge not set yet</span>
                       )
                     ) : null}
                   </td>
@@ -107,49 +111,11 @@ function Invoices({ admin }: { admin: boolean }) {
         ))}
       </div>
 
-      <Dialog title="Pay dues" open={!!pay} onClose={() => setPay(null)}>
-        {pay && !pay.payment ? (
-          <div className="stack">
-            <p>
-              {pay.invoice.description} · <b>{inr(pay.invoice.amount - pay.invoice.amount_paid)}</b>
-            </p>
-            <p className="small muted">Payment is completed on the payment provider&apos;s secure page. GreenPlot never sees or stores your card details.</p>
-            <ErrorBox error={act.error} />
-            <button
-              className="btn primary big"
-              disabled={act.pending}
-              onClick={async () => {
-                const p = await act.run(() => api<Payment>("/payments", { body: { invoice_id: pay.invoice.id }, headers: { "Idempotency-Key": key } }));
-                if (p) setPay({ ...pay, payment: p });
-              }}
-            >
-              Continue to payment
-            </button>
-          </div>
-        ) : pay?.payment ? (
-          <div className="stack">
-            <div className="alert info">
-              Order <span className="mono">{pay.payment.checkout?.order_id}</span> created for {inr((pay.payment.checkout?.amount_paise ?? 0) / 100)}. In production the
-              provider checkout opens here and confirms via a signed webhook.
-            </div>
-            <button
-              className="btn primary"
-              onClick={async () => {
-                const r = await act.run(() => api<Payment>(`/payments/${pay.payment!.id}/simulate`, { method: "POST" }));
-                if (r) {
-                  toast(`Payment received · ${r.receipt_number}`);
-                  setPay(null);
-                  invoices.reload();
-                  payments.reload();
-                }
-              }}
-            >
-              Simulate successful payment (demo)
-            </button>
-            <ErrorBox error={act.error} />
-          </div>
-        ) : null}
-      </Dialog>
+      <PayDialog
+        invoice={pay ? { id: pay.id, description: pay.description, outstanding: pay.amount - pay.amount_paid } : null}
+        onClose={() => setPay(null)}
+        onPaid={() => (invoices.reload(), payments.reload())}
+      />
 
       <Dialog title={`Record payment · ${record?.number}`} open={!!record} onClose={() => setRecord(null)}>
         <form
@@ -283,7 +249,7 @@ function Plans() {
 
 function Defaulters() {
   const d = useApi<{ property: string; owner: string | null; phone: string | null; invoices: number; outstanding: number; oldest_due: string }[]>("/billing/defaulters");
-  const rec = useApi<{ stale_orders: unknown[]; invoice_mismatches: unknown[] }>("/payments/reconciliation");
+  const rec = useApi<{ stale_orders: unknown[]; invoice_mismatches: unknown[]; needs_refund: unknown[] }>("/payments/reconciliation");
   return (
     <div className="stack" style={{ gap: 16 }}>
       <div className="card">
@@ -323,9 +289,10 @@ function Defaulters() {
       <div className="card">
         <h2>Reconciliation</h2>
         {rec.data ? (
-          rec.data.stale_orders.length || rec.data.invoice_mismatches.length ? (
+          rec.data.stale_orders.length || rec.data.invoice_mismatches.length || rec.data.needs_refund.length ? (
             <div className="alert warn">
-              {rec.data.stale_orders.length} stale payment orders · {rec.data.invoice_mismatches.length} invoices whose totals disagree with payments
+              {rec.data.stale_orders.length} stale payment orders · {rec.data.invoice_mismatches.length} invoices whose totals disagree with payments ·{" "}
+              {rec.data.needs_refund.length} payments to refund or apply by hand in the Razorpay dashboard
             </div>
           ) : (
             <div className="alert ok">All payments reconcile with invoices.</div>

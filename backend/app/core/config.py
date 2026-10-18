@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -58,6 +59,13 @@ class Settings(BaseSettings):
     max_photos_per_task: int = 30
     routine_media_retention_days: int = 90
     incident_media_retention_days: int = 365 * 3
+
+    # Malware scanning: "clamav" (self-hosted daemon), "eicar" (test stub) or "none".
+    # Unset means clamav in production and eicar elsewhere; any other value fails at startup.
+    malware_scanner: Literal["clamav", "eicar", "none"] | None = None
+    clamav_host: str = "clamav"
+    clamav_port: int = 3310
+    clamav_timeout_seconds: float = 60
 
     # Rate limiting
     login_rate_per_minute: int = 10

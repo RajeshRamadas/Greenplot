@@ -24,7 +24,7 @@ Every V1 module in the requirements:
 
 - **Customer ticketing & vendor service management** ([`GreenPlot_Ticketing_System_Requirements.md`](GreenPlot_Ticketing_System_Requirements.md)): residents raise service tickets (`GP-TKT-2026-000001`) with photos from the portal or the public website's "Raise a ticket" link. The office reviews, prioritises and assigns each ticket to internal staff or an external vendor. The vendor accepts or rejects with a reason (a rejection returns the ticket to the office), then works it through a linked maintenance work order that carries the full Proof of Work rules. A supervisor verifies or requests rework, and the ticket is resolved. The customer confirms or reopens it and rates the service. Closing a ticket sends a mandatory closure notification, and every channel delivery is logged and retried. Tickets have configurable categories, per-priority and per-category response/resolution SLAs with at-risk warnings and breach escalation, auto-close, separate customer, vendor and internal comment visibility, a full timeline and audit trail, reports (volume, SLA, vendor performance, categories, properties, satisfaction), property history, search and offline creation.
 - **Maintenance & Proof of Work** (§8–11, §31, §48): lifecycle `CREATED → ASSIGNED → ACCEPTED → STARTED → COMPLETED → APPROVED → CLOSED` with rework and reopen. Configurable evidence per task type: before/after photos, checklist, GPS, video, materials, invoice and QR/NFC scan. Failed or skipped checklist items need a reason. Missing evidence blocks submission unless the worker records an exception, which the supervisor then reviews. Workers cannot approve their own jobs. Evidence is kept per rework round, and a downloadable PDF Proof of Work report is available.
-- **Digital records & evidence integrity** (§12–13): private storage behind short-lived signed URLs. SHA-256 is computed on the device and verified on the server. Content-type sniffing, a malware-scan hook and thumbnails are included. Replacements and deletions are audited, approved evidence is locked, and retention is configurable (routine 90 days, incidents longer).
+- **Digital records & evidence integrity** (§12–13): private storage behind short-lived signed URLs. SHA-256 is computed on the device and verified on the server. Content-type sniffing, ClamAV malware scanning and thumbnails are included. Replacements and deletions are audited, approved evidence is locked, and retention is configurable (routine 90 days, incidents longer).
 - **Property Watch / inspections**: resident visit requests, inspection-point checklist, photos, an owner report, and one-click follow-up maintenance.
 - **Properties & residents, assets with QR/NFC labels, complaints** (auto-linked to maintenance), **cleaning & gardening schedules**, **staff** (shifts, attendance, work history) and **vendors** (with performance).
 - **Security**: visitors with resident approval and pre-approval, vehicle register and gate log, QR patrol routes, incidents, and SOS with escalation.
@@ -41,7 +41,6 @@ These are built behind adapters and need credentials or a provider choice (see �
 
 - **Payments**: a real Razorpay (or other) order call and checkout. The demo has a "simulate payment" button that is disabled in production.
 - **Notifications**: the push adapter logs until a push provider is added. Email sends over SMTP once `GP_SMTP_*` is set, SMS through MSG91 and WhatsApp through the Cloud API (below); each logs until it is configured.
-- **Malware scanning**: plug ClamAV or a provider into `scan_for_malware`.
 
 ### SMS (MSG91)
 
@@ -94,6 +93,12 @@ To go live:
 3. Set `GP_WHATSAPP_PROVIDER=meta` and the `GP_WHATSAPP_*` variables (see `.env.example`).
 4. In the app's WhatsApp → Configuration, set the callback URL to `https://<your-domain>/api/v1/webhooks/whatsapp`, use the same verify token, and subscribe to **messages**.
 
+### Malware scanning
+
+Every upload (photos, videos, PDFs) is scanned before it is accepted. In `docker compose` this uses a self-hosted **ClamAV** daemon (the `clamav` service), so no account or API key is needed and its virus signatures update themselves. An infected file is deleted, the person sees which threat was found, and the attempt is recorded in the audit log. If the scanner is down or still starting (it takes about a minute to load signatures after a restart), the upload is refused with "try again" and the file is kept, so finishing it later works without re-sending.
+
+ClamAV needs about **1.1 GB of RAM** with signatures loaded, the most of any service on a 4 GB server. It is capped at 1.6 GB, and signature reloads are not run side by side, so they don't double memory. Outside Docker and production, the default scanner (`eicar`) only catches the EICAR test file; set `GP_MALWARE_SCANNER=clamav` and `GP_CLAMAV_HOST` to use a ClamAV you run yourself. Give that clamd the same limits as `docker-compose.yml` (`StreamMaxLength 110M`, `MaxFileSize 110M`, `MaxScanSize 400M`, `AlertExceedsMax yes`); with clamd's 25 MB default, larger videos are refused. With `GP_ENVIRONMENT=production` and no scanner set, ClamAV is used.
+
 ## Run it locally
 
 Requirements: Python 3.11+, Node 22+, PostgreSQL 16 (or SQLite for a quick look).
@@ -134,6 +139,7 @@ Put Cloudflare or another TLS reverse proxy in front of port 3000. For large vid
 cd backend && pytest -q                                   # 87 tests on SQLite
 GP_TEST_DATABASE_URL=postgresql+psycopg://greenplot:greenplot@localhost/greenplot_test pytest -q
 ruff check app tests
+GP_TEST_CLAMAV_HOST=localhost pytest -q tests/test_malware.py   # also scan against a real ClamAV on :3310
 
 cd frontend && npm run typecheck && npm run build
 # End-to-end (API seeded + `npm start` running):

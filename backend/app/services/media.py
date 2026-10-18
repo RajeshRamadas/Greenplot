@@ -1,5 +1,6 @@
 """Media lifecycle: PENDING → UPLOADING → PROCESSING → READY / FAILED → DELETED (§12-13)."""
 
+import logging
 import uuid
 from datetime import date, timedelta
 
@@ -15,15 +16,17 @@ from app.models.enums import EvidenceType, MediaStatus, TaskStatus
 from app.services import audit
 from app.services import maintenance as msvc
 from app.services.access import check_entity_access, is_task_worker
+from app.services.malware import ScannerUnavailable, get_scanner
 from app.services.storage import (
     ALLOWED_TYPES,
     content_matches,
     get_storage,
     make_thumbnail,
     max_bytes_for,
-    scan_for_malware,
     sha256_hex,
 )
+
+log = logging.getLogger("greenplot.media")
 
 
 def _retention(db: Session, tenant_id: uuid.UUID, entity_type: str) -> tuple[date, bool]:
@@ -138,10 +141,24 @@ def finalize(db: Session, actor: Actor, m: Media, caption: str | None = None) ->
     digest = sha256_hex(data)
     if m.expected_sha256 and digest != m.expected_sha256:
         _fail(db, m, "Checksum mismatch: the file was altered or corrupted in transit")
-    m.scan_status = scan_for_malware(data)
-    if m.scan_status == "infected":
-        storage.delete(m.storage_key)
-        _fail(db, m, "File rejected by malware scan")
+    try:
+        result = get_scanner().scan(data)
+    except ScannerUnavailable as e:
+        # Fail closed but keep the file, so the same upload can be completed once the scanner is back.
+        log.error("Malware scan unavailable for media %s: %s", m.id, e)
+        _fail(db, m, "The malware scanner is unavailable right now. Please try again in a few minutes.", 503)
+    m.scan_status = result.status
+    if result.status == "infected":
+        reason = f"File rejected by malware scan: it contains {result.signature or 'malware'} and was deleted."
+        m.status = MediaStatus.FAILED
+        m.error = reason
+        audit.record(db, actor, "media.malware_detected", m.entity_type, m.entity_id, new={"media_id": m.id, "signature": result.signature})
+        db.commit()  # record the rejection before removing the file
+        try:
+            storage.delete(m.storage_key)
+        except Exception:
+            log.exception("Could not delete infected media %s at %s", m.id, m.storage_key)
+        raise HTTPException(422, reason)
     m.sha256 = digest
     m.size_bytes = len(data)
     if ALLOWED_TYPES[m.content_type] == "image":

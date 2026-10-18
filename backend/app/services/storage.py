@@ -207,10 +207,3 @@ def make_thumbnail(data: bytes, max_px: int = 480) -> bytes | None:
             return out.getvalue()
     except Exception:
         return None
-
-
-def scan_for_malware(data: bytes) -> str:
-    """Hook for ClamAV or a provider scanner. Rejects the EICAR test signature."""
-    if b"EICAR-STANDARD-ANTIVIRUS-TEST-FILE" in data:
-        return "infected"
-    return "clean"

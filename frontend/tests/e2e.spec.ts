@@ -192,6 +192,7 @@ test("resident registers, the office approves, and accounts can reset and sign i
   await applicant.getByLabel("Email").fill(email);
   await applicant.getByLabel("Mobile number").fill(phone);
   await applicant.getByLabel("Plot number").fill("118");
+  await applicant.getByRole("checkbox", { name: /I agree to the Terms/ }).check();
   await applicant.getByRole("button", { name: "Verify mobile number" }).click();
   const demo = (await applicant.locator(".alert.info").innerText()).match(/Demo code: (\d{6})/)![1];
   await applicant.getByLabel("6-digit code").fill(demo);

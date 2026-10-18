@@ -6,7 +6,7 @@ import time
 import pytest
 
 from app.core.config import get_settings
-from app.models import RefreshToken, Resident, User, Vendor
+from app.models import AuditLog, RefreshToken, Resident, User, Vendor
 from app.services import accounts, messaging
 from tests.conftest import PASSWORD, Api
 
@@ -230,7 +230,24 @@ def test_invites_are_sent_automatically(as_, world, mail, client):
 
 def _apply(client, **body):
     code = client.post("/api/v1/public/signup/code", json={"phone": body["phone"]}).json()["dev_code"]
-    return client.post("/api/v1/public/signup", json={"code": code, **body})
+    return client.post("/api/v1/public/signup", json={"code": code, "accepted_terms": True, "terms_version": "2026-10-18", **body})
+
+
+def test_registration_requires_accepting_the_terms(client, world, db):
+    body = {
+        "layout": "green-valley",
+        "kind": "resident",
+        "full_name": "Kiran",
+        "email": "kiran@x.in",
+        "phone": "9845055555",
+        "plot_number": "118",
+    }
+    code = client.post("/api/v1/public/signup/code", json={"phone": body["phone"]}).json()["dev_code"]
+    r = client.post("/api/v1/public/signup", json={"code": code, **body})
+    assert r.status_code == 422 and "Terms" in r.json()["detail"]
+    assert _apply(client, **body).status_code == 201
+    entry = db.query(AuditLog).filter_by(action="signup.requested").one()
+    assert entry.new_value["terms_version"] == "2026-10-18"
 
 
 def test_resident_and_vendor_self_registration(client, world, as_, db, mail):
@@ -247,6 +264,7 @@ def test_resident_and_vendor_self_registration(client, world, as_, db, mail):
             "phone": "9845022222",
             "code": "000000",
             "plot_number": "204",
+            "accepted_terms": True,
         },
     )
     assert wrong.status_code == 400

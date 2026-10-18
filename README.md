@@ -142,6 +142,10 @@ npx playwright test
 
 The backend suite covers the end-to-end Proof of Work flow (§49), evidence rules and integrity, rework, permissions and tenant isolation, security operations, billing and webhooks, offline sync idempotency and conflicts, search, reports and jobs. The Playwright suite opens every page for every role, runs the worker → supervisor proof-of-work flow in a real browser, syncs an offline visitor registration, and submits the website demo form.
 
+## Legal pages
+
+The public site has Terms & Conditions (`/terms`), Privacy Policy (`/privacy`), Refund & Cancellation (`/refund-policy`), Service Delivery (`/service-delivery`) and Contact (`/contact`) pages, linked from the site footer, login and registration. Razorpay checks for these before activating a live account. Fill in the registered business name, address, phone and Grievance Officer in [`frontend/lib/legal.ts`](frontend/lib/legal.ts) before going live, and have the text reviewed by a lawyer. Registration requires ticking the Terms & Privacy box; the accepted `TERMS_VERSION` and IP are kept in the audit log.
+
 ## Configuration
 
 All backend settings are environment variables prefixed `GP_` (see [`backend/app/core/config.py`](backend/app/core/config.py)). Per-layout settings are edited in the app under **Settings**: evidence requirements per task type, checklist templates, recurring schedules, resident evidence visibility, retention, SOS escalation and users/roles.

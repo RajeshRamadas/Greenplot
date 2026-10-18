@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { LegalLinks } from "@/components/Legal";
 import { ErrorBox, Field, Select } from "@/components/ui";
 import { publicPost } from "@/lib/api";
+import { TERMS_VERSION } from "@/lib/legal";
 
 type Layout = { slug: string; name: string; city: string };
 type CodeResp = { sent: boolean; channels: string[]; dev_code?: string };
@@ -17,6 +19,7 @@ export default function RegisterPage() {
   const [layout, setLayout] = useState<Layout | null>(null);
   const [f, setF] = useState<Record<string, string>>({ kind: "resident", relation: "owner" });
   const [services, setServices] = useState<string[]>([]);
+  const [agreed, setAgreed] = useState(false);
   const [sent, setSent] = useState<CodeResp | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +75,7 @@ export default function RegisterPage() {
             onSubmit={(e) => {
               e.preventDefault();
               if (!layout) return setError("Choose your layout");
+              if (!agreed) return setError("Please accept the Terms & Conditions and Privacy Policy");
               if (!sent) return run(async () => setSent(await publicPost<CodeResp>("/public/signup/code", { phone: f.phone })));
               run(async () => {
                 const r = await publicPost<{ layout: string }>("/public/signup", {
@@ -86,6 +90,8 @@ export default function RegisterPage() {
                   company_name: vendor ? f.company : null,
                   service_categories: vendor ? services : [],
                   message: f.message || null,
+                  accepted_terms: true,
+                  terms_version: TERMS_VERSION,
                 });
                 setDone(r.layout);
               });
@@ -166,6 +172,20 @@ export default function RegisterPage() {
                 </Field>
               </>
             ) : null}
+            <label className="small row" style={{ gap: 8, alignItems: "flex-start", flexWrap: "nowrap" }}>
+              <input type="checkbox" required checked={agreed} onChange={(e) => setAgreed(e.target.checked)} style={{ marginTop: 3, flex: "none" }} />
+              <span>
+                I agree to the{" "}
+                <Link href="/terms" target="_blank">
+                  Terms &amp; Conditions
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" target="_blank">
+                  Privacy Policy
+                </Link>
+                , and to receive account and service updates by SMS and email.
+              </span>
+            </label>
             <ErrorBox error={error} />
             <button className="btn primary big" disabled={busy}>
               {busy ? "Please wait…" : sent ? "Send request" : "Verify mobile number"}
@@ -180,6 +200,7 @@ export default function RegisterPage() {
         <p className="small muted" style={{ marginTop: 16 }}>
           Already have an account? <Link href="/login">Sign in</Link>
         </p>
+        <LegalLinks />
       </div>
     </div>
   );

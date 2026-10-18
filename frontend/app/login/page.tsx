@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { homeFor } from "@/components/AppShell";
+import { LegalLinks } from "@/components/Legal";
 import { ErrorBox, Field } from "@/components/ui";
 import { publicPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -147,6 +148,7 @@ function LoginForm() {
         <p className="small muted" style={{ marginTop: 16 }}>
           New resident or vendor? <Link href="/register">Request access</Link> or use the invite sent by your layout office. <a href="/">Back to website</a>
         </p>
+        <LegalLinks />
       </div>
     </div>
   );

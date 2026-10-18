@@ -74,6 +74,8 @@ class SignupIn(BaseModel):
     company_name: str | None = Field(None, max_length=200)
     service_categories: list[str] = []
     message: str | None = Field(None, max_length=2000)
+    accepted_terms: bool = Field(False, description="The applicant ticked the Terms & Privacy Policy box")
+    terms_version: str | None = Field(None, max_length=40)
 
 
 @router.post("/public/signup", status_code=201)
@@ -82,6 +84,8 @@ def signup(body: SignupIn, request: Request, db: DB):
     if not phone:
         raise HTTPException(422, "Enter a valid mobile number")
     _throttle(request, f"submit:{phone}")
+    if not body.accepted_terms:
+        raise HTTPException(422, "Please accept the Terms & Conditions and Privacy Policy")
     tenant = db.scalar(select(Tenant).where(Tenant.slug == body.layout, Tenant.status == "active"))
     if tenant is None:
         raise HTTPException(404, "Layout not found")
@@ -116,7 +120,15 @@ def signup(body: SignupIn, request: Request, db: DB):
     )
     db.add(req)
     db.flush()
-    audit.record(db, None, "signup.requested", "signup_request", req.id, new={"kind": req.kind, "email": email}, tenant_id=tenant.id)
+    audit.record(
+        db,
+        None,
+        "signup.requested",
+        "signup_request",
+        req.id,
+        new={"kind": req.kind, "email": email, "terms_version": body.terms_version, "terms_accepted_ip": req.ip},
+        tenant_id=tenant.id,
+    )
     notifications.notify(
         db,
         tenant.id,

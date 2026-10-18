@@ -37,9 +37,15 @@ DEFAULT_CHANNELS: dict[str, list[str]] = {
     "ticket_closed": ["in_app", "push", "whatsapp"],
     "ticket_sla": ["in_app", "push"],
     "signup_request": ["in_app", "push"],
+    "job_feedback": ["in_app", "push"],
+    "low_rating": ["in_app", "push"],
+    "job_proof": ["in_app", "push", "whatsapp", "email"],
+    "plot_due": ["in_app", "push", "whatsapp", "email"],
+    "plot_report": ["in_app", "whatsapp", "email"],
 }
 
 MAX_DELIVERY_ATTEMPTS = 3
+LOW_RATING_THRESHOLD = 4  # ratings below this alert the layout office
 
 
 class ChannelAdapter:
@@ -211,3 +217,13 @@ def vendor_users(db: Session, tenant_id: uuid.UUID, vendor_id: uuid.UUID | None)
     if vendor_id is None:
         return []
     return list(db.scalars(select(User.id).where(User.tenant_id == tenant_id, User.vendor_id == vendor_id, User.is_active.is_(True))))
+
+
+def alert_low_rating(
+    db: Session, tenant_id: uuid.UUID, rating: int | None, comment: str | None, what: str, entity_type: str, entity_id: uuid.UUID
+) -> list[Notification]:
+    """Tell supervisors and admins about a customer rating below LOW_RATING_THRESHOLD so they can follow up."""
+    if rating is None or rating >= LOW_RATING_THRESHOLD:
+        return []
+    body = f"Customer comment: {comment}" if comment else "The customer left no comment."
+    return notify(db, tenant_id, managers(db, tenant_id), "low_rating", f"Low rating {rating}/5: {what}", body, entity_type, entity_id)

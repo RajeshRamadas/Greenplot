@@ -23,6 +23,8 @@ class TaskCreate(BaseModel):
     vendor_id: uuid.UUID | None = None
     supervisor_id: uuid.UUID | None = None
     estimated_cost: float | None = Field(None, ge=0)
+    # What the property owner pays for the job (billed when the job is created).
+    charge: float | None = Field(None, ge=0)
     checklist_template_id: uuid.UUID | None = None
     checklist_items: list[str] | None = None
 
@@ -34,6 +36,7 @@ class TaskUpdate(BaseModel):
     due_at: datetime | None = None
     location_note: str | None = None
     estimated_cost: float | None = Field(None, ge=0)
+    charge: float | None = Field(None, ge=0)
     supervisor_id: uuid.UUID | None = None
     # worker-editable completion record
     work_notes: str | None = Field(None, max_length=10000)
@@ -104,6 +107,11 @@ class ExceptionIn(BaseModel):
 
 class AckIn(BaseModel):
     note: str | None = Field(None, max_length=2000)
+
+
+class RateIn(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str | None = Field(None, max_length=2000)
 
 
 class CommentBody(BaseModel):
@@ -226,6 +234,9 @@ class TaskDetail(TaskSummary):
     estimated_cost: float | None
     resident_ack_at: datetime | None
     resident_ack_note: str | None
+    rating: int | None = None
+    rating_comment: str | None = None
+    rated_at: datetime | None = None
     checklist: list[ChecklistItemOut] = []
     materials: list[MaterialOut] = []
     evidence: list[EvidenceOut] = []
@@ -238,6 +249,7 @@ class TaskDetail(TaskSummary):
     completed_by_name: str | None = None
     reviewed_by_name: str | None = None
     materials_cost: float = 0
+    payment: dict | None = None  # the job's bill to the property owner
 
 
 class PolicyIn(BaseModel):

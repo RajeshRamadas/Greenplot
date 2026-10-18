@@ -164,6 +164,7 @@ class BillingPlan(TenantModel, SoftDelete):
     late_fee: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
     custom_amounts: Mapped[dict] = mapped_column(JSON, default=dict)  # property_id -> amount for custom basis
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    subscribable: Mapped[bool] = mapped_column(Boolean, default=False)  # owners may take it as a discounted subscription
 
 
 class Invoice(TenantModel, SoftDelete):
@@ -178,6 +179,7 @@ class Invoice(TenantModel, SoftDelete):
     number: Mapped[str] = mapped_column(String(40), index=True)
     property_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("properties.id"), index=True)
     plan_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("billing_plans.id"), nullable=True)
+    subscription_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("subscriptions.id"), nullable=True, index=True)
     description: Mapped[str] = mapped_column(String(300))
     period_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     period_end: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -185,6 +187,45 @@ class Invoice(TenantModel, SoftDelete):
     amount_paid: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     due_date: Mapped[date] = mapped_column(Date, index=True)
     status: Mapped[str] = mapped_column(String(20), default="unpaid", index=True)
+    # Set when the invoice bills a maintenance job; the job closes only once this is paid or waived.
+    maintenance_task_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("maintenance_tasks.id"), unique=True, index=True, nullable=True
+    )
+
+
+class Subscription(TenantModel):
+    """A property owner's standing order for a plan, billed every month or quarter at a discount."""
+
+    __tablename__ = "subscriptions"
+
+    property_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("properties.id"), index=True)
+    plan_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("billing_plans.id"), index=True)
+    frequency_months: Mapped[int] = mapped_column(Integer)  # 1 = monthly, 3 = quarterly
+    discount_pct: Mapped[float] = mapped_column(Numeric(5, 2), default=0)
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
+    started_on: Mapped[date] = mapped_column(Date)
+    next_billing_date: Mapped[date] = mapped_column(Date, index=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
+
+
+class Referral(TenantModel):
+    """An owner introducing a neighbour. When the neighbour becomes a customer the referrer earns a free cleaning,
+    held as a credit that settles their dues."""
+
+    __tablename__ = "referrals"
+
+    referrer_user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), index=True)
+    referrer_property_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("properties.id"), index=True)
+    neighbour_name: Mapped[str] = mapped_column(String(200))
+    neighbour_phone: Mapped[str] = mapped_column(String(30))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    converted_property_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("properties.id"), nullable=True, unique=True)
+    reward_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    reward_remaining: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
 
 
 class Payment(TenantModel):

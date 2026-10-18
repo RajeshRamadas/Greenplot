@@ -195,6 +195,19 @@ def send_template(phone: str, title: str, body: str | None) -> str:
     return "sent"
 
 
+def send_image(phone: str, url: str, caption: str | None = None) -> str:
+    """An image by link (Meta fetches it right away). Only allowed inside the 24-hour window."""
+    if not enabled():
+        log.info("[whatsapp:log] -> %s: image %s", phone, caption or "")
+        return "sent"
+    image = {"link": url} | ({"caption": caption[:1024]} if caption else {})
+    try:
+        _post({"messaging_product": "whatsapp", "to": phone, "type": "image", "image": image})
+    except WhatsAppError as e:
+        return f"failed:{e}"
+    return "sent"
+
+
 def send_otp(phone: str, code: str) -> str:
     """One-time code via the approved Authentication template (body {{1}} = code, copy-code button)."""
     s = get_settings()

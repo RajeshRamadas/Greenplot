@@ -198,6 +198,9 @@ export interface TaskDetail extends TaskSummary {
   estimated_cost: number | null;
   resident_ack_at: string | null;
   resident_ack_note: string | null;
+  rating: number | null;
+  rating_comment: string | null;
+  rated_at: string | null;
   checklist: ChecklistItem[];
   materials: Material[];
   evidence: Evidence[];
@@ -210,6 +213,7 @@ export interface TaskDetail extends TaskSummary {
   completed_by_name: string | null;
   reviewed_by_name: string | null;
   materials_cost: number;
+  payment: JobPayment | null;
 }
 
 export interface Complaint {
@@ -414,6 +418,7 @@ export interface Invoice {
   amount_paid: number;
   due_date: string;
   status: string;
+  maintenance_task_id: UUID | null;
   overdue: boolean;
 }
 
@@ -428,7 +433,28 @@ export interface Payment {
   provider_order_id: string | null;
   reference: string | null;
   created_at: string;
-  checkout: { provider: string; order_id: string; amount_paise: number; note: string } | null;
+  checkout: {
+    provider: string;
+    key_id: string | null;
+    order_id: string;
+    amount_paise: number;
+    currency: string;
+    name: string;
+    description: string | null;
+    prefill: { name: string | null; email: string | null; contact: string | null };
+    note: string;
+  } | null;
+}
+
+export interface JobPayment {
+  invoice_id: UUID;
+  invoice_number: string;
+  amount: number;
+  amount_paid: number;
+  status: string;
+  due_date: string;
+  /** Why the job cannot close yet; null once paid or waived. */
+  blocking: string | null;
 }
 
 export interface Plan {
@@ -439,6 +465,7 @@ export interface Plan {
   frequency_months: number;
   due_days: number;
   is_active: boolean;
+  subscribable: boolean;
 }
 
 export interface Notice {
@@ -665,4 +692,52 @@ export interface TicketDashboard {
   sections?: Record<string, number>;
   rejected?: { ticket_id: UUID; number: string | null; title: string | null; rejected_at: string; reason: string | null }[];
   tabs?: Record<string, number>;
+}
+
+export interface SubscriptionOption {
+  plan_id: UUID;
+  plan_name: string;
+  property_id: UUID;
+  property_label: string | null;
+  frequency_months: number;
+  frequency: string;
+  discount_pct: number;
+  full_price: number;
+  price: number;
+  saving: number;
+}
+
+export interface Subscription {
+  id: UUID;
+  property_id: UUID;
+  property_label: string | null;
+  plan_id: UUID;
+  plan_name: string | null;
+  frequency_months: number;
+  discount_pct: number;
+  price: number | null;
+  status: string;
+  started_on: string;
+  next_billing_date: string;
+  cancelled_at: string | null;
+}
+
+export interface Referral {
+  id: UUID;
+  referrer_name: string | null;
+  property_label: string | null;
+  neighbour_name: string;
+  neighbour_phone: string;
+  note: string | null;
+  status: string;
+  reward_amount: number;
+  reward_remaining: number;
+  created_at: string;
+  decided_at: string | null;
+}
+
+export interface Referrals {
+  items: Referral[];
+  reward_amount: number;
+  credit_remaining: number;
 }

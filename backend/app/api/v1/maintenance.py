@@ -43,6 +43,7 @@ from app.schemas.maintenance import (
     MaterialOut,
     PolicyIn,
     PolicyOut,
+    RateIn,
     RejectIn,
     ReviewIn,
     ScanIn,
@@ -58,7 +59,7 @@ from app.schemas.maintenance import (
     TemplateOut,
 )
 from app.schemas.operations import AuditOut
-from app.services import audit
+from app.services import audit, billing
 from app.services import maintenance as svc
 from app.services.access import get_scoped, get_task, is_task_worker, scope_tasks, tenant_select
 from app.services.storage import get_storage
@@ -97,7 +98,7 @@ def evidence_visible_to(db, actor: Actor, task: MaintenanceTask) -> bool:
     return True
 
 
-def allowed_actions(actor: Actor, task: MaintenanceTask) -> list[str]:
+def allowed_actions(actor: Actor, task: MaintenanceTask, payment_block: str | None = None) -> list[str]:
     acts = []
     worker = is_task_worker(actor, task)
     for action, (sources, _) in svc.TRANSITIONS.items():
@@ -109,7 +110,7 @@ def allowed_actions(actor: Actor, task: MaintenanceTask) -> list[str]:
             acts.append(action)
         elif action in ("approve", "reject", "reopen") and actor.can("maintenance.review") and task.completed_by != actor.id:
             acts.append(action)
-        elif action == "close" and actor.can("maintenance.review"):
+        elif action == "close" and actor.can("maintenance.review") and not payment_block:
             acts.append(action)
     if worker and task.status in svc.EVIDENCE_STATES:
         acts += ["upload_evidence", "add_exception"]
@@ -119,6 +120,8 @@ def allowed_actions(actor: Actor, task: MaintenanceTask) -> list[str]:
         acts += ["edit_checklist", "add_material", "edit_notes"]
     if actor.role == Role.RESIDENT and task.status in (S.APPROVED, S.CLOSED) and not task.resident_ack_at:
         acts.append("acknowledge")
+    if actor.role == Role.RESIDENT and svc.can_rate(task):
+        acts.append("rate")
     if actor.can("reports.proof") and task.status in (S.APPROVED, S.CLOSED, S.COMPLETED):
         acts.append("download_report")
     return acts
@@ -165,7 +168,13 @@ def detail(db, actor: Actor, task: MaintenanceTask) -> TaskDetail:
         d.proof = svc.proof_status(db, task)
     else:
         d.work_notes = d.work_notes if evidence_visible_to(db, actor, task) else None
-    d.allowed_actions = allowed_actions(actor, task)
+    # The owner's bill is shown to billing roles and supervisors, not to the staff or vendor doing the work.
+    if actor.can("billing.read") or actor.can("maintenance.assign"):
+        d.payment = billing.job_payment_summary(db, task)
+    d.allowed_actions = allowed_actions(actor, task, billing.job_payment_block(db, task))
+    if actor.can("maintenance.assign") and task.property_id and task.status not in (S.CLOSED, S.CANCELLED):
+        if not d.payment or d.payment["status"] in ("unpaid", "partial"):
+            d.allowed_actions.append("set_charge")
     return d
 
 
@@ -296,6 +305,8 @@ def create_task(body: TaskCreate, db: DB, actor: Perm("maintenance.create")):
         get_scoped(db, Property, body.property_id, actor, "Property")
     if body.complaint_id:
         c = get_scoped(db, Complaint, body.complaint_id, actor, "Complaint")
+        if body.property_id and c.property_id and body.property_id != c.property_id:
+            raise HTTPException(422, "The task's property must match the complaint's")
         data["source"] = "complaint"
         data["property_id"] = data["property_id"] or c.property_id
     if body.inspection_id:
@@ -401,6 +412,15 @@ def get_task_detail(task_id: uuid.UUID, db: DB, actor: Perm("maintenance.read"))
 def update_task(task_id: uuid.UUID, body: TaskUpdate, db: DB, actor: CurrentActor):
     task = get_task(db, actor, task_id)
     data = body.model_dump(exclude_unset=True)
+    charge = data.pop("charge", None)
+    if charge is not None:
+        if not actor.can("maintenance.assign"):
+            raise HTTPException(403, "Only supervisors can change task details")
+        if not task.property_id:
+            raise HTTPException(422, "Jobs without a property are not billed")
+        if task.status in (S.CLOSED, S.CANCELLED):
+            raise HTTPException(409, f"The job is {task.status}")
+        billing.set_job_charge(db, actor, task, charge)
     worker_fields = {"work_notes", "issue_found", "outcome", "observations"}
     manager_fields = set(data) - worker_fields
     if manager_fields and not actor.can("maintenance.assign"):
@@ -585,6 +605,13 @@ def cancel(task_id: uuid.UUID, body: ReasonIn, db: DB, actor: Perm("maintenance.
 def acknowledge(task_id: uuid.UUID, body: AckIn, db: DB, actor: Perm("maintenance.acknowledge")):
     task = get_task(db, actor, task_id)
     svc.acknowledge(db, actor, task, body.note)
+    return _commit_detail(db, actor, task)
+
+
+@router.post("/{task_id}/rate", response_model=TaskDetail)
+def rate(task_id: uuid.UUID, body: RateIn, db: DB, actor: Perm("maintenance.acknowledge")):
+    task = get_task(db, actor, task_id)
+    svc.rate(db, actor, task, body.rating, body.comment)
     return _commit_detail(db, actor, task)
 
 

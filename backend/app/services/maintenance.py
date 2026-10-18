@@ -23,6 +23,8 @@ from app.models import (
     MaintenanceEvidence,
     MaintenanceTask,
     Media,
+    Property,
+    Resident,
     Tenant,
     User,
     Vendor,
@@ -39,7 +41,7 @@ from app.models.enums import (
     TaskCategory,
     TaskStatus,
 )
-from app.services import audit, notifications
+from app.services import audit, billing, notifications
 from app.services import tickets as tickets_svc
 from app.services.access import is_task_worker
 from app.services.numbering import next_number
@@ -197,6 +199,7 @@ def checklist_items_for(db: Session, tenant_id: uuid.UUID, category: str, templa
 def create_task(db: Session, actor: Actor | None, tenant_id: uuid.UUID, data: dict) -> MaintenanceTask:
     checklist = data.pop("checklist_items", None)
     template_id = data.pop("checklist_template_id", None)
+    charge = data.pop("charge", None)
     staff_id = data.get("assigned_staff_id")
     vendor_id = data.get("vendor_id")
     _validate_assignees(db, tenant_id, staff_id, vendor_id)
@@ -213,6 +216,7 @@ def create_task(db: Session, actor: Actor | None, tenant_id: uuid.UUID, data: di
     db.add(task)
     db.flush()
     audit.record(db, actor, "maintenance.created", "maintenance_task", task.id, new=audit.snapshot(task), tenant_id=tenant_id)
+    billing.raise_job_invoice(db, actor, task, charge or 0)
     if staff_id or vendor_id:
         task.assigned_staff_id = None
         task.vendor_id = None
@@ -561,7 +565,8 @@ def _approve(db, actor, task, comment):
     recipients = [task.assigned_staff_id, *notifications.vendor_users(db, task.tenant_id, task.vendor_id)]
     notifications.notify(db, task.tenant_id, recipients, "task_approved", f"{task.number} approved", comment, "maintenance_task", task.id)
     tickets_svc.on_task_event(db, actor, task, "approved")
-    if tenant_setting(db, task.tenant_id, "auto_close_on_approval", True):
+    _ask_for_rating(db, task)
+    if tenant_setting(db, task.tenant_id, "auto_close_on_approval", True) and not billing.job_payment_block(db, task):
         close(db, actor, task)
 
 
@@ -597,6 +602,8 @@ def reject(db, actor, task, comment: str, decision: str = "rework"):
 
 
 def close(db, actor, task):
+    if task.status == S.APPROVED and (block := billing.job_payment_block(db, task)):
+        raise http(409, block, reason="payment_pending")
     _transition(db, actor, task, "close")
     task.closed_at = utcnow()
     _sync_complaint(db, task, ComplaintStatus.RESOLVED)
@@ -604,6 +611,9 @@ def close(db, actor, task):
         asset = db.get(Asset, task.asset_id)
         if asset and asset.service_interval_days:
             asset.next_service_due = date.today() + timedelta(days=asset.service_interval_days)
+    from app.services.job_proof import send_job_proof
+
+    send_job_proof(db, actor, task)
 
 
 def reopen(db, actor, task, reason: str):
@@ -627,6 +637,7 @@ def reopen(db, actor, task, reason: str):
 def cancel(db, actor, task, reason: str):
     _transition(db, actor, task, "cancel", {"reason": reason})
     task.review_comment = reason
+    billing.on_job_cancelled(db, actor, task)
     tickets_svc.on_task_event(db, actor, task, "cancelled", reason=reason)
 
 
@@ -637,6 +648,58 @@ def acknowledge(db, actor, task, note: str | None):
     task.resident_ack_by = actor.id
     task.resident_ack_note = note
     audit.record(db, actor, "maintenance.resident_acknowledged", "maintenance_task", task.id, new={"note": note})
+
+
+def property_customers(db: Session, task: MaintenanceTask) -> list[uuid.UUID]:
+    """The owner and residents of the task's plot: the people who can rate the job."""
+    if task.property_id is None:
+        return []
+    prop = db.get(Property, task.property_id)
+    ids = [prop.owner_user_id] if prop else []
+    ids += db.scalars(
+        select(Resident.user_id).where(
+            Resident.property_id == task.property_id, Resident.user_id.is_not(None), Resident.deleted_at.is_(None)
+        )
+    )
+    return ids
+
+
+def can_rate(task: MaintenanceTask) -> bool:
+    # Ticket jobs are rated on the ticket, so the customer is asked once.
+    return task.status in (S.APPROVED, S.CLOSED) and task.ticket_id is None and task.property_id is not None and task.rated_at is None
+
+
+def _ask_for_rating(db: Session, task: MaintenanceTask) -> None:
+    if not can_rate(task):
+        return
+    notifications.notify(
+        db,
+        task.tenant_id,
+        property_customers(db, task),
+        "job_feedback",
+        f"How did we do? Rate {task.number}",
+        f"{task.title} is done. Tap to rate the job from 1 to 5 and tell us anything we should fix.",
+        "maintenance_task",
+        task.id,
+    )
+
+
+def rate(db: Session, actor: Actor, task: MaintenanceTask, rating: int, comment: str | None) -> None:
+    """Customer rating after a job (1-5 plus a comment); anything below 4 alerts the office."""
+    if task.ticket_id:
+        raise http(409, "Rate this job on its service ticket")
+    if task.status not in (S.APPROVED, S.CLOSED):
+        raise http(409, "You can rate a job once the work is approved")
+    if task.rated_at:
+        raise http(409, "This job has already been rated")
+    task.rating = rating
+    task.rating_comment = (comment or "").strip() or None
+    task.rated_at = utcnow()
+    task.rated_by = actor.id
+    audit.record(db, actor, "maintenance.rated", "maintenance_task", task.id, new={"rating": rating, "comment": task.rating_comment})
+    notifications.alert_low_rating(
+        db, task.tenant_id, rating, task.rating_comment, f"{task.number} {task.title}", "maintenance_task", task.id
+    )
 
 
 def _sync_complaint(db: Session, task: MaintenanceTask, target: ComplaintStatus):

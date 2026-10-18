@@ -243,6 +243,7 @@ class PlanIn(BaseModel):
     late_fee: float | None = Field(None, ge=0)
     custom_amounts: dict[str, float] = {}
     is_active: bool = True
+    subscribable: bool = False
 
 
 class PlanOut(Stamped):
@@ -254,6 +255,7 @@ class PlanOut(Stamped):
     late_fee: float | None
     custom_amounts: dict
     is_active: bool
+    subscribable: bool = False
 
 
 class GenerateIn(BaseModel):
@@ -275,6 +277,7 @@ class InvoiceOut(Stamped):
     number: str
     property_id: uuid.UUID
     plan_id: uuid.UUID | None
+    subscription_id: uuid.UUID | None = None
     description: str
     period_start: date | None
     period_end: date | None
@@ -282,6 +285,7 @@ class InvoiceOut(Stamped):
     amount_paid: float
     due_date: date
     status: str
+    maintenance_task_id: uuid.UUID | None = None
     property_label: str | None = None
     overdue: bool = False
 
@@ -289,6 +293,12 @@ class InvoiceOut(Stamped):
 class PaymentCreateIn(BaseModel):
     invoice_id: uuid.UUID
     amount: float | None = Field(None, gt=0)
+
+
+class PaymentVerifyIn(BaseModel):
+    razorpay_order_id: str = Field(max_length=100)
+    razorpay_payment_id: str = Field(max_length=100)
+    razorpay_signature: str = Field(max_length=200)
 
 
 class PaymentRecordIn(BaseModel):
@@ -439,3 +449,54 @@ class SearchOut(BaseModel):
     interpreted: dict
     total: int
     items: list[SearchHit]
+
+
+# ---------------------------------------------------------------- subscriptions & referrals
+
+
+class SubscriptionIn(BaseModel):
+    property_id: uuid.UUID
+    plan_id: uuid.UUID
+    frequency_months: int = Field(description="1 = monthly, 3 = quarterly")
+    start_date: date | None = None
+    discount_pct: float | None = Field(None, ge=0, le=100, description="Admins only; defaults to the layout's discount")
+
+
+class SubscriptionOut(Stamped):
+    property_id: uuid.UUID
+    plan_id: uuid.UUID
+    frequency_months: int
+    discount_pct: float
+    status: str
+    started_on: date
+    next_billing_date: date
+    cancelled_at: datetime | None
+    plan_name: str | None = None
+    property_label: str | None = None
+    price: float | None = None
+
+
+class ReferralIn(BaseModel):
+    property_id: uuid.UUID | None = None
+    neighbour_name: str = Field(min_length=2, max_length=200)
+    neighbour_phone: str = Field(min_length=10, max_length=30)
+    note: str | None = Field(None, max_length=1000)
+
+
+class ReferralConvertIn(BaseModel):
+    property_id: uuid.UUID
+
+
+class ReferralOut(Stamped):
+    referrer_user_id: uuid.UUID
+    referrer_property_id: uuid.UUID
+    neighbour_name: str
+    neighbour_phone: str
+    note: str | None
+    status: str
+    converted_property_id: uuid.UUID | None
+    reward_amount: float
+    reward_remaining: float
+    decided_at: datetime | None
+    property_label: str | None = None
+    referrer_name: str | None = None

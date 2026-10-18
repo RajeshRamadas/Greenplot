@@ -96,6 +96,11 @@ class MaintenanceTask(TenantModel, SoftDelete):
     resident_ack_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     resident_ack_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
     resident_ack_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Customer rating of a job that has no service ticket (ticket jobs are rated on the ticket).
+    rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rating_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rated_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    rated_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
 
     checklist = relationship("MaintenanceChecklistItem", order_by="MaintenanceChecklistItem.position", cascade="all, delete-orphan")
     materials = relationship("MaintenanceMaterial", cascade="all, delete-orphan")
@@ -193,6 +198,8 @@ class MaintenanceSchedule(TenantModel, SoftDelete):
     vendor_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("vendors.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_generated_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    # The run date the owner was last reminded about (one "your plot is due" message per visit)
+    owner_reminded_for: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
 class Media(TenantModel):

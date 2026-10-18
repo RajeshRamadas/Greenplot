@@ -95,10 +95,20 @@ def test_end_to_end_complaint_to_searchable_history(as_, world):
     assert t["status"] == "completed" and t["completed_by"] == str(world.staff.id)
     assert t["proof"]["missing"] == []
 
-    # Worker cannot approve own job; supervisor approves → auto-closed
+    # Worker cannot approve own job; supervisor approves → waits for the owner's payment
     assert staff.post(f"/maintenance/{task_id}/approve", {}).status_code == 403
     t = sup.ok("post", f"/maintenance/{task_id}/approve", {"comment": "Verified on site"})
-    assert t["status"] == "closed" and t["review_decision"] == "approved" and t["approved_at"]
+    assert t["status"] == "approved" and t["review_decision"] == "approved" and t["approved_at"]
+    assert "close" not in t["allowed_actions"] and "set the job's charge" in t["payment"]["blocking"].lower()
+    assert sup.post(f"/maintenance/{task_id}/close", {}).status_code == 409
+    t = sup.ok("patch", f"/maintenance/{task_id}", {"charge": 450})
+    assert t["payment"]["amount"] == 450.0 and "450" in t["payment"]["blocking"]
+
+    # The owner pays online → the job closes itself
+    p = resident.ok("post", "/payments", {"invoice_id": t["payment"]["invoice_id"]}, headers={"Idempotency-Key": "pay-job-gate-1"})
+    resident.ok("post", f"/payments/{p['id']}/simulate", {})
+    t = sup.ok("get", f"/maintenance/{task_id}")
+    assert t["status"] == "closed" and t["payment"]["status"] == "paid" and t["payment"]["blocking"] is None
     assert t["reviewed_by_name"] == "Anita Supervisor"
     assert t["materials_cost"] == 120.0
 
@@ -166,9 +176,17 @@ def test_rework_requires_fresh_after_photo(as_, world):
             "property_id": str(world.p204.id),
             "assigned_staff_id": str(world.staff.id),
             "checklist_items": ["Weeds cleared"],
+            "charge": 300,
         },
     )
     tid = t["id"]
+    assert t["payment"]["amount"] == 300.0 and t["payment"]["status"] == "unpaid"
+    as_(world.admin).ok(
+        "post",
+        "/payments/record",
+        {"invoice_id": t["payment"]["invoice_id"], "amount": 300, "method": "upi"},
+        headers={"Idempotency-Key": "upi-clean-204-1"},
+    )
     t = staff.ok("post", f"/maintenance/{tid}/start", {})
     assert t["accepted_at"], "starting from ASSIGNED records acceptance"
     staff.ok("patch", f"/maintenance/{tid}/checklist/{t['checklist'][0]['id']}", {"status": "completed"})

@@ -150,6 +150,10 @@ class TenantSettingsIn(BaseModel):
     ticket_sla_at_risk_percent: int | None = Field(None, ge=10, le=99)
     ticket_escalate_every_hours: int | None = Field(None, ge=1, le=168)
     ticket_sla: dict[str, dict[str, int]] | None = None
+    # owner updates: photo proof on job close, plot-due reminders, monthly plot report
+    job_proof_enabled: bool | None = None
+    plot_due_reminder_days: int | None = Field(None, ge=0, le=30)
+    plot_report_enabled: bool | None = None
 
 
 # ---------------------------------------------------------------- layouts / properties / residents

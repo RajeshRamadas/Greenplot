@@ -39,6 +39,9 @@ DEFAULT_CHANNELS: dict[str, list[str]] = {
     "signup_request": ["in_app", "push"],
     "job_feedback": ["in_app", "push"],
     "low_rating": ["in_app", "push"],
+    "job_proof": ["in_app", "push", "whatsapp", "email"],
+    "plot_due": ["in_app", "push", "whatsapp", "email"],
+    "plot_report": ["in_app", "whatsapp", "email"],
 }
 
 MAX_DELIVERY_ATTEMPTS = 3

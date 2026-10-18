@@ -612,6 +612,9 @@ def close(db, actor, task):
         asset = db.get(Asset, task.asset_id)
         if asset and asset.service_interval_days:
             asset.next_service_due = date.today() + timedelta(days=asset.service_interval_days)
+    from app.services.job_proof import send_job_proof
+
+    send_job_proof(db, actor, task)
 
 
 def reopen(db, actor, task, reason: str):

@@ -14,6 +14,7 @@ from app.api.v1 import (
     inspections,
     maintenance,
     media,
+    owner_updates,
     people,
     properties,
     public,
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
         system,
         public,
         whatsapp,
+        owner_updates,
         signups,
         sms,
     ):

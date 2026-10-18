@@ -136,7 +136,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [pending, setPending] = useState(0);
 
   useEffect(() => {
-    if (!loading && !me) router.replace(`/login?next=${encodeURIComponent(path)}`);
+    if (!loading && !me) router.replace(`/login?next=${encodeURIComponent(path + window.location.search)}`);
   }, [loading, me, router, path]);
 
   useEffect(() => setOpen(false), [path]);

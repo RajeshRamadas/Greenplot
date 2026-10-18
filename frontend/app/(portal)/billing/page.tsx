@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { PayDialog } from "@/components/Pay";
+import { useEffect, useState } from "react";
 import { Badge, Dialog, Empty, ErrorBox, Field, PageHead, Select, Stat, useToast } from "@/components/ui";
 import { api, download } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -22,6 +23,17 @@ function Invoices({ admin }: { admin: boolean }) {
   const [f, setF] = useState<Record<string, string>>({ method: "upi" });
   // One idempotency key per recorded payment so double-clicks never record it twice.
   const [key, setKey] = useState("");
+
+  // Pay links in owner reminders open here with ?invoice=<id>: go straight to payment.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("invoice");
+    const inv = wanted ? invoices.data?.items.find((i) => i.id === wanted) : undefined;
+    if (inv && (inv.status === "unpaid" || inv.status === "partial")) {
+      setPay({ invoice: inv });
+      setKey(newId("pay"));
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [invoices.data]);
 
   return (
     <>

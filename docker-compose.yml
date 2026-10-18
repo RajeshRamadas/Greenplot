@@ -30,11 +30,22 @@ services:
       GP_DATABASE_URL: postgresql+psycopg://greenplot:${POSTGRES_PASSWORD}@db/greenplot
     volumes:
       - media:/data/storage
+    # Healthy once migrations have run and uvicorn is serving. The long start
+    # period leaves room for slow production migrations; failures during it
+    # don't count, and the first success marks the service healthy at once.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      start_period: 600s
+      retries: 10
 
   worker:
     build: ./backend
     restart: unless-stopped
-    depends_on: [api]
+    depends_on:
+      api:
+        condition: service_healthy
     env_file: .env
     environment:
       GP_DATABASE_URL: postgresql+psycopg://greenplot:${POSTGRES_PASSWORD}@db/greenplot
@@ -49,7 +60,15 @@ services:
       args:
         GREENPLOT_API_URL: http://api:8000
     restart: unless-stopped
-    depends_on: [api]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
+      interval: 5s
+      timeout: 5s
+      start_period: 20s
+      retries: 10
     ports:
       - "3000:3000"
 

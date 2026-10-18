@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { PayDialog } from "@/components/Pay";
 import { useEffect, useState } from "react";
+import { MySubscriptions, ReferNeighbour, ReferralsAdmin, SubscriptionsAdmin } from "@/components/Rewards";
 import { Badge, Dialog, Empty, ErrorBox, Field, PageHead, Select, Stat, useToast } from "@/components/ui";
 import { api, download } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -195,7 +196,7 @@ function Plans() {
             <div className="title">{p.name}</div>
             <div className="small muted">
               {label(p.basis)} · {inr(p.rate)}
-              {p.basis === "per_sqft" ? "/sq ft" : ""} · every {p.frequency_months} month(s) · due in {p.due_days} days
+              {p.basis === "per_sqft" ? "/sq ft" : ""} · every {p.frequency_months} month(s) · due in {p.due_days} days{p.subscribable ? " · offered as a subscription" : ""}
             </div>
           </div>
           <button className="btn small" onClick={() => setGen(p)}>
@@ -209,7 +210,7 @@ function Plans() {
           className="form two"
           onSubmit={async (e) => {
             e.preventDefault();
-            if (await act.run(() => api("/billing/plans", { body: { name: f.name, basis: f.basis, rate: Number(f.rate), frequency_months: Number(f.frequency_months), due_days: Number(f.due_days) } }))) {
+            if (await act.run(() => api("/billing/plans", { body: { name: f.name, basis: f.basis, rate: Number(f.rate), frequency_months: Number(f.frequency_months), due_days: Number(f.due_days), subscribable: f.subscribable === "yes" } }))) {
               setOpen(false);
               plans.reload();
             }
@@ -226,6 +227,9 @@ function Plans() {
           </Field>
           <Field label="Every (months)">
             <input type="number" min="1" max="12" value={f.frequency_months} onChange={(e) => setF({ ...f, frequency_months: e.target.value })} />
+          </Field>
+          <Field label="Offer as subscription" hint="Owners can take it monthly or quarterly at a discount">
+            <Select value={f.subscribable || "no"} onChange={(v) => setF({ ...f, subscribable: v })} options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
           </Field>
           <Field label="Due after (days)">
             <input type="number" min="0" value={f.due_days} onChange={(e) => setF({ ...f, due_days: e.target.value })} />
@@ -358,6 +362,7 @@ export default function BillingPage() {
   const { can } = useAuth();
   const admin = can("billing.manage");
   const [tab, setTab] = useState("dues");
+  const [rev, setRev] = useState(0);
   const summary = useApi<{ billed: number; collected: number; outstanding: number; overdue_invoices: number; expenses: number }>(admin ? "/billing/summary" : null);
   return (
     <>
@@ -373,15 +378,19 @@ export default function BillingPage() {
       ) : null}
       {admin ? (
         <div className="tabs">
-          {["dues", "plans", "defaulters", "expenses"].map((t) => (
+          {["dues", "plans", "subscriptions", "referrals", "defaulters", "expenses"].map((t) => (
             <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>
               {label(t)}
             </button>
           ))}
         </div>
       ) : null}
-      {tab === "dues" ? <Invoices admin={admin} /> : null}
+      {!admin && can("subscriptions.manage") ? <MySubscriptions onChange={() => setRev((r) => r + 1)} /> : null}
+      {!admin && can("referrals.create") ? <ReferNeighbour /> : null}
+      {tab === "dues" ? <Invoices key={rev} admin={admin} /> : null}
       {tab === "plans" ? <Plans /> : null}
+      {tab === "subscriptions" ? <SubscriptionsAdmin /> : null}
+      {tab === "referrals" ? <ReferralsAdmin /> : null}
       {tab === "defaulters" ? <Defaulters /> : null}
       {tab === "expenses" ? <Expenses /> : null}
     </>

@@ -183,6 +183,17 @@ class PaymentStatus(StrEnum):
     REFUNDED = "refunded"
 
 
+class SubscriptionStatus(StrEnum):
+    ACTIVE = "active"
+    CANCELLED = "cancelled"
+
+
+class ReferralStatus(StrEnum):
+    PENDING = "pending"
+    CONVERTED = "converted"
+    DECLINED = "declined"
+
+
 class NoticeType(StrEnum):
     ANNOUNCEMENT = "announcement"
     NOTICE = "notice"

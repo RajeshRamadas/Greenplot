@@ -465,6 +465,7 @@ export interface Plan {
   frequency_months: number;
   due_days: number;
   is_active: boolean;
+  subscribable: boolean;
 }
 
 export interface Notice {
@@ -691,4 +692,52 @@ export interface TicketDashboard {
   sections?: Record<string, number>;
   rejected?: { ticket_id: UUID; number: string | null; title: string | null; rejected_at: string; reason: string | null }[];
   tabs?: Record<string, number>;
+}
+
+export interface SubscriptionOption {
+  plan_id: UUID;
+  plan_name: string;
+  property_id: UUID;
+  property_label: string | null;
+  frequency_months: number;
+  frequency: string;
+  discount_pct: number;
+  full_price: number;
+  price: number;
+  saving: number;
+}
+
+export interface Subscription {
+  id: UUID;
+  property_id: UUID;
+  property_label: string | null;
+  plan_id: UUID;
+  plan_name: string | null;
+  frequency_months: number;
+  discount_pct: number;
+  price: number | null;
+  status: string;
+  started_on: string;
+  next_billing_date: string;
+  cancelled_at: string | null;
+}
+
+export interface Referral {
+  id: UUID;
+  referrer_name: string | null;
+  property_label: string | null;
+  neighbour_name: string;
+  neighbour_phone: string;
+  note: string | null;
+  status: string;
+  reward_amount: number;
+  reward_remaining: number;
+  created_at: string;
+  decided_at: string | null;
+}
+
+export interface Referrals {
+  items: Referral[];
+  reward_amount: number;
+  credit_remaining: number;
 }

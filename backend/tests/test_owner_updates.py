@@ -57,6 +57,11 @@ def finish_job(as_, world, property_id=None, before=True):
     staff.ok("patch", f"/maintenance/{tid}", {"work_notes": "Cleared"})
     staff.ok("post", f"/maintenance/{tid}/complete", {})
     t = sup.ok("post", f"/maintenance/{tid}/approve", {})
+    # A plot job closes once its bill is settled; waive it so the job is free
+    admin = as_(world.admin)
+    bill = admin.ok("get", f"/maintenance/{tid}")["payment"]
+    admin.ok("post", f"/billing/invoices/{bill['invoice_id']}/waive", {})
+    t = sup.ok("get", f"/maintenance/{tid}")
     assert t["status"] == "closed"
     return t
 

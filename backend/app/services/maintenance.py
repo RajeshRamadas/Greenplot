@@ -565,9 +565,8 @@ def _approve(db, actor, task, comment):
     recipients = [task.assigned_staff_id, *notifications.vendor_users(db, task.tenant_id, task.vendor_id)]
     notifications.notify(db, task.tenant_id, recipients, "task_approved", f"{task.number} approved", comment, "maintenance_task", task.id)
     tickets_svc.on_task_event(db, actor, task, "approved")
-    if tenant_setting(db, task.tenant_id, "auto_close_on_approval", True) and not billing.job_payment_block(db, task):
     _ask_for_rating(db, task)
-    if tenant_setting(db, task.tenant_id, "auto_close_on_approval", True):
+    if tenant_setting(db, task.tenant_id, "auto_close_on_approval", True) and not billing.job_payment_block(db, task):
         close(db, actor, task)
 
 

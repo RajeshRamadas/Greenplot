@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { PayDialog } from "@/components/Pay";
 import { useEffect, useState } from "react";
 import { MySubscriptions, ReferNeighbour, ReferralsAdmin, SubscriptionsAdmin } from "@/components/Rewards";
@@ -30,7 +29,7 @@ function Invoices({ admin }: { admin: boolean }) {
     const wanted = new URLSearchParams(window.location.search).get("invoice");
     const inv = wanted ? invoices.data?.items.find((i) => i.id === wanted) : undefined;
     if (inv && (inv.status === "unpaid" || inv.status === "partial")) {
-      setPay({ invoice: inv });
+      setPay(inv);
       setKey(newId("pay"));
       window.history.replaceState(null, "", window.location.pathname);
     }

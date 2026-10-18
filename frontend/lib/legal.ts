@@ -11,8 +11,8 @@ export const BUSINESS = {
   email: "hello@greenplot.in",
   phone: "+91 81055 68225",
   hours: "Monday to Saturday, 9:00 AM to 6:00 PM IST",
-  // Leave empty until a Grievance Officer is named; the contact block then shows only how to reach them.
-  grievanceOfficer: "",
+  // Leave empty if no Grievance Officer is named; the contact block then shows only how to reach them.
+  grievanceOfficer: "Rajesh Ramadas",
   grievanceEmail: "hello@greenplot.in",
   updated: "18 October 2026",
 };

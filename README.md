@@ -165,7 +165,7 @@ The backend suite covers the end-to-end Proof of Work flow (§49), evidence rule
 
 ## Legal pages
 
-The public site has Terms & Conditions (`/terms`), Privacy Policy (`/privacy`), Refund & Cancellation (`/refund-policy`), Service Delivery (`/service-delivery`) and Contact (`/contact`) pages, linked from the site footer, login and registration. Razorpay checks for these before activating a live account. Fill in the registered business name, address, phone and Grievance Officer in [`frontend/lib/legal.ts`](frontend/lib/legal.ts) before going live, and have the text reviewed by a lawyer. Registration requires ticking the Terms & Privacy box; the accepted `TERMS_VERSION` and IP are kept in the audit log.
+The public site has Terms & Conditions (`/terms`), Privacy Policy (`/privacy`), Refund & Cancellation (`/refund-policy`), Service Delivery (`/service-delivery`) and Contact (`/contact`) pages, linked from the site footer, login and registration. Razorpay checks for these before activating a live account. Business details (name, address, phone, emails, Grievance Officer) live in [`frontend/lib/legal.ts`](frontend/lib/legal.ts), and have the text reviewed by a lawyer. Registration requires ticking the Terms & Privacy box; the accepted `TERMS_VERSION` and IP are kept in the audit log.
 
 ## Configuration
 

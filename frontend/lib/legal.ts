@@ -1,19 +1,19 @@
 /**
  * Business details shown on the legal pages (privacy, terms, refunds, delivery, contact).
- * Replace every "[ ... ]" value with the registered details before going live: Razorpay
- * checks that the business name, address and phone match the ones on the merchant account.
+ * Razorpay checks that the business name, address and phone match the ones on the merchant account.
  */
 export const BUSINESS = {
   brand: "GreenPlot",
-  legalName: "[Registered business name]",
-  address: "[Registered office address, City, State, PIN]",
-  city: "[City]",
-  state: "[State]",
+  legalName: "UDO TECHNOLOGIES LLP",
+  address: "18, Kempanna Layout, Ramachandrapura, Jalahalli Post, Bangalore, Karnataka, India - 560013",
+  city: "Bangalore",
+  state: "Karnataka",
   email: "hello@greenplot.in",
-  phone: "[Support phone number]",
+  phone: "+91 81055 68225",
   hours: "Monday to Saturday, 9:00 AM to 6:00 PM IST",
-  grievanceOfficer: "[Grievance Officer's name]",
-  grievanceEmail: "grievance@greenplot.in",
+  // Leave empty until a Grievance Officer is named; the contact block then shows only how to reach them.
+  grievanceOfficer: "",
+  grievanceEmail: "hello@greenplot.in",
   updated: "18 October 2026",
 };
 

@@ -42,8 +42,12 @@ export function ContactBlock({ grievance = false }: { grievance?: boolean }) {
     <dl className="legal-contact">
       {grievance ? (
         <>
-          <dt>Grievance Officer</dt>
-          <dd>{BUSINESS.grievanceOfficer}</dd>
+          {BUSINESS.grievanceOfficer ? (
+            <>
+              <dt>Grievance Officer</dt>
+              <dd>{BUSINESS.grievanceOfficer}</dd>
+            </>
+          ) : null}
           <dt>Email</dt>
           <dd>
             <a href={`mailto:${BUSINESS.grievanceEmail}`}>{BUSINESS.grievanceEmail}</a>
@@ -60,7 +64,9 @@ export function ContactBlock({ grievance = false }: { grievance?: boolean }) {
         </>
       )}
       <dt>Phone</dt>
-      <dd>{BUSINESS.phone}</dd>
+      <dd>
+        <a href={`tel:${BUSINESS.phone.replace(/\s/g, "")}`}>{BUSINESS.phone}</a>
+      </dd>
       <dt>Address</dt>
       <dd>{BUSINESS.address}</dd>
       <dt>Hours</dt>

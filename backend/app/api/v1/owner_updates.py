@@ -4,12 +4,12 @@ import re
 import uuid
 from datetime import date, datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.core.deps import DB, Perm
+from app.core.deps import DB, Perm, client_ip
 from app.core.ratelimit import limiter
 from app.models import MaintenanceTask, PlotReport, Property
 from app.models.enums import TaskStatus
@@ -24,8 +24,9 @@ router = APIRouter(tags=["owner updates"])
 DONE = (TaskStatus.APPROVED, TaskStatus.CLOSED)
 
 
-def _public_limit(kind: str, token: str) -> None:
-    if not limiter.allow(f"{kind}:{token[:32]}", 120, 3600):
+def _public_limit(kind: str, request: Request) -> None:
+    # Keyed by caller, not token, so made-up tokens cannot grow the limiter's key set.
+    if not limiter.allow(f"{kind}:{client_ip(request) or 'unknown'}", 120, 3600):
         raise HTTPException(429, "Too many requests")
 
 
@@ -51,9 +52,9 @@ class ProofOut(BaseModel):
 
 
 @router.get("/public/job-proof/{token}", response_model=ProofOut)
-def public_job_proof(token: str, db: DB):
+def public_job_proof(token: str, request: Request, db: DB):
     """Before/after photos of a finished job, opened from the owner's WhatsApp or email link."""
-    _public_limit("proof", token)
+    _public_limit("proof", request)
     task_id = owner_contact.read_link_token(job_proof.TOKEN_KIND, token)
     task = db.get(MaintenanceTask, task_id) if task_id else None
     if (
@@ -150,9 +151,9 @@ def create_plot_report(property_id: uuid.UUID, body: PlotReportIn, db: DB, actor
 
 
 @router.get("/public/plot-reports/{token}")
-def public_plot_report(token: str, db: DB):
+def public_plot_report(token: str, request: Request, db: DB):
     """The report PDF, opened from the owner's WhatsApp or email link."""
-    _public_limit("plot-report", token)
+    _public_limit("plot-report", request)
     report_id = owner_contact.read_link_token(plot_reports.TOKEN_KIND, token)
     report = db.get(PlotReport, report_id) if report_id else None
     prop = db.get(Property, report.property_id) if report else None

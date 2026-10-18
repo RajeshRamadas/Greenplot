@@ -86,7 +86,8 @@ def test_owner_gets_before_and_after_photos_when_job_closes(as_, world, client, 
     photo = client.get(proof["after"][0]["url"].replace("http://testserver", ""))
     assert photo.status_code == 200 and photo.content[:2] == b"\xff\xd8"
 
-    assert client.get(f"/api/v1/public/job-proof/{token[:-1]}0").status_code == 404
+    tampered = token[:-1] + ("1" if token[-1] == "0" else "0")
+    assert client.get(f"/api/v1/public/job-proof/{tampered}").status_code == 404
     other = owner_contact.link_token("plot-report", uuid.UUID(t["id"]), 30)
     assert client.get(f"/api/v1/public/job-proof/{other}").status_code == 404, "tokens are bound to their kind"
 
@@ -230,7 +231,9 @@ def test_monthly_plot_report(as_, world, client):
 
     # The worker sends last month's report once to every plot with an owner
     first_of_next = plot_reports.add_months(today.replace(day=1), 1)
-    assert plot_reports.send_monthly(db, first_of_next) == 1  # GV-204; GV-117 already has this month's report
+    unsent = admin.ok("post", f"/properties/{world.p204.id}/plot-reports", {"month": month, "send": False})
+    assert unsent["sent_at"] is None
+    assert plot_reports.send_monthly(db, first_of_next) == 1  # GV-204's unsent draft; GV-117 was already sent
     db.commit()
     assert plot_reports.send_monthly(db, first_of_next) == 0
     assert {r.property_id for r in db.query(PlotReport)} == {world.p117.id, world.p204.id}

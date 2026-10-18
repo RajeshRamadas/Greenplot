@@ -218,12 +218,10 @@ def report_pdf(db: Session, prop: Property, report: PlotReport) -> bytes:
         ),
         Paragraph("Visits", st["h"]),
     ]
-    rows = [[fmt_date(v["date"]), v["number"], v["title"]] for v in s["visits"]]
-    rows += [
-        [fmt_date(i["date"]), i["number"], f"Property watch inspection · {(i['condition'] or 'done').title()}"] for i in s["inspections"]
-    ]
+    rows = [[v["date"], v["number"], v["title"]] for v in s["visits"]]
+    rows += [[i["date"], i["number"], f"Property watch inspection · {(i['condition'] or 'done').title()}"] for i in s["inspections"]]
     if rows:
-        story.append(_grid(["Date", "Record", "Work"], sorted(rows), [30 * mm, 45 * mm, 95 * mm], st))
+        story.append(_grid(["Date", "Record", "Work"], [[fmt_date(r[0]), *r[1:]] for r in sorted(rows)], [30 * mm, 45 * mm, 95 * mm], st))
     else:
         story.append(Paragraph("No visits were completed this month.", st["small"]))
 
@@ -341,7 +339,11 @@ def send_monthly(db: Session, today: date | None = None) -> int:
         )
         .exists()
     )
-    already = select(PlotReport.id).where(PlotReport.property_id == Property.id, PlotReport.period_start == start).exists()
+    already = (
+        select(PlotReport.id)
+        .where(PlotReport.property_id == Property.id, PlotReport.period_start == start, PlotReport.sent_at.is_not(None))
+        .exists()
+    )
     stmt = (
         select(Property)
         .join(Tenant, Tenant.id == Property.tenant_id)

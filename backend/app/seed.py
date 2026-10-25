@@ -329,7 +329,8 @@ def run(reset: bool = False) -> None:
 
     W2 = Actor(staff2, None, "seed")
 
-    # 2b. Finished jobs for each service shown on the website: proven, approved, paid and closed
+    # 2b. Finished jobs for each service shown on the website: proven, approved and closed
+    # (plot jobs are paid by the owner; the park job is the association's own cost, so it has no bill)
     def finished(worker, data, theme, notes, issue, outcome, paid_by=None):
         job = m.create_task(db, S, t.id, dict(data, supervisor_id=sup.id))
         m.accept(db, worker, job)

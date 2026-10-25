@@ -28,14 +28,14 @@ export const SERVICES: Service[] = [
     name: "Plot Cleaning",
     promise: "Your plot kept clean and visible, every month, with photos to prove it.",
     intro:
-      "Vacant plots collect weeds, debris and dumped waste fast. We clear them on a schedule you choose, and every visit is recorded with before and after photos, a checklist and the GPS location, so you know the work happened even if you live in another city.",
+      "Vacant plots collect weeds, debris and dumped waste fast. We clear them on a schedule you choose, and every visit is recorded with photos, a checklist and the time, so you know the work happened even if you live in another city.",
     included: [
       { title: "Weed removal", text: "Weeds and wild growth cleared across the plot and along the boundary." },
       { title: "Debris clearing", text: "Construction waste, litter and dumped material removed and disposed of." },
       { title: "Boundary cleaning", text: "Boundary stones and markers cleared so the plot edges stay visible." },
       { title: "Recurring upkeep", text: "Monthly or quarterly visits, created automatically from a schedule." },
     ],
-    proof: ["Before and after photos from the site", "Completed cleaning checklist", "GPS and time of each visit", "Bill and receipt for the job"],
+    proof: ["Photos of the cleaned plot", "Completed cleaning checklist", "Time of each visit, and location if you require it", "Bill and receipt for the job"],
     shot: {
       src: "/showcase/plot-cleaning.jpg",
       alt: "A finished plot cleaning job with before and after photos, checklist and payment",

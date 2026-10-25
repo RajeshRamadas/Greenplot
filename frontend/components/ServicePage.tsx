@@ -61,7 +61,7 @@ export function ServiceShell({ current, children }: { current?: string; children
 export const STEPS = [
   { title: "Requested", text: "A schedule, the office or an owner creates the job." },
   { title: "Assigned", text: "It goes to a staff member or vendor with a due date." },
-  { title: "Proven on site", text: "Before and after photos, checklist and location are captured." },
+  { title: "Proven on site", text: "Photos and the checklist are captured, with location where you require it." },
   { title: "Approved", text: "A supervisor checks the proof, or sends it back for rework." },
   { title: "Closed", text: "The owner sees the result and pays online if there is a charge." },
 ];

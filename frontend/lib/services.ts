@@ -20,6 +20,20 @@ export interface Service {
   goodFor: string[];
   /** Basic price on level, easy-to-reach ground; difficult terrain is quoted extra (see TERRAIN_NOTE). */
   price?: Price;
+  /** Annual maintenance contract plans, cheapest first. */
+  amc?: AmcPlan[];
+}
+
+export interface AmcPlan {
+  name: string;
+  /** Short line under the plan name, e.g. "4 cleanings a year". */
+  summary: string;
+  includes: string[];
+  /** Rupees per square foot of plot for the whole year. */
+  perSqftYear: number;
+  /** Lowest yearly charge, in rupees. */
+  minimumYear: number;
+  popular?: boolean;
 }
 
 export interface Price {
@@ -37,6 +51,11 @@ export const TERRAIN_NOTE =
 export const SERVICES: Service[] = [
   {
     slug: "plot-cleaning",
+    amc: [
+      { name: "Basic", summary: "4 cleanings a year", includes: ["Quarterly weed and debris clearing", "Photo report after every visit"], perSqftYear: 7.5, minimumYear: 5000 },
+      { name: "Standard", summary: "6 cleanings a year", includes: ["Cleaning every two months", "Photo report after every visit", "2 Property Watch inspections"], perSqftYear: 11, minimumYear: 8000, popular: true },
+      { name: "Premium", summary: "12 cleanings a year", includes: ["Monthly cleaning", "Photo report after every visit", "Quarterly Property Watch inspection", "Priority visit within 48 hours on request"], perSqftYear: 20, minimumYear: 15000 },
+    ],
     price: { perSqft: 2, per: "per visit", minimum: 1500 },
     beforeAfter: "/showcase/plot-cleaning-ba.jpg",
     thumb: "/showcase/plot-cleaning-card.jpg",
@@ -60,6 +79,11 @@ export const SERVICES: Service[] = [
   },
   {
     slug: "garden-landscape",
+    amc: [
+      { name: "Basic", summary: "Visit every two weeks", includes: ["Mowing, weeding and watering", "Hedge trimming every month"], perSqftYear: 17, minimumYear: 18000 },
+      { name: "Standard", summary: "Weekly visit", includes: ["Mowing, weeding and watering", "Hedge trimming and pruning", "Seasonal planting twice a year"], perSqftYear: 32, minimumYear: 30000, popular: true },
+      { name: "Premium", summary: "Weekly visit plus tree care", includes: ["Everything in Standard", "Tree pruning before the monsoon", "Manure and pest control every quarter"], perSqftYear: 38, minimumYear: 36000 },
+    ],
     price: { perSqft: 3, per: "per month", minimum: 2000 },
     beforeAfter: "/showcase/garden-landscape-ba.jpg",
     thumb: "/showcase/garden-landscape-card.jpg",
@@ -83,6 +107,11 @@ export const SERVICES: Service[] = [
   },
   {
     slug: "property-inspection",
+    amc: [
+      { name: "Basic", summary: "4 inspections a year", includes: ["Quarterly Property Watch visit", "Condition report with photos"], perSqftYear: 2, minimumYear: 2500 },
+      { name: "Standard", summary: "12 inspections a year", includes: ["Monthly Property Watch visit", "Condition report with photos", "Alert when anything needs attention"], perSqftYear: 5.5, minimumYear: 6000, popular: true },
+      { name: "Premium", summary: "12 inspections plus cleaning", includes: ["Monthly Property Watch visit", "2 plot cleanings a year", "Repairs arranged for you, quoted before work"], perSqftYear: 9, minimumYear: 10000 },
+    ],
     price: { perSqft: 0.5, per: "per visit", minimum: 750 },
     thumb: "/showcase/property-inspection.jpg",
     name: "Property Inspection",

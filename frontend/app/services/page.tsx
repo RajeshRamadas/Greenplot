@@ -21,7 +21,7 @@ export default function ServicesIndex() {
               <img src={s.thumb} alt="" loading="lazy" />
               <h3>{s.name}</h3>
               <p>{s.promise}</p>
-              {s.price ? <p className="svc-from">From ₹{s.price.perSqft} per sq ft, {s.price.per}</p> : null}
+              {s.price ? <p className="svc-from">From ₹{s.price.perSqft} per sq ft, {s.price.per}{s.amc ? " · AMC plans" : ""}</p> : null}
               <span className="svc-more">See how it works →</span>
             </Link>
           ))}

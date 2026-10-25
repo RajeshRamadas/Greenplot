@@ -365,3 +365,16 @@ a.list-item:hover { text-decoration: none; background: var(--green-pale); }
 .svc-estimate { margin: 12px 0 0; font-size: 16px; }
 .svc-from { color: var(--green-dark) !important; font-weight: 700; font-size: 14px; }
 @media (max-width: 860px) { .svc-price { grid-template-columns: 1fr; } }
+.svc-amc-title { margin: 22px 0 6px; font-size: 20px; }
+.svc-amc { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+.svc-amc .card + .card { margin-top: 0; }
+.svc-plan { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.svc-plan h3 { margin: 0; font-size: 20px; }
+.svc-plan p { margin: 0; }
+.svc-plan.popular { border: 2px solid var(--green); }
+.svc-plan .badge { position: absolute; top: 14px; right: 14px; }
+.svc-plan-price { font-size: 28px; font-weight: 800; margin: 10px 0 0 !important; }
+.svc-plan-price span { font-size: 15px; font-weight: 600; color: var(--muted); }
+.svc-plan .svc-ticks { margin-top: 12px; gap: 8px; }
+.svc-plan .svc-ticks li { font-weight: 500; font-size: 14px; }
+@media (max-width: 860px) { .svc-amc { grid-template-columns: 1fr; } }

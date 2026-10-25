@@ -74,8 +74,8 @@ export default async function ServiceDetail({ params }: { params: Promise<{ slug
 
         {s.price ? (
           <section className="svc-wrap">
-            <h2>Price</h2>
-            <PriceCard price={s.price} />
+            <h2>Price and AMC plans</h2>
+            <PriceCard price={s.price} amc={s.amc} />
           </section>
         ) : null}
 

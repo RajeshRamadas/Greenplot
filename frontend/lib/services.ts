@@ -88,11 +88,11 @@ export const SERVICES: Service[] = [
     name: "Property Inspection",
     promise: "Know the condition of your property without visiting it.",
     intro:
-      "Property Watch visits check your plot or house point by point (boundary, gate, fencing, vegetation, water and drainage) and record its condition with photos. Problems found become jobs straight away, and you get a report of every visit.",
+      "Property Watch visits check your plot or house point by point (boundary, gate, fencing, vegetation, water and drainage) and record its condition with photos. The office can turn any problem found into a repair job in one step, and you get a report of every visit.",
     included: [
       { title: "Scheduled visits", text: "Monthly or quarterly inspections, or one before a sale or registration." },
       { title: "Point-by-point check", text: "Each point marked good, needs attention or issue, with notes." },
-      { title: "Evidence", text: "Photos and location captured on site for every inspection." },
+      { title: "Evidence", text: "Photos taken on site, with the date and time of the visit." },
       { title: "History", text: "Every inspection kept against the property, so you can see changes over time." },
     ],
     proof: ["Condition of each inspection point", "Photos from the visit", "Overall condition and findings", "Follow-up jobs for anything found"],
@@ -110,14 +110,14 @@ export const SERVICES: Service[] = [
     name: "Fencing & Gates",
     promise: "Gates that close and fences that hold, repaired and recorded.",
     intro:
-      "Broken gates and sagging fences are the most common complaints in a layout. Each repair is assigned to staff or a trusted vendor, the gate is scanned by its QR code, and the job is only signed off with before and after photos and a tested checklist.",
+      "Broken gates and sagging fences are the most common complaints in a layout. Each repair is assigned to staff or a trusted vendor, and the job is only signed off with before and after photos and a tested checklist. Gates can carry a QR code that is scanned on site to prove the right gate was serviced.",
     included: [
       { title: "Gate servicing", text: "Hinges lubricated, alignment adjusted, locks and latches tested." },
       { title: "Fence repair", text: "Sagging or broken fencing repaired along boundaries." },
       { title: "Vendor jobs", text: "Specialist fabrication handed to vendors, tracked to completion." },
       { title: "Preventive care", text: "Gates serviced on a schedule before they fail." },
     ],
-    proof: ["Before and after photos", "QR scan proving the right gate", "Materials used, with cost", "Supervisor sign-off"],
+    proof: ["Before and after photos", "Completed, tested checklist", "QR scan and materials used, where recorded", "Supervisor sign-off"],
     shot: {
       src: "/showcase/fencing-gates.jpg",
       alt: "A finished gate repair job with QR scan, materials and photos",

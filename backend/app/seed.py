@@ -350,16 +350,22 @@ def run(reset: bool = False) -> None:
 
     finished(
         W,
-        dict(title="Monthly plot cleaning", category="cleaning", property_id=props["89"].id, assigned_staff_id=staff.id, charge=1200),
+        dict(title="Monthly plot cleaning", category="cleaning", property_id=p117.id, assigned_staff_id=staff.id, charge=1200),
         "plot",
         "Removed weeds and construction debris; cleared the boundary line.",
         "Debris dumped near the north boundary",
         "Plot clean, boundary stones visible",
-        "UPI 4512-GV89",
+        "UPI 4512-GV117",
     )
     finished(
         W2,
-        dict(title="Lawn mowing and hedge trimming — Park B", category="gardening", assigned_staff_id=staff2.id, location_note="Park B"),
+        dict(
+            title="Lawn mowing and hedge trimming — Park B",
+            category="gardening",
+            assigned_staff_id=staff2.id,
+            layout_id=layout.id,
+            location_note="Park B",
+        ),
         "garden",
         "Mowed the lawn, trimmed the hedge line square and watered the flower bed.",
         "Grass overgrown after the rains",

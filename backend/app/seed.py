@@ -41,31 +41,77 @@ from app.services.maintenance import ensure_default_policies
 DEMO_PASSWORD = "GreenPlot@2026"
 
 
-def scene(kind: str) -> bytes:
+def scene(kind: str, theme: str = "gate") -> bytes:
     """A simple synthetic before/after illustration (no real photos in demo data)."""
     w, h = 640, 480
-    img = Image.new("RGB", (w, h), (196, 220, 206) if kind == "after" else (186, 176, 150))
+    before = kind == "before"
+    img = Image.new("RGB", (w, h), (200, 222, 236))
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 300, w, h], fill=(110, 160, 120) if kind == "after" else (140, 120, 90))
-    d.rectangle([180, 140, 460, 330], outline=(60, 70, 70), width=10)
-    for x in range(200, 460, 40):
-        d.line([x, 150, x, 320], fill=(70, 80, 80), width=6)
-    if kind == "before":
-        for _ in range(40):
-            x, y = random.randint(0, w), random.randint(300, h)
-            d.ellipse([x, y, x + 18, y + 10], fill=(90, 110, 60))
-        d.line([180, 140, 470, 170], fill=(150, 60, 50), width=8)
-    d.text((16, 16), f"GreenPlot demo · {kind.upper()}", fill=(20, 40, 30))
+    if theme == "plot":
+        d.rectangle([0, 220, w, h], fill=(150, 118, 84) if before else (166, 132, 96))
+        for x in range(30, w, 70):  # boundary stones
+            d.rectangle([x, 226, x + 26, 246], fill=(205, 200, 190), outline=(120, 110, 100))
+        if before:
+            for _ in range(70):
+                x, y = random.randint(0, w), random.randint(250, h - 10)
+                for dx in (-8, 0, 8):
+                    d.line([x, y, x + dx, y - random.randint(14, 34)], fill=(74, 120, 52), width=4)
+            for _ in range(10):
+                x, y = random.randint(20, w - 40), random.randint(270, h - 30)
+                d.rectangle([x, y, x + 26, y + 12], fill=(120, 124, 128))
+        else:
+            for y in range(270, h, 26):
+                d.line([0, y, w, y], fill=(150, 116, 82), width=3)
+    elif theme == "garden":
+        d.rectangle([0, 260, w, h], fill=(96, 150, 70))
+        if before:
+            for _ in range(260):
+                x, y = random.randint(0, w), random.randint(270, h)
+                d.line([x, y, x + random.randint(-6, 6), y - random.randint(18, 46)], fill=(70, 128, 52), width=3)
+            for x in range(20, w, 60):
+                d.ellipse([x - 10, 150 + random.randint(-25, 10), x + 70, 270], fill=(52, 104, 46))
+        else:
+            for i, y in enumerate(range(260, h, 36)):
+                d.rectangle([0, y, w, y + 36], fill=(110, 170, 80) if i % 2 else (98, 156, 72))
+            d.rectangle([20, 180, w - 20, 262], fill=(52, 110, 50))
+            for x in range(60, w - 40, 140):
+                d.ellipse([x, 140, x + 50, 190], fill=(228, 92, 120))
+    elif theme == "pipe":
+        d.rectangle([0, 0, w, 330], fill=(226, 214, 196))
+        d.rectangle([0, 330, w, h], fill=(150, 150, 146))
+        d.rectangle([380, 120, 520, 240], fill=(70, 90, 110), outline=(40, 50, 60), width=6)  # meter box
+        d.rectangle([60, 250, 380, 272], fill=(130, 136, 140))
+        d.rectangle([440, 240, 462, 330], fill=(130, 136, 140))
+        if before:
+            for y in range(280, 330, 14):
+                d.ellipse([214, y, 226, y + 10], fill=(70, 130, 210))
+            d.ellipse([120, 360, 360, 420], fill=(90, 150, 220))
+            d.rectangle([60, 272, 380, 330], fill=(200, 186, 166))
+        else:
+            d.rectangle([204, 244, 236, 278], fill=(196, 160, 60), outline=(120, 96, 30), width=3)  # new coupling
+    else:  # gate and fence
+        img.paste((196, 220, 206) if not before else (186, 176, 150), [0, 0, w, h])
+        d.rectangle([0, 300, w, h], fill=(110, 160, 120) if not before else (140, 120, 90))
+        d.rectangle([180, 140, 460, 330], outline=(60, 70, 70), width=10)
+        for x in range(200, 460, 40):
+            d.line([x, 150, x, 320], fill=(70, 80, 80), width=6)
+        if before:
+            for _ in range(40):
+                x, y = random.randint(0, w), random.randint(300, h)
+                d.ellipse([x, y, x + 18, y + 10], fill=(90, 110, 60))
+            d.line([180, 140, 470, 170], fill=(150, 60, 50), width=8)
+    d.rectangle([0, 0, w, 40], fill=(255, 255, 255))
+    d.text((16, 14), f"GreenPlot demo · sample {kind.upper()} photo", fill=(20, 40, 30))
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=82)
     return buf.getvalue()
 
 
-def attach(db, actor, task, kind, evidence_type):
+def attach(db, actor, task, kind, evidence_type, theme="gate"):
     from app.schemas.maintenance import UploadUrlIn
     from app.services.storage import get_storage
 
-    data = scene(kind)
+    data = scene(kind, theme)
     req = UploadUrlIn(
         entity_type="maintenance_task",
         entity_id=task.id,
@@ -271,13 +317,62 @@ def run(reset: bool = False) -> None:
         t.id,
         dict(title="Plot cleaning and weed removal", category="cleaning", property_id=p117.id, assigned_staff_id=staff.id, charge=1500),
     )
+    m.accept(db, W, clean)
+    attach(db, W, clean, "before", "before_photo", "plot")
     m.start(db, W, clean)
     for item in clean.checklist:
         m.update_checklist_item(db, W, clean, item, "completed", None)
-    attach(db, W, clean, "after", "after_photo")
+    attach(db, W, clean, "after", "after_photo", "plot")
     clean.work_notes = "Cleared weeds and debris along all four boundaries."
     db.flush()
     m.complete(db, W, clean)
+
+    W2 = Actor(staff2, None, "seed")
+
+    # 2b. Finished jobs for each service shown on the website: proven, approved, paid and closed
+    def finished(worker, data, theme, notes, issue, outcome, paid_by=None):
+        job = m.create_task(db, S, t.id, dict(data, supervisor_id=sup.id))
+        m.accept(db, worker, job)
+        attach(db, worker, job, "before", "before_photo", theme)
+        m.start(db, worker, job, 12.9141, 77.6387, 6)
+        for item in job.checklist:
+            m.update_checklist_item(db, worker, job, item, "completed", None)
+        attach(db, worker, job, "after", "after_photo", theme)
+        job.work_notes, job.issue_found, job.outcome = notes, issue, outcome
+        db.flush()
+        m.complete(db, worker, job, 12.9141, 77.6387, 6)
+        m.approve(db, S, job, "Checked the before and after photos — good work.")
+        inv = billing.job_invoice(db, job)
+        if inv is not None:
+            billing.record_offline_payment(db, A, inv, inv.amount, "upi", paid_by, utcnow(), f"seed-{job.number}")
+        return job
+
+    finished(
+        W,
+        dict(title="Monthly plot cleaning", category="cleaning", property_id=props["89"].id, assigned_staff_id=staff.id, charge=1200),
+        "plot",
+        "Removed weeds and construction debris; cleared the boundary line.",
+        "Debris dumped near the north boundary",
+        "Plot clean, boundary stones visible",
+        "UPI 4512-GV89",
+    )
+    finished(
+        W2,
+        dict(title="Lawn mowing and hedge trimming — Park B", category="gardening", assigned_staff_id=staff2.id, location_note="Park B"),
+        "garden",
+        "Mowed the lawn, trimmed the hedge line square and watered the flower bed.",
+        "Grass overgrown after the rains",
+        "Lawn even, hedge trimmed, beds watered",
+    )
+    finished(
+        W,
+        dict(title="Fix leaking pipe at the meter box", category="plumbing", property_id=p117.id, assigned_staff_id=staff.id, charge=650),
+        "pipe",
+        "Replaced the cracked coupling on the inlet pipe and pressure tested for 15 minutes.",
+        "Cracked coupling on the inlet pipe",
+        "No leak after the pressure test",
+        "UPI 8821-GV117",
+    )
 
     # 3. Open work in various states
     m.create_task(

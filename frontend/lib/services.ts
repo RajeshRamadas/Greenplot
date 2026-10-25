@@ -18,11 +18,26 @@ export interface Service {
   /** Picture on the services overview card. */
   thumb: string;
   goodFor: string[];
+  /** Basic price on level, easy-to-reach ground; difficult terrain is quoted extra (see TERRAIN_NOTE). */
+  price?: Price;
 }
+
+export interface Price {
+  /** Rupees per square foot of plot. */
+  perSqft: number;
+  /** What the rate covers, e.g. "per visit". */
+  per: string;
+  /** Lowest charge for one visit or month, in rupees. */
+  minimum: number;
+}
+
+export const TERRAIN_NOTE =
+  "The basic rate is for level plots we can reach by road. Difficult terrain, such as slopes, rocky ground, waist-high overgrowth, dumped construction waste or no vehicle access, is charged extra. We quote the extra after a site visit, before any work starts.";
 
 export const SERVICES: Service[] = [
   {
     slug: "plot-cleaning",
+    price: { perSqft: 2, per: "per visit", minimum: 1500 },
     beforeAfter: "/showcase/plot-cleaning-ba.jpg",
     thumb: "/showcase/plot-cleaning-card.jpg",
     name: "Plot Cleaning",
@@ -45,6 +60,7 @@ export const SERVICES: Service[] = [
   },
   {
     slug: "garden-landscape",
+    price: { perSqft: 3, per: "per month", minimum: 2000 },
     beforeAfter: "/showcase/garden-landscape-ba.jpg",
     thumb: "/showcase/garden-landscape-card.jpg",
     name: "Garden & Landscape",
@@ -67,6 +83,7 @@ export const SERVICES: Service[] = [
   },
   {
     slug: "property-inspection",
+    price: { perSqft: 0.5, per: "per visit", minimum: 750 },
     thumb: "/showcase/property-inspection.jpg",
     name: "Property Inspection",
     promise: "Know the condition of your property without visiting it.",

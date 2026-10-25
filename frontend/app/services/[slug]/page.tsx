@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { PriceCard } from "@/components/PriceCard";
 import { STEPS, ServiceShell } from "@/components/ServicePage";
 import { SERVICES, serviceBySlug } from "@/lib/services";
 
@@ -70,6 +71,13 @@ export default async function ServiceDetail({ params }: { params: Promise<{ slug
             </div>
           </div>
         </section>
+
+        {s.price ? (
+          <section className="svc-wrap">
+            <h2>Price</h2>
+            <PriceCard price={s.price} />
+          </section>
+        ) : null}
 
         <section className="svc-wrap">
           <h2>How every job runs</h2>

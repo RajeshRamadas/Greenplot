@@ -356,3 +356,12 @@ a.list-item:hover { text-decoration: none; background: var(--green-pale); }
 .svc-grid .card + .card { margin-top: 0; }
 .svc-ba img { width: 100%; height: auto; display: block; border-radius: var(--radius); border: 1px solid var(--line); }
 .svc-ba figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.svc-price { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.svc-price .svc-eyebrow { margin-bottom: 4px; }
+.svc-rate { font-size: 34px; font-weight: 800; margin: 0; color: var(--ink); }
+.svc-rate span { font-size: 16px; font-weight: 600; color: var(--muted); }
+.svc-calc { display: grid; gap: 6px; margin-top: 14px; font-size: 14px; font-weight: 600; }
+.svc-calc input { max-width: 220px; }
+.svc-estimate { margin: 12px 0 0; font-size: 16px; }
+.svc-from { color: var(--green-dark) !important; font-weight: 700; font-size: 14px; }
+@media (max-width: 860px) { .svc-price { grid-template-columns: 1fr; } }

@@ -181,7 +181,8 @@ export const SERVICES: Service[] = [
   },
   {
     slug: "staff-vendors",
-    thumb: "/showcase/staff-vendors.jpg",
+    cover: { src: "/showcase/staff-vendors-cover.jpg", alt: "A field team in uniform with a hedge trimmer, broom and toolbox" },
+    thumb: "/showcase/staff-vendors-card.jpg",
     name: "Staff & Vendors",
     promise: "Everyone who works in your layout, organised in one place.",
     intro:

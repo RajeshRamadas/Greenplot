@@ -4,17 +4,24 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import or_, select
 
 from app.api.v1._util import Limit, Offset, paginate
-from app.core.deps import DB, Perm
+from app.core.deps import DB, Actor, Perm
 from app.models import Property, Resident, User
 from app.models.base import utcnow
 from app.models.enums import Role
 from app.schemas.common import Page
 from app.schemas.core import InviteOut, UserCreate, UserOut, UserUpdate
 from app.services import accounts, audit
-from app.services.access import get_scoped
+from app.services.access import get_scoped, sees_customer_contact
 from app.services.users import create_user, invite_url
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+def _user_out(u: User, actor: Actor) -> UserOut:
+    out = UserOut.model_validate(u)
+    if u.role == Role.RESIDENT and not sees_customer_contact(actor):
+        out.phone = out.whatsapp_phone = None
+    return out
 
 
 @router.get("", response_model=Page[UserOut])
@@ -34,9 +41,10 @@ def list_users(
         stmt = stmt.where(User.is_active.is_(active))
     if q:
         like = f"%{q.lower()}%"
-        stmt = stmt.where(or_(User.full_name.ilike(like), User.email.ilike(like), User.phone.ilike(like)))
+        by_phone = [User.phone.ilike(like)] if sees_customer_contact(actor) else []
+        stmt = stmt.where(or_(User.full_name.ilike(like), User.email.ilike(like), *by_phone))
     items, total = paginate(db, stmt, limit, offset)
-    return Page(items=items, total=total, limit=limit, offset=offset)
+    return Page(items=[_user_out(u, actor) for u in items], total=total, limit=limit, offset=offset)
 
 
 @router.post("", response_model=InviteOut, status_code=201)
@@ -54,6 +62,7 @@ def create(body: UserCreate, db: DB, actor: Perm("users.manage")):
         vendor_id=body.vendor_id,
         password=body.password,
     )
+    user.whatsapp_phone = body.whatsapp_phone
     if body.property_id:
         if body.role != Role.RESIDENT:
             raise HTTPException(422, "Only residents can be linked to a property")
@@ -65,6 +74,7 @@ def create(body: UserCreate, db: DB, actor: Perm("users.manage")):
                 user_id=user.id,
                 name=user.full_name,
                 phone=user.phone,
+                whatsapp_phone=user.whatsapp_phone,
                 email=user.email,
                 relation="owner",
             )
@@ -79,7 +89,7 @@ def get_user(user_id: uuid.UUID, db: DB, actor: Perm("users.read")):
     u = db.get(User, user_id)
     if not u or u.tenant_id != actor.tenant_id:
         raise HTTPException(404, "User not found")
-    return u
+    return _user_out(u, actor)
 
 
 @router.patch("/{user_id}", response_model=UserOut)

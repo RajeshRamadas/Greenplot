@@ -232,6 +232,7 @@ export default function TicketPage() {
                     {t.customer_phone ? (
                       <div>
                         <a href={`tel:${t.customer_phone}`}>{t.customer_phone}</a>
+                        <span className="small muted"> · WhatsApp {t.customer_whatsapp || "same number"}</span>
                       </div>
                     ) : null}
                   </dd>

@@ -51,6 +51,7 @@ class Ticket(TenantModel, SoftDelete):
     location: Mapped[str | None] = mapped_column(String(300), nullable=True)
     preferred_time: Mapped[str | None] = mapped_column(String(120), nullable=True)
     contact_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    contact_whatsapp: Mapped[str | None] = mapped_column(String(30), nullable=True)  # None: same as contact_phone
 
     assigned_to_type: Mapped[str | None] = mapped_column(String(10), nullable=True)  # staff, vendor
     assigned_to_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True, nullable=True)

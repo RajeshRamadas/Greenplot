@@ -35,6 +35,7 @@ class User(Model):
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=True)
     email: Mapped[str] = mapped_column(String(200), unique=True, index=True)
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    whatsapp_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)  # None: same as phone
     full_name: Mapped[str] = mapped_column(String(200))
     role: Mapped[str] = mapped_column(String(30), index=True)
     password_hash: Mapped[str | None] = mapped_column(String(300), nullable=True)
@@ -99,6 +100,7 @@ class Property(TenantModel, SoftDelete):
     owner_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
     owner_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     owner_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    owner_whatsapp: Mapped[str | None] = mapped_column(String(30), nullable=True)  # None: same as owner_phone
     owner_email: Mapped[str | None] = mapped_column(String(200), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -112,6 +114,7 @@ class Resident(TenantModel, SoftDelete):
     user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), index=True, nullable=True)
     name: Mapped[str] = mapped_column(String(200))
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    whatsapp_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)  # None: same as phone
     email: Mapped[str | None] = mapped_column(String(200), nullable=True)
     relation: Mapped[str] = mapped_column(String(30), default="owner")  # owner, tenant, family
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)

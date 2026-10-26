@@ -224,7 +224,7 @@ def test_consent_endpoint_and_admin_status(as_, world, db, meta):
     assert resident.put("/whatsapp/consent", json={"whatsapp_opt_in": True, "phone": "98450 12345"}).status_code == 422
     verify_phone(resident, "98450 12345")
     out = resident.ok("put", "/whatsapp/consent", {"whatsapp_opt_in": True})
-    assert out == {"whatsapp_opt_in": True, "phone": "98450 12345"}
+    assert out == {"whatsapp_opt_in": True, "phone": "98450 12345", "whatsapp_phone": None}
     assert resident.ok("get", "/auth/me")["whatsapp_opt_in"] is True
     assert resident.get("/whatsapp/status").status_code == 403
 
@@ -234,3 +234,21 @@ def test_consent_endpoint_and_admin_status(as_, world, db, meta):
     admin.ok("put", "/whatsapp/consent", {"whatsapp_opt_in": True})
     assert admin.ok("post", "/whatsapp/test", {})["result"] == "sent"
     assert meta[-1]["to"] == "919000000099"
+
+
+def test_separate_whatsapp_number(as_, world, db, meta):
+    from app.services import whatsapp as wa
+
+    admin = as_(world.admin)
+    verify_phone(admin, "9000000099")
+    assert admin.put("/whatsapp/consent", json={"whatsapp_opt_in": True, "whatsapp_phone": "12"}).status_code == 422
+    out = admin.ok("put", "/whatsapp/consent", {"whatsapp_opt_in": True, "whatsapp_phone": "98765 43210"})
+    assert out["whatsapp_phone"] == "98765 43210"
+    admin.ok("post", "/whatsapp/test", {})
+    assert meta[-1]["to"] == "919876543210"  # updates go to the WhatsApp number
+    db.expire_all()
+    # Replies from the WhatsApp number are matched to the user; phone sign-in still uses the verified mobile only.
+    assert [u.id for u in wa.users_for_whatsapp(db, "919876543210")] == [world.admin.id]
+    assert wa.users_for_phone(db, "919876543210") == []
+    # Ticking "same as my mobile" clears it.
+    assert admin.ok("put", "/whatsapp/consent", {"whatsapp_opt_in": True, "whatsapp_phone": None})["whatsapp_phone"] is None

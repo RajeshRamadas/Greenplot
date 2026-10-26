@@ -26,7 +26,7 @@ import urllib.request
 from collections.abc import Callable
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -113,6 +113,11 @@ def normalize_phone(raw: str | None) -> str | None:
     return None
 
 
+def user_number(user: User) -> str | None:
+    """The user's WhatsApp number: their own WhatsApp number if they gave one, else their mobile."""
+    return normalize_phone(user.whatsapp_phone) or normalize_phone(user.phone)
+
+
 def _clean_param(text: str, limit: int) -> str:
     # Template parameters may not contain newlines, tabs or 4+ consecutive spaces.
     t = re.sub(r"\s+", " ", text or "").strip() or "-"
@@ -165,7 +170,7 @@ def send_notification(user: User, title: str, body: str | None) -> tuple[str, st
     """Channel adapter entry point. Returns (result, provider_message_id)."""
     if not user.whatsapp_opt_in:
         return "skipped:not_opted_in", None
-    phone = normalize_phone(user.phone)
+    phone = user_number(user)
     if not phone:
         return "skipped:no_phone", None
     if not enabled():
@@ -318,9 +323,19 @@ def _inbound_text(msg: dict) -> str:
 
 
 def users_for_phone(db: Session, phone: str) -> list[User]:
+    """Users whose verified mobile number is this one (phone sign-in uses it too)."""
     tail = phone[-10:]
     candidates = db.scalars(select(User).where(User.is_active.is_(True), User.phone.ilike(f"%{tail[-4:]}%")))
     return [u for u in candidates if normalize_phone(u.phone) == phone]
+
+
+def users_for_whatsapp(db: Session, phone: str) -> list[User]:
+    """Users who message us from this WhatsApp number: their separate WhatsApp number, or their mobile."""
+    tail = phone[-4:]
+    candidates = db.scalars(
+        select(User).where(User.is_active.is_(True), or_(User.phone.ilike(f"%{tail}%"), User.whatsapp_phone.ilike(f"%{tail}%")))
+    )
+    return [u for u in candidates if user_number(u) == phone]
 
 
 def _ticket_for(db: Session, msg: dict, text: str, users: list[User]) -> Ticket | None:
@@ -363,7 +378,7 @@ def _handle_inbound(db: Session, msg: dict) -> int:
     if not phone:
         return 0
     text = _inbound_text(msg).strip()
-    users = users_for_phone(db, phone)
+    users = users_for_whatsapp(db, phone)
     row = WhatsAppMessage(direction="in", wamid=wamid, phone=phone, body=text or f"[{msg.get('type')}]", status="received")
     db.add(row)
     if not users:

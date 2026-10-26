@@ -275,6 +275,7 @@ def test_resident_and_vendor_self_registration(client, world, as_, db, mail):
         full_name="Meera Rao",
         email="Meera@x.in",
         phone="9845022222",
+        whatsapp_phone="98450 77777",
         plot_number="204",
         relation="tenant",
     )
@@ -298,13 +299,13 @@ def test_resident_and_vendor_self_registration(client, world, as_, db, mail):
     assert as_(world.resident).get("/signups").status_code == 403
     pending = admin.ok("get", "/signups")["items"]
     req = next(p for p in pending if p["email"] == "meera@x.in")
-    assert req["suggested_property_id"] == str(world.p204.id)
+    assert req["suggested_property_id"] == str(world.p204.id) and req["whatsapp_phone"] == "98450 77777"
     assert admin.post(f"/signups/{req['id']}/approve", json={}).status_code == 422
     out = admin.ok("post", f"/signups/{req['id']}/approve", {"property_id": req["suggested_property_id"]})
     assert out["user"]["role"] == "resident" and "email" in out["sent_via"]
     db.expire_all()
     res = db.query(Resident).filter_by(email="meera@x.in").one()
-    assert res.property_id == world.p204.id and res.relation == "tenant"
+    assert res.property_id == world.p204.id and res.relation == "tenant" and res.whatsapp_phone == "98450 77777"
     assert admin.post(f"/signups/{req['id']}/approve", json={"property_id": req["suggested_property_id"]}).status_code == 409
 
     # Vendor: a new vendor company is created and linked.

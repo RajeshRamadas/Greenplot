@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CaptureButton } from "@/components/Capture";
-import { Badge, Dialog, ErrorBox, Field, Select } from "@/components/ui";
+import { Badge, Dialog, ErrorBox, Field, Select, WhatsAppField } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ago, label, until } from "@/lib/format";
@@ -143,6 +143,7 @@ export function NewTicketDialog({ open, onClose, onCreated }: { open: boolean; o
       property_id: f.property_id || null,
       preferred_time: f.preferred_time || null,
       contact_phone: f.contact_phone || null,
+      contact_whatsapp: (f.contact_phone && f.contact_whatsapp) || null,
       location: f.location || null,
     };
     if (manager && f.property_id) {
@@ -228,6 +229,7 @@ export function NewTicketDialog({ open, onClose, onCreated }: { open: boolean; o
           <Field label="Contact number (optional)">
             <input type="tel" value={f.contact_phone || ""} onChange={(e) => setF({ ...f, contact_phone: e.target.value })} maxLength={30} />
           </Field>
+          {f.contact_phone ? <WhatsAppField value={f.contact_whatsapp || ""} onChange={(v) => setF({ ...f, contact_whatsapp: v })} /> : null}
           <Field label="Exact location (optional)">
             <input value={f.location || ""} onChange={(e) => setF({ ...f, location: e.target.value })} placeholder="e.g. Rear gate, near the pump room" maxLength={300} />
           </Field>

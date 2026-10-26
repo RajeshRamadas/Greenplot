@@ -64,6 +64,37 @@ export function Field({ label, hint, children, full }: { label: string; hint?: s
   );
 }
 
+/**
+ * The WhatsApp number that goes with a calling number: ticked "same as the calling number" by default
+ * (value ""), or a separate number. Callers send `value || null`.
+ */
+export function WhatsAppField({ value, onChange, disabled, full }: { value: string; onChange: (v: string) => void; disabled?: boolean; full?: boolean }) {
+  const [same, setSame] = useState(!value);
+  useEffect(() => {
+    if (value) setSame(false); // a separate number loaded into an already-open form
+  }, [value]);
+  return (
+    <div className={`field ${full ? "full" : ""}`}>
+      <span>WhatsApp number</span>
+      <label className="row small" style={{ gap: 6, fontWeight: 600 }}>
+        <input
+          type="checkbox"
+          checked={same}
+          disabled={disabled}
+          onChange={(e) => {
+            setSame(e.target.checked);
+            if (e.target.checked) onChange("");
+          }}
+        />
+        Same as the calling number
+      </label>
+      {same ? null : (
+        <input type="tel" required disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)} placeholder="WhatsApp number" aria-label="WhatsApp number" maxLength={30} />
+      )}
+    </div>
+  );
+}
+
 export function Dialog({ title, open, onClose, children }: { title: string; open: boolean; onClose: () => void; children: React.ReactNode }) {
   useEffect(() => {
     if (!open) return;

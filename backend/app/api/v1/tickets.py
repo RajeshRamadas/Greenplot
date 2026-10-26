@@ -57,7 +57,7 @@ from app.schemas.tickets import (
 from app.services import audit, customer_calls
 from app.services import maintenance as msvc
 from app.services import tickets as svc
-from app.services.access import get_scoped, get_ticket, is_ticket_assignee, scope_tickets, tenant_select
+from app.services.access import get_scoped, get_ticket, is_ticket_assignee, scope_tickets, sees_customer_contact, tenant_select
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
@@ -360,12 +360,15 @@ def detail(db, actor: Actor, t: Ticket) -> TicketDetail:
         d.sla = SlaOut.model_validate(sla, from_attributes=True).model_copy(update={"state": base.sla_state})
     manager = actor.is_manager()
     assignee = is_ticket_assignee(actor, t)
-    # Contact details only where required and permitted (§22).
+    # Contact details only where required and permitted (§22): the customer's numbers go to layout admins,
+    # the customer themselves, and a vendor assignee when the layout shares them; never to staff or supervisors.
     customer = db.get(User, t.customer_id)
-    if manager or (assignee and svc.setting(db, t.tenant_id, "ticket_share_customer_contact")) or actor.id == t.customer_id:
+    vendor_shared = assignee and actor.role == Role.VENDOR and svc.setting(db, t.tenant_id, "ticket_share_customer_contact")
+    if sees_customer_contact(actor) or vendor_shared or actor.id == t.customer_id:
         d.customer_phone = t.contact_phone or (customer.phone if customer else None)
+        d.customer_whatsapp = t.contact_whatsapp or (customer.whatsapp_phone if customer and not t.contact_phone else None)
     else:
-        d.contact_phone = None
+        d.contact_phone = d.contact_whatsapp = None
     if manager or assignee or svc.setting(db, t.tenant_id, "ticket_share_vendor_contact"):
         if t.assigned_to_type == "vendor" and t.assigned_to_id:
             v = db.get(Vendor, t.assigned_to_id)
@@ -811,7 +814,7 @@ def _assignee_response(db, actor, t) -> TicketDetail:
     db.refresh(t)
     if not (actor.is_manager() or is_ticket_assignee(actor, t)):
         # After declining, the assignee no longer has access to the ticket.
-        return TicketDetail.model_validate(t).model_copy(update={"description": "", "contact_phone": None})
+        return TicketDetail.model_validate(t).model_copy(update={"description": "", "contact_phone": None, "contact_whatsapp": None})
     return detail(db, actor, t)
 
 
@@ -920,10 +923,10 @@ def add_evidence(ticket_id: uuid.UUID, body: TicketEvidenceIn, db: DB, actor: Pe
 
 @router.post("/{ticket_id}/whatsapp-call", response_model=CallLinkOut)
 def whatsapp_call(ticket_id: uuid.UUID, body: CallIn, db: DB, actor: Perm("customers.call")):
-    """WhatsApp link to call the ticket's customer; only for the office and the current assignee."""
+    """WhatsApp link to call the ticket's customer (layout admins only: they alone see customers' numbers)."""
     t = get_ticket(db, actor, ticket_id)
-    if not customer_calls.may_call_ticket(db, actor, t):
-        raise HTTPException(403, "Only the office or the person assigned to this ticket can call the customer")
+    if not customer_calls.may_call_ticket(actor, t):
+        raise HTTPException(403, "This ticket is closed")
     contact = customer_calls.ticket_contact(db, t)
     if not contact:
         raise HTTPException(409, "The customer has no phone number on record")

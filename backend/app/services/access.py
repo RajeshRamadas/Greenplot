@@ -161,6 +161,11 @@ def can_view_inspection(db: Session, actor: Actor, i: Inspection) -> bool:
     return False
 
 
+def sees_customer_contact(actor: Actor) -> bool:
+    """Customers' phone and WhatsApp numbers are shown to layout admins only, never to staff, supervisors or guards."""
+    return actor.role == Role.LAYOUT_ADMIN
+
+
 def can_view_property(db: Session, actor: Actor, property_id: uuid.UUID | None) -> bool:
     if actor.role == Role.RESIDENT:
         return property_id in resident_property_ids(db, actor)

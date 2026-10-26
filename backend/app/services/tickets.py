@@ -402,7 +402,7 @@ def create(db: Session, actor: Actor, data: dict) -> Ticket:
 
 def update(db: Session, actor: Actor, t: Ticket, data: dict) -> None:
     manager_fields = {"category", "subcategory", "priority", "location", "title", "description", "property_id"}
-    customer_fields = {"title", "description", "preferred_time", "contact_phone", "location"}
+    customer_fields = {"title", "description", "preferred_time", "contact_phone", "contact_whatsapp", "location"}
     if actor.can("tickets.manage"):
         allowed = manager_fields | customer_fields
     elif is_customer(db, actor, t):

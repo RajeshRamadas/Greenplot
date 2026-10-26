@@ -44,6 +44,7 @@ class UserOut(Stamped):
     tenant_id: uuid.UUID | None
     email: str
     phone: str | None
+    whatsapp_phone: str | None = None  # None: same as phone
     full_name: str
     role: str
     is_active: bool
@@ -68,6 +69,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     full_name: str = Field(min_length=2, max_length=200)
     phone: str | None = Field(None, max_length=30)
+    whatsapp_phone: str | None = Field(None, max_length=30)
     role: Role
     vendor_id: uuid.UUID | None = None
     password: str | None = Field(None, min_length=8, max_length=200)
@@ -77,6 +79,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     full_name: str | None = Field(None, min_length=2, max_length=200)
     phone: str | None = Field(None, max_length=30)
+    whatsapp_phone: str | None = Field(None, max_length=30)
     role: Role | None = None
     is_active: bool | None = None
     vendor_id: uuid.UUID | None = None
@@ -190,6 +193,7 @@ class PropertyIn(BaseModel):
     owner_user_id: uuid.UUID | None = None
     owner_name: str | None = None
     owner_phone: str | None = None
+    owner_whatsapp: str | None = None
     owner_email: EmailStr | None = None
     notes: str | None = None
 
@@ -207,6 +211,7 @@ class PropertyUpdate(BaseModel):
     owner_user_id: uuid.UUID | None = None
     owner_name: str | None = None
     owner_phone: str | None = None
+    owner_whatsapp: str | None = None
     owner_email: EmailStr | None = None
     notes: str | None = None
 
@@ -226,6 +231,7 @@ class PropertyOut(Stamped):
     owner_user_id: uuid.UUID | None
     owner_name: str | None
     owner_phone: str | None
+    owner_whatsapp: str | None = None
     owner_email: str | None
     notes: str | None
     layout_name: str | None = None
@@ -235,6 +241,7 @@ class ResidentIn(BaseModel):
     property_id: uuid.UUID
     name: str = Field(min_length=2, max_length=200)
     phone: str | None = None
+    whatsapp_phone: str | None = None
     email: EmailStr | None = None
     relation: str = Field("owner", pattern="^(owner|tenant|family)$")
     is_primary: bool = False
@@ -249,6 +256,7 @@ class ResidentOut(Stamped):
     user_id: uuid.UUID | None
     name: str
     phone: str | None
+    whatsapp_phone: str | None = None
     email: str | None
     relation: str
     is_primary: bool

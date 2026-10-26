@@ -14,6 +14,8 @@ export interface Me {
   tenant_id: UUID | null;
   email: string;
   phone: string | null;
+  /** A separate WhatsApp number; null when WhatsApp is on `phone`. */
+  whatsapp_phone: string | null;
   full_name: string;
   role: Role;
   vendor_id: UUID | null;
@@ -58,6 +60,7 @@ export interface Property {
   owner_user_id: UUID | null;
   owner_name: string | null;
   owner_phone: string | null;
+  owner_whatsapp: string | null;
   owner_email: string | null;
   notes: string | null;
   latitude: number | null;
@@ -70,6 +73,7 @@ export interface Resident {
   user_id: UUID | null;
   name: string;
   phone: string | null;
+  whatsapp_phone: string | null;
   email: string | null;
   relation: string;
   is_primary: boolean;
@@ -659,6 +663,7 @@ export interface TicketDetail extends TicketSummary {
   location: string | null;
   preferred_time: string | null;
   contact_phone: string | null;
+  contact_whatsapp: string | null;
   created_by: UUID;
   first_response_at: string | null;
   assigned_at: string | null;
@@ -673,6 +678,7 @@ export interface TicketDetail extends TicketSummary {
   feedback_at: string | null;
   customer_confirmation: string | null;
   customer_phone: string | null;
+  customer_whatsapp: string | null;
   assignee_phone: string | null;
   sla: TicketSla | null;
   work_order: WorkOrder | null;

@@ -484,10 +484,10 @@ def scan(task_id: uuid.UUID, body: ScanIn, db: DB, actor: Perm("maintenance.work
 
 @router.post("/{task_id}/whatsapp-call", response_model=CallLinkOut)
 def whatsapp_call(task_id: uuid.UUID, body: CallIn, db: DB, actor: Perm("customers.call")):
-    """WhatsApp link to call the plot's owner; only for supervisors and the worker on the job."""
+    """WhatsApp link to call the job's customer (layout admins only: they alone see customers' numbers)."""
     task = get_task(db, actor, task_id)
-    if not customer_calls.may_call_task(db, actor, task):
-        raise HTTPException(403, "Only a supervisor or the person doing this job can call the customer")
+    if not customer_calls.may_call_task(actor, task):
+        raise HTTPException(403, "This job is closed")
     contact = customer_calls.task_contact(db, task)
     if not contact:
         raise HTTPException(409, "The customer has no phone number on record")

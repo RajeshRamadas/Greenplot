@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { CaptureButton } from "@/components/Capture";
 import { MediaGallery } from "@/components/MediaGallery";
-import { Badge, Dialog, Empty, ErrorBox, Field, Loading, PageHead, Select, useToast } from "@/components/ui";
+import { Badge, Dialog, Empty, ErrorBox, Field, Loading, PageHead, Select, useToast, WhatsAppField } from "@/components/ui";
 import { api, download } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { fmtDate, label } from "@/lib/format";
@@ -45,7 +45,7 @@ export function PropertyView({ id }: { id: string }) {
       <PageHead title={`Plot ${p.plot_number}`} sub={<><span className="mono">{p.code}</span> · {p.layout_name} {p.block ? `· Block ${p.block}` : ""}</>}>
         <Badge status={p.condition} text={`Condition: ${label(p.condition)}`} />
         {can("properties.manage") ? (
-          <button className="btn" onClick={() => (setF({ owner_name: p.owner_name || "", owner_phone: p.owner_phone || "", status: p.status, condition: p.condition, notes: p.notes || "" }), setEdit(true))}>
+          <button className="btn" onClick={() => (setF({ owner_name: p.owner_name || "", owner_phone: p.owner_phone || "", owner_whatsapp: p.owner_whatsapp || "", status: p.status, condition: p.condition, notes: p.notes || "" }), setEdit(true))}>
             Edit
           </button>
         ) : null}
@@ -95,7 +95,13 @@ export function PropertyView({ id }: { id: string }) {
               <dt>Owner</dt>
               <dd>{p.owner_name || "—"}</dd>
               <dt>Phone</dt>
-              <dd>{p.owner_phone || "—"}</dd>
+              <dd>{p.owner_phone || (me?.role === "layout_admin" || me?.role === "resident" ? "—" : "Office only")}</dd>
+              {p.owner_phone ? (
+                <>
+                  <dt>WhatsApp</dt>
+                  <dd>{p.owner_whatsapp || "Same number"}</dd>
+                </>
+              ) : null}
               <dt>Status</dt>
               <dd>{label(p.status)}</dd>
               <dt>Area</dt>
@@ -128,7 +134,7 @@ export function PropertyView({ id }: { id: string }) {
                   <div>
                     <div className="title">{r.name}</div>
                     <div className="small muted">
-                      {label(r.relation)} {r.phone ? `· ${r.phone}` : ""} {r.user_id ? "· has login" : ""}
+                      {label(r.relation)} {r.phone ? `· ${r.phone}` : ""} {r.whatsapp_phone ? `· WhatsApp ${r.whatsapp_phone}` : ""} {r.user_id ? "· has login" : ""}
                     </div>
                   </div>
                 </div>
@@ -172,7 +178,7 @@ export function PropertyView({ id }: { id: string }) {
           className="form two"
           onSubmit={async (e) => {
             e.preventDefault();
-            const r = await act.run(() => api<Property>(`/properties/${p.id}`, { method: "PATCH", body: f }));
+            const r = await act.run(() => api<Property>(`/properties/${p.id}`, { method: "PATCH", body: { ...f, owner_whatsapp: (f.owner_phone && f.owner_whatsapp) || null } }));
             if (r) {
               setData(r);
               setEdit(false);
@@ -183,8 +189,9 @@ export function PropertyView({ id }: { id: string }) {
             <input value={f.owner_name} onChange={(e) => setF({ ...f, owner_name: e.target.value })} />
           </Field>
           <Field label="Owner phone">
-            <input value={f.owner_phone} onChange={(e) => setF({ ...f, owner_phone: e.target.value })} />
+            <input type="tel" value={f.owner_phone} onChange={(e) => setF({ ...f, owner_phone: e.target.value })} />
           </Field>
+          {f.owner_phone ? <WhatsAppField value={f.owner_whatsapp || ""} onChange={(v) => setF({ ...f, owner_whatsapp: v })} /> : null}
           <Field label="Status">
             <Select value={f.status} onChange={(v) => setF({ ...f, status: v })} options={["vacant_plot", "occupied", "under_construction", "rented"]} />
           </Field>
@@ -207,7 +214,7 @@ export function PropertyView({ id }: { id: string }) {
             e.preventDefault();
             const r = await act.run(() =>
               api<{ invite_url: string | null; sent_via?: string[] }>("/residents", {
-                body: { property_id: p.id, name: f.name, phone: f.phone || null, email: f.email || null, relation: f.relation, invite: f.invite === "yes", in_directory: f.dir === "yes" },
+                body: { property_id: p.id, name: f.name, phone: f.phone || null, whatsapp_phone: (f.phone && f.whatsapp) || null, email: f.email || null, relation: f.relation, invite: f.invite === "yes", in_directory: f.dir === "yes" },
               }),
             );
             if (r) {
@@ -221,8 +228,9 @@ export function PropertyView({ id }: { id: string }) {
             <input required value={f.name || ""} onChange={(e) => setF({ ...f, name: e.target.value })} />
           </Field>
           <Field label="Phone">
-            <input value={f.phone || ""} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+            <input type="tel" value={f.phone || ""} onChange={(e) => setF({ ...f, phone: e.target.value })} />
           </Field>
+          {f.phone ? <WhatsAppField value={f.whatsapp || ""} onChange={(v) => setF({ ...f, whatsapp: v })} /> : null}
           <Field label="Email">
             <input type="email" value={f.email || ""} onChange={(e) => setF({ ...f, email: e.target.value })} />
           </Field>

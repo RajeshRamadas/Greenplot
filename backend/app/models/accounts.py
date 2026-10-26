@@ -35,6 +35,7 @@ class SignupRequest(Model):
     full_name: Mapped[str] = mapped_column(String(200))
     email: Mapped[str] = mapped_column(String(200))
     phone: Mapped[str] = mapped_column(String(30))
+    whatsapp_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)  # None: same as phone
     plot_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
     relation: Mapped[str | None] = mapped_column(String(30), nullable=True)  # owner, tenant, family
     company_name: Mapped[str | None] = mapped_column(String(200), nullable=True)

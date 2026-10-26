@@ -29,8 +29,10 @@ from app.services.storage import (
 log = logging.getLogger("greenplot.media")
 
 
-def _retention(db: Session, tenant_id: uuid.UUID, entity_type: str) -> tuple[date, bool]:
+def _retention(db: Session, tenant_id: uuid.UUID, entity_type: str) -> tuple[date | None, bool]:
     s = get_settings()
+    if entity_type == "customer":  # files kept on a customer's record are kept until someone deletes them
+        return None, False
     if entity_type == "incident":
         days = msvc.tenant_setting(db, tenant_id, "incident_media_retention_days", s.incident_media_retention_days)
         return date.today() + timedelta(days=days), True

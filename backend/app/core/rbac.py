@@ -87,6 +87,9 @@ PERMISSIONS: dict[str, set[Role]] = {
     # WhatsApp audio/video calls to a customer: only the role that may see customers' numbers
     # (app.services.access.sees_customer_contact); rules in app.services.customer_calls
     "customers.call": {R.LAYOUT_ADMIN},
+    # The customer record (app.services.customers): numbers, conversations and internal notes, so admins only
+    "customers.read": {R.LAYOUT_ADMIN},
+    "customers.notes": {R.LAYOUT_ADMIN},
     # records, reports, audit
     "media.upload": ALL_TENANT_ROLES,
     "records.search": ALL_TENANT_ROLES - {R.GUARD},

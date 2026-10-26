@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import or_, select
 
 from app.api.v1._util import Limit, Offset, apply, paginate
-from app.core.deps import DB, CurrentActor, Perm
+from app.core.deps import DB, Actor, CurrentActor, Perm
 from app.models import (
     Asset,
     Complaint,
@@ -32,7 +32,7 @@ from app.schemas.core import (
     TimelineEntry,
 )
 from app.services import audit
-from app.services.access import get_scoped, not_found, resident_property_ids, tenant_select
+from app.services.access import get_scoped, not_found, resident_property_ids, sees_customer_contact, tenant_select
 from app.services.users import create_user, invite_url
 
 router = APIRouter(tags=["properties"])
@@ -70,9 +70,18 @@ def update_layout(layout_id: uuid.UUID, body: LayoutIn, db: DB, actor: Perm("lay
 # ------------------------------------------------------------------ properties
 
 
-def _out(p: Property) -> PropertyOut:
+def _out(p: Property, actor: Actor) -> PropertyOut:
     out = PropertyOut.model_validate(p)
     out.layout_name = p.layout.name if p.layout else None
+    if not (sees_customer_contact(actor) or actor.role == Role.RESIDENT):  # residents only ever get their own plots
+        out.owner_phone = out.owner_whatsapp = None
+    return out
+
+
+def _resident_out(r: Resident, actor: Actor) -> ResidentOut:
+    out = ResidentOut.model_validate(r)
+    if not (sees_customer_contact(actor) or actor.role == Role.RESIDENT):
+        out.phone = out.whatsapp_phone = None
     return out
 
 
@@ -102,7 +111,7 @@ def list_properties(
             or_(Property.plot_number.ilike(like), Property.code.ilike(like), Property.owner_name.ilike(like), Property.address.ilike(like))
         )
     items, total = paginate(db, stmt, limit, offset)
-    return Page(items=[_out(p) for p in items], total=total, limit=limit, offset=offset)
+    return Page(items=[_out(p, actor) for p in items], total=total, limit=limit, offset=offset)
 
 
 @router.post("/properties", response_model=PropertyOut, status_code=201)
@@ -123,7 +132,7 @@ def create_property(body: PropertyIn, db: DB, actor: Perm("properties.manage")):
     audit.record(db, actor, "property.created", "property", p.id, new=audit.snapshot(p))
     db.commit()
     db.refresh(p)
-    return _out(p)
+    return _out(p, actor)
 
 
 def _get_visible(db, actor, property_id) -> Property:
@@ -137,7 +146,7 @@ def _get_visible(db, actor, property_id) -> Property:
 
 @router.get("/properties/{property_id}", response_model=PropertyOut)
 def get_property(property_id: uuid.UUID, db: DB, actor: CurrentActor):
-    return _out(_get_visible(db, actor, property_id))
+    return _out(_get_visible(db, actor, property_id), actor)
 
 
 @router.patch("/properties/{property_id}", response_model=PropertyOut)
@@ -149,7 +158,7 @@ def update_property(property_id: uuid.UUID, body: PropertyUpdate, db: DB, actor:
     if new:
         audit.record(db, actor, "property.updated", "property", p.id, old=old, new=new)
     db.commit()
-    return _out(p)
+    return _out(p, actor)
 
 
 @router.delete("/properties/{property_id}", status_code=204)
@@ -248,11 +257,14 @@ def list_residents(
         stmt = stmt.where(Resident.property_id == property_id)
     if q:
         like = f"%{q}%"
-        stmt = stmt.where(or_(Resident.name.ilike(like), Resident.phone.ilike(like), Resident.email.ilike(like)))
+        by_phone = [Resident.phone.ilike(like)] if sees_customer_contact(actor) or actor.role == Role.RESIDENT else []
+        stmt = stmt.where(or_(Resident.name.ilike(like), Resident.email.ilike(like), *by_phone))
     items, total = paginate(db, stmt, limit, offset)
     if actor.role == Role.RESIDENT and directory:
         mine = resident_property_ids(db, actor)
         items = [ResidentOut.model_validate(r).model_copy(update={"email": None} if r.property_id not in mine else {}) for r in items]
+    else:
+        items = [_resident_out(r, actor) for r in items]
     return Page(items=items, total=total, limit=limit, offset=offset)
 
 

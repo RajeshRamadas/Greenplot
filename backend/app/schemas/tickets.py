@@ -17,6 +17,7 @@ class TicketIn(BaseModel):
     location: str | None = Field(None, max_length=300)
     preferred_time: str | None = Field(None, max_length=120)
     contact_phone: str | None = Field(None, max_length=30)
+    contact_whatsapp: str | None = Field(None, max_length=30)  # None: same as contact_phone
     customer_id: uuid.UUID | None = None
     source: str | None = Field(None, pattern="^(portal|admin|phone|whatsapp|email|walk_in|offline)$")
 
@@ -31,6 +32,7 @@ class TicketUpdate(BaseModel):
     location: str | None = Field(None, max_length=300)
     preferred_time: str | None = Field(None, max_length=120)
     contact_phone: str | None = Field(None, max_length=30)
+    contact_whatsapp: str | None = Field(None, max_length=30)  # None: same as contact_phone
 
 
 class TicketAssignIn(BaseModel):
@@ -230,6 +232,7 @@ class TicketDetail(TicketSummary):
     location: str | None
     preferred_time: str | None
     contact_phone: str | None
+    contact_whatsapp: str | None = None
     created_by: uuid.UUID
     first_response_at: datetime | None
     assigned_at: datetime | None
@@ -244,6 +247,7 @@ class TicketDetail(TicketSummary):
     feedback_at: datetime | None
     customer_confirmation: str | None
     customer_phone: str | None = None
+    customer_whatsapp: str | None = None  # None: same as customer_phone
     assignee_phone: str | None = None
     sla: SlaOut | None = None
     work_order: WorkOrderOut | None = None

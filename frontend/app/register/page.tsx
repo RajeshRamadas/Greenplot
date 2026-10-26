@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LegalLinks } from "@/components/Legal";
-import { ErrorBox, Field, Select } from "@/components/ui";
+import { ErrorBox, Field, Select, WhatsAppField } from "@/components/ui";
 import { publicPost } from "@/lib/api";
 import { TERMS_VERSION } from "@/lib/legal";
 
@@ -84,6 +84,7 @@ export default function RegisterPage() {
                   full_name: f.name,
                   email: f.email,
                   phone: f.phone,
+                  whatsapp_phone: f.whatsapp || null,
                   code: (f.code || "").trim(),
                   plot_number: vendor ? null : f.plot,
                   relation: vendor ? null : f.relation,
@@ -133,6 +134,7 @@ export default function RegisterPage() {
             <Field label="Mobile number" hint="We'll send a code to confirm it">
               <input required type="tel" disabled={!!sent} value={f.phone || ""} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="98450 12345" />
             </Field>
+            <WhatsAppField value={f.whatsapp || ""} onChange={(v) => setF({ ...f, whatsapp: v })} disabled={!!sent} />
             {vendor ? (
               <>
                 <Field label="Company name">

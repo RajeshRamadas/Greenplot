@@ -68,6 +68,7 @@ class SignupIn(BaseModel):
     full_name: str = Field(min_length=2, max_length=200)
     email: EmailStr
     phone: str = Field(min_length=6, max_length=30)
+    whatsapp_phone: str | None = Field(None, max_length=30, description="A separate WhatsApp number; null: same as phone")
     code: str = Field(min_length=4, max_length=10)
     plot_number: str | None = Field(None, max_length=40)
     relation: str | None = Field(None, pattern="^(owner|tenant|family)$")
@@ -84,6 +85,9 @@ def signup(body: SignupIn, request: Request, db: DB):
     if not phone:
         raise HTTPException(422, "Enter a valid mobile number")
     _throttle(request, f"submit:{phone}")
+    whatsapp = normalize_phone(body.whatsapp_phone) if body.whatsapp_phone else None
+    if body.whatsapp_phone and not whatsapp:
+        raise HTTPException(422, "Enter a valid WhatsApp number")
     if not body.accepted_terms:
         raise HTTPException(422, "Please accept the Terms & Conditions and Privacy Policy")
     tenant = db.scalar(select(Tenant).where(Tenant.slug == body.layout, Tenant.status == "active"))
@@ -111,6 +115,7 @@ def signup(body: SignupIn, request: Request, db: DB):
         full_name=body.full_name.strip(),
         email=email,
         phone=body.phone.strip(),
+        whatsapp_phone=body.whatsapp_phone.strip() if whatsapp and whatsapp != phone else None,
         plot_number=(body.plot_number or "").strip() or None,
         relation=body.relation or ("owner" if body.kind == "resident" else None),
         company_name=body.company_name,
@@ -152,6 +157,7 @@ class SignupOut(BaseModel):
     full_name: str
     email: str
     phone: str
+    whatsapp_phone: str | None = None
     plot_number: str | None
     relation: str | None
     company_name: str | None
@@ -251,6 +257,7 @@ def approve(signup_id: uuid.UUID, body: ApproveIn, db: DB, actor: Perm("users.ma
         phone=r.phone,
         vendor_id=vendor_id,
     )
+    user.whatsapp_phone = r.whatsapp_phone
     user.phone_verified_at = r.created_at  # proven with a code when the request was made
     if prop is not None:
         db.add(
@@ -260,6 +267,7 @@ def approve(signup_id: uuid.UUID, body: ApproveIn, db: DB, actor: Perm("users.ma
                 user_id=user.id,
                 name=user.full_name,
                 phone=user.phone,
+                whatsapp_phone=user.whatsapp_phone,
                 email=user.email,
                 relation=body.relation or r.relation or "owner",
             )

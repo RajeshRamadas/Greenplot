@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PhoneVerify, SessionsCard, TwoStepCard } from "@/components/Security";
-import { Badge, ErrorBox, Field, PageHead, useToast } from "@/components/ui";
+import { Badge, ErrorBox, Field, PageHead, useToast, WhatsAppField } from "@/components/ui";
 import { api, setTokens } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { roleLabel } from "@/lib/format";
@@ -113,6 +113,7 @@ function WhatsAppCard({ onAddNumber }: { onAddNumber: () => void }) {
   const toast = useToast();
   const { run, error, pending } = useAction();
   const info = useApi<{ business_number: string; live: boolean; opted_in: boolean }>("/whatsapp/info");
+  const [whatsapp, setWhatsapp] = useState<string | null>(null);
   if (!me || !me.tenant_id) return null;
   const on = me.whatsapp_opt_in;
   async function save(optIn: boolean) {
@@ -120,6 +121,15 @@ function WhatsAppCard({ onAddNumber }: { onAddNumber: () => void }) {
       await reload();
       info.reload();
       toast(optIn ? "WhatsApp updates turned on" : "WhatsApp updates turned off");
+    }
+  }
+  async function saveNumber(e: React.FormEvent) {
+    e.preventDefault();
+    const body = { whatsapp_opt_in: me!.whatsapp_opt_in, whatsapp_phone: whatsapp || null };
+    if (await run(() => api("/whatsapp/consent", { method: "PUT", body }))) {
+      await reload();
+      setWhatsapp(null);
+      toast("WhatsApp number saved");
     }
   }
   const number = info.data?.business_number;
@@ -136,7 +146,7 @@ function WhatsAppCard({ onAddNumber }: { onAddNumber: () => void }) {
       {me.phone ? (
         <div className="row">
           <span>
-            Updates go to <b>{me.phone}</b>
+            Updates go to <b>{me.whatsapp_phone || me.phone}</b>
           </span>
           {on ? (
             <button className="btn danger" disabled={pending} onClick={() => save(false)}>
@@ -153,6 +163,16 @@ function WhatsAppCard({ onAddNumber }: { onAddNumber: () => void }) {
           Add your mobile number first
         </button>
       )}
+      {me.phone ? (
+        <form className="row" style={{ alignItems: "flex-end", marginTop: 12 }} onSubmit={saveNumber}>
+          <WhatsAppField key={me.whatsapp_phone ?? ""} value={whatsapp ?? me.whatsapp_phone ?? ""} onChange={setWhatsapp} disabled={pending} />
+          {whatsapp !== null && whatsapp !== (me.whatsapp_phone ?? "") ? (
+            <button className="btn" disabled={pending}>
+              Save
+            </button>
+          ) : null}
+        </form>
+      ) : null}
       <ErrorBox error={error} />
       {number ? (
         <p className="small muted" style={{ marginBottom: 0 }}>

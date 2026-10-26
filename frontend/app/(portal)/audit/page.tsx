@@ -28,7 +28,7 @@ export default function AuditPage() {
           value={entity}
           onChange={setEntity}
           placeholder="All records"
-          options={["maintenance_task", "complaint", "inspection", "incident", "property", "user", "payment", "invoice", "media", "tenant", "evidence_policy", "sos", "visitor"]}
+          options={["maintenance_task", "ticket", "complaint", "inspection", "incident", "property", "user", "payment", "invoice", "media", "tenant", "evidence_policy", "sos", "visitor"]}
         />
         <input placeholder="Action starts with… e.g. maintenance.approve" value={action} onChange={(e) => setAction(e.target.value)} />
       </div>

@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app.api.v1._util import user_names
@@ -118,6 +118,7 @@ def info(actor: CurrentActor):
 class ConsentIn(BaseModel):
     whatsapp_opt_in: bool
     phone: str | None = None
+    whatsapp_phone: str | None = Field(None, max_length=30, description="A separate WhatsApp number; null: same as the mobile")
 
 
 @router.put("/whatsapp/consent")
@@ -128,7 +129,12 @@ def consent(body: ConsentIn, db: DB, actor: CurrentActor):
         # A self-service number change must be proven with a code (/auth/phone/request + /confirm),
         # because the number is also used for phone sign-in.
         raise HTTPException(422, "Verify your new mobile number first")
-    if body.whatsapp_opt_in and not wa.normalize_phone(u.phone):
+    if "whatsapp_phone" in body.model_fields_set:
+        if body.whatsapp_phone and not wa.normalize_phone(body.whatsapp_phone):
+            raise HTTPException(422, "Enter a valid WhatsApp number")
+        same = not body.whatsapp_phone or wa.normalize_phone(body.whatsapp_phone) == wa.normalize_phone(u.phone)
+        u.whatsapp_phone = None if same else body.whatsapp_phone.strip()
+    if body.whatsapp_opt_in and not wa.user_number(u):
         raise HTTPException(422, "Add your mobile number to receive WhatsApp updates")
     old = u.whatsapp_opt_in
     u.whatsapp_opt_in = body.whatsapp_opt_in
@@ -138,4 +144,4 @@ def consent(body: ConsentIn, db: DB, actor: CurrentActor):
         u.whatsapp_opt_in_at = utcnow()
     audit.record(db, actor, "user.whatsapp_consent", "user", u.id, old={"opt_in": old}, new={"opt_in": body.whatsapp_opt_in})
     db.commit()
-    return {"whatsapp_opt_in": u.whatsapp_opt_in, "phone": u.phone}
+    return {"whatsapp_opt_in": u.whatsapp_opt_in, "phone": u.phone, "whatsapp_phone": u.whatsapp_phone}

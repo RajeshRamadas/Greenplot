@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Dialog, Empty, ErrorBox, Field, Loading, PageHead, Select } from "@/components/ui";
+import { Dialog, Empty, ErrorBox, Field, Loading, PageHead, Select, WhatsAppField } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { label } from "@/lib/format";
@@ -55,7 +55,7 @@ export default function PropertiesPage() {
             const body = {
               layout_id: f.layout_id || layouts.data?.[0]?.id, code: f.code, plot_number: f.plot_number, block: f.block || null,
               address: f.address || null, area_sqft: f.area_sqft ? Number(f.area_sqft) : null, units: Number(f.units || 1), status: f.status,
-              owner_name: f.owner_name || null, owner_phone: f.owner_phone || null, owner_email: f.owner_email || null,
+              owner_name: f.owner_name || null, owner_phone: f.owner_phone || null, owner_whatsapp: (f.owner_phone && f.owner_whatsapp) || null, owner_email: f.owner_email || null,
             };
             if (await act.run(() => api("/properties", { body }))) {
               setOpen(false);
@@ -91,8 +91,9 @@ export default function PropertiesPage() {
             <input value={f.owner_name || ""} onChange={(e) => setF({ ...f, owner_name: e.target.value })} />
           </Field>
           <Field label="Owner phone">
-            <input value={f.owner_phone || ""} onChange={(e) => setF({ ...f, owner_phone: e.target.value })} />
+            <input type="tel" value={f.owner_phone || ""} onChange={(e) => setF({ ...f, owner_phone: e.target.value })} />
           </Field>
+          {f.owner_phone ? <WhatsAppField value={f.owner_whatsapp || ""} onChange={(v) => setF({ ...f, owner_whatsapp: v })} /> : null}
           <Field label="Owner email" full>
             <input type="email" value={f.owner_email || ""} onChange={(e) => setF({ ...f, owner_email: e.target.value })} />
           </Field>

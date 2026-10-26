@@ -25,7 +25,7 @@ from app.models import (
 )
 from app.models.base import utcnow
 from app.models.enums import GARDENING_CATEGORIES, Role, TaskCategory, TaskStatus
-from app.schemas.common import Page, ReasonIn
+from app.schemas.common import CallIn, CallLinkOut, Page, ReasonIn
 from app.schemas.maintenance import (
     AckIn,
     AssignIn,
@@ -59,7 +59,7 @@ from app.schemas.maintenance import (
     TemplateOut,
 )
 from app.schemas.operations import AuditOut
-from app.services import audit, billing
+from app.services import audit, billing, customer_calls
 from app.services import maintenance as svc
 from app.services.access import get_scoped, get_task, is_task_worker, scope_tasks, tenant_select
 from app.services.storage import get_storage
@@ -172,6 +172,8 @@ def detail(db, actor: Actor, task: MaintenanceTask) -> TaskDetail:
     if actor.can("billing.read") or actor.can("maintenance.assign"):
         d.payment = billing.job_payment_summary(db, task)
     d.allowed_actions = allowed_actions(actor, task, billing.job_payment_block(db, task))
+    if customer_calls.can_call_task(db, actor, task):
+        d.allowed_actions.append("call_customer")
     if actor.can("maintenance.assign") and task.property_id and task.status not in (S.CLOSED, S.CANCELLED):
         if not d.payment or d.payment["status"] in ("unpaid", "partial"):
             d.allowed_actions.append("set_charge")
@@ -478,6 +480,21 @@ def scan(task_id: uuid.UUID, body: ScanIn, db: DB, actor: Perm("maintenance.work
         db.commit()  # keep the mismatch audit entry
         raise
     return _commit_detail(db, actor, task)
+
+
+@router.post("/{task_id}/whatsapp-call", response_model=CallLinkOut)
+def whatsapp_call(task_id: uuid.UUID, body: CallIn, db: DB, actor: Perm("customers.call")):
+    """WhatsApp link to call the job's customer (layout admins only: they alone see customers' numbers)."""
+    task = get_task(db, actor, task_id)
+    if not customer_calls.may_call_task(actor, task):
+        raise HTTPException(403, "This job is closed")
+    contact = customer_calls.task_contact(db, task)
+    if not contact:
+        raise HTTPException(409, "The customer has no phone number on record")
+    url = customer_calls.call_link(contact[0], body.mode, actor.user.full_name, contact[1], task.number, task.title)
+    customer_calls.record(db, actor, "maintenance_task", task.id, body.mode)
+    db.commit()
+    return CallLinkOut(mode=body.mode, url=url)
 
 
 @router.post("/{task_id}/evidence", response_model=TaskDetail)

@@ -718,8 +718,8 @@ a.contactCard:hover{border-color:#b9d9cb;box-shadow:var(--shadow)}
 <div class="navlinks" id="navlinks"><a href="#services">Services</a><a href="#how">How It Works</a><a href="/store">Plant Store</a><a href="#contact">Contact</a><a class="navlogin" href="/login">Login</a></div>
 <div class="actions"><a class="btn light" href="/login">Login</a><a class="btn primary" href="#demo">Request Demo</a><button class="menu" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="navlinks" onclick="toggleNav(this)"><span></span><span></span><span></span></button></div>
 </div></nav>
-<header class="hero"><div class="container heroGrid">
-<div>
+<header class="hero"><div class="heroBg" aria-hidden="true"><span style="background-image:url(/site/hero-garden-bangalore.webp)"></span><span style="background-image:url(/site/hero-field-team-bangalore.webp)"></span><span style="background-image:url(/site/hero-plot-inspection-bangalore.webp)"></span><span style="background-image:url(/site/hero-gate-repair-bangalore.webp)"></span></div><div class="container heroGrid">
+<div class="heroCopy">
 <div class="eyebrow">Plot &amp; layout management in Bangalore</div>
 <h1>Plot maintenance in Bangalore, with photo proof of every visit.</h1>
 <p>Manage your property, monitor your layout and keep everything on record. GreenPlot is a property-management service and platform for residential layouts, plotted developments and independent properties across Bangalore — combining maintenance, security, inspections, vendors, billing and digital records.</p>
@@ -1181,5 +1181,22 @@ a.contactCard:hover{border-color:#b9d9cb;box-shadow:var(--shadow)}
   });
 })();
 </script>
+<style id="greenplot-hero-motion">
+/* Hero — slow crossfading photo background with frosted, see-through panels on top */
+.hero{position:relative;overflow:hidden;isolation:isolate;background:#e9f5ef}
+.heroBg{position:absolute;inset:0;z-index:-1;pointer-events:none}
+.heroBg span{position:absolute;inset:-2%;background-size:cover;background-position:center;opacity:0;transform:scale(1.08);animation:heroSlide 28s linear infinite;will-change:opacity,transform}
+.heroBg span:nth-child(1){animation-delay:-1.6s}
+.heroBg span:nth-child(2){animation-delay:5.4s}
+.heroBg span:nth-child(3){animation-delay:12.4s}
+.heroBg span:nth-child(4){animation-delay:19.4s}
+.heroBg:after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,rgba(6,63,45,.42),rgba(6,63,45,.16) 55%,rgba(6,63,45,.30))}
+@keyframes heroSlide{0%{opacity:0;transform:scale(1.08)}6%{opacity:1}25%{opacity:1}31%{opacity:0;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
+.hero .heroGrid>.heroCopy{background:rgba(255,255,255,.74);-webkit-backdrop-filter:blur(14px) saturate(1.15);backdrop-filter:blur(14px) saturate(1.15);border:1px solid rgba(255,255,255,.65);border-radius:24px;padding:34px 34px 30px;box-shadow:0 24px 60px rgba(6,45,32,.18)}
+.hero .heroGrid>.panel{background:rgba(255,255,255,.80);-webkit-backdrop-filter:blur(14px) saturate(1.15);backdrop-filter:blur(14px) saturate(1.15);border-color:rgba(255,255,255,.65)}
+.hero .heroGrid>.heroCopy p{color:#40524b}
+@media (max-width:600px){.hero .heroGrid>.heroCopy{padding:22px 18px 20px;border-radius:20px}.hero .heroCopy .eyebrow:after{content:none}}
+@media (prefers-reduced-motion:reduce){.heroBg span{animation:none;transform:none}.heroBg span:first-child{opacity:1}}
+</style>
 </body>
 </html>

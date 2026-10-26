@@ -4,15 +4,15 @@ import Link from "next/link";
 import { JsonLd } from "@/components/JsonLd";
 import { PriceCard } from "@/components/PriceCard";
 import { FaqList, STEPS, ServiceShell } from "@/components/ServicePage";
-import { liveCities } from "@/lib/cities";
+import { CITIES, liveCities } from "@/lib/cities";
 import { serviceFaqs } from "@/lib/faqs";
 import { type Service, SERVICES, serviceBySlug } from "@/lib/services";
-import { absolute, breadcrumbSchema, businessSchema, faqSchema, rupees } from "@/lib/site";
+import { absolute, breadcrumbSchema, businessSchema, faqSchema, pageOpenGraph, rupees } from "@/lib/site";
 
 // Service pages are written for the first live city; area pages carry the other places.
-const CITY = liveCities()[0];
+const CITY = liveCities()[0] ?? CITIES[0];
 
-const fromPrice = (s: Service) => (s.price ? `from ${rupees(s.price.perSqft)}/sq ft` : "");
+const fromPrice = (s: Service) => (s.price ? `from ${rupees(s.price.perSqft)}/sq ft ${s.price.per}` : "");
 
 export const dynamicParams = false;
 
@@ -24,8 +24,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const s = serviceBySlug((await params).slug);
   if (!s) return {};
   const title = `${s.name} in ${CITY.name}${s.price ? `, ${fromPrice(s)}` : ""}`;
-  const description = `${s.promise} ${s.name} for plots and layouts across ${CITY.name}${s.price ? `, ${fromPrice(s)} ${s.price.per}` : ""}. Photo proof of every job.`;
-  return { title, description, alternates: { canonical: `/services/${s.slug}` }, openGraph: { title, description, url: `/services/${s.slug}` } };
+  const description = `${s.promise} ${s.name} for plots and layouts across ${CITY.name}${s.price ? `, ${fromPrice(s)}` : ""}. Photo proof of every job.`;
+  return { title, description, alternates: { canonical: `/services/${s.slug}` }, openGraph: pageOpenGraph({ title, description, url: `/services/${s.slug}` }) };
 }
 
 export default async function ServiceDetail({ params }: { params: Promise<{ slug: string }> }) {

@@ -6,7 +6,7 @@ import { FaqList, ServiceShell } from "@/components/ServicePage";
 import { areaBySlug, cityBySlug, liveCities } from "@/lib/cities";
 import { areaFaqs } from "@/lib/faqs";
 import { SERVICES, serviceBySlug } from "@/lib/services";
-import { absolute, breadcrumbSchema, businessSchema, faqSchema, rupees } from "@/lib/site";
+import { absolute, breadcrumbSchema, businessSchema, faqSchema, pageOpenGraph, rupees } from "@/lib/site";
 
 export const dynamicParams = false;
 
@@ -27,9 +27,9 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
   const { city, area } = found;
   const cleaning = serviceBySlug("plot-cleaning");
   const title = `Plot Cleaning and Maintenance in ${area.name}, ${city.name}`;
-  const description = `Plot cleaning${cleaning?.price ? ` from ${rupees(cleaning.price.perSqft)}/sq ft` : ""}, fencing, garden upkeep and inspections in ${area.name}, ${city.name}: ${area.localities.join(", ")}. Photo proof of every visit.`;
+  const description = `Plot cleaning${cleaning?.price ? ` from ${rupees(cleaning.price.perSqft)}/sq ft ${cleaning.price.per}` : ""}, fencing, garden upkeep and inspections in ${area.name}, ${city.name}: ${area.localities.join(", ")}. Photo proof of every visit.`;
   const path = `/${city.slug}/${area.slug}`;
-  return { title, description, alternates: { canonical: path }, openGraph: { title, description, url: path } };
+  return { title, description, alternates: { canonical: path }, openGraph: pageOpenGraph({ title, description, url: path }) };
 }
 
 export default async function AreaPage({ params }: { params: Promise<{ city: string; area: string }> }) {

@@ -4,6 +4,9 @@ FROM node:22-alpine AS build
 # Rewrites are resolved at build time, so the API address is a build argument.
 ARG GREENPLOT_API_URL=http://api:8000
 ENV GREENPLOT_API_URL=$GREENPLOT_API_URL
+# Public address used for canonical links, the sitemap and share tags; also read at build time.
+ARG NEXT_PUBLIC_SITE_URL=https://greenplot.in
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 WORKDIR /repo/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci

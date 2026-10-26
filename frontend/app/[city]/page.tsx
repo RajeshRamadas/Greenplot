@@ -7,7 +7,7 @@ import { POSTS } from "@/lib/blog";
 import { type City, cityBySlug, liveCities } from "@/lib/cities";
 import type { Faq } from "@/lib/faqs";
 import { SERVICES, TERRAIN_NOTE } from "@/lib/services";
-import { absolute, breadcrumbSchema, businessSchema, faqSchema, rupees } from "@/lib/site";
+import { absolute, breadcrumbSchema, businessSchema, faqSchema, pageOpenGraph, rupees } from "@/lib/site";
 
 export const dynamicParams = false;
 
@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
   if (!c) return {};
   const title = `Plot Maintenance Services in ${c.name}`;
   const description = `Plot cleaning, fencing, garden upkeep and inspections across ${c.name}: ${c.areas.slice(0, 5).map((a) => a.name).join(", ")} and more. Photo proof of every visit.`;
-  return { title, description, alternates: { canonical: `/${c.slug}` }, openGraph: { title, description, url: `/${c.slug}` } };
+  return { title, description, alternates: { canonical: `/${c.slug}` }, openGraph: pageOpenGraph({ title, description, url: `/${c.slug}` }) };
 }
 
 function cityFaqs(c: City): Faq[] {

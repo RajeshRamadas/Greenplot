@@ -8,6 +8,14 @@ export const absolute = (path: string) => `${SITE_URL}${path.startsWith("/") ? p
 /** Image shown when a page is shared on WhatsApp, Facebook or X. */
 export const SHARE_IMAGE = { url: "/og/greenplot.jpg", width: 1200, height: 630, alt: "A Bangalore plot before and after cleaning by GreenPlot" };
 
+/** Open Graph tags for a page. Next replaces the layout's openGraph object whole, so the share image is repeated here. */
+export const pageOpenGraph = (og: { title: string; description: string; url: string; type?: "website" | "article"; publishedTime?: string }) => ({
+  siteName: "GreenPlot",
+  locale: "en_IN",
+  images: [SHARE_IMAGE],
+  ...og,
+});
+
 export const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
 /** The business as schema.org sees it; pages refer to it by @id. */

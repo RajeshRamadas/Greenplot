@@ -5,7 +5,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { ServiceShell } from "@/components/ServicePage";
 import { POSTS, postBySlug } from "@/lib/blog";
 import { serviceBySlug } from "@/lib/services";
-import { absolute, breadcrumbSchema, SHARE_IMAGE } from "@/lib/site";
+import { absolute, breadcrumbSchema, pageOpenGraph, SHARE_IMAGE } from "@/lib/site";
 
 export const dynamicParams = false;
 
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: p.title,
     description: p.description,
     alternates: { canonical: path },
-    openGraph: { type: "article", title: p.title, description: p.description, url: path, publishedTime: p.published },
+    openGraph: pageOpenGraph({ type: "article", title: p.title, description: p.description, url: path, publishedTime: p.published }),
   };
 }
 

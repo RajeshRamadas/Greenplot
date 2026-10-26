@@ -924,11 +924,10 @@ def whatsapp_call(ticket_id: uuid.UUID, body: CallIn, db: DB, actor: Perm("custo
     t = get_ticket(db, actor, ticket_id)
     if not customer_calls.may_call_ticket(db, actor, t):
         raise HTTPException(403, "Only the office or the person assigned to this ticket can call the customer")
-    phone = customer_calls.ticket_phone(db, t)
-    if not phone:
+    contact = customer_calls.ticket_contact(db, t)
+    if not contact:
         raise HTTPException(409, "The customer has no phone number on record")
-    customer = db.get(User, t.customer_id)
-    url = customer_calls.call_link(phone, body.mode, actor.user.full_name, customer.full_name if customer else None, t.number, t.title)
+    url = customer_calls.call_link(contact[0], body.mode, actor.user.full_name, contact[1], t.number, t.title)
     customer_calls.record(db, actor, "ticket", t.id, body.mode)
     db.commit()
     return CallLinkOut(mode=body.mode, url=url)

@@ -488,11 +488,10 @@ def whatsapp_call(task_id: uuid.UUID, body: CallIn, db: DB, actor: Perm("custome
     task = get_task(db, actor, task_id)
     if not customer_calls.may_call_task(db, actor, task):
         raise HTTPException(403, "Only a supervisor or the person doing this job can call the customer")
-    phone = customer_calls.task_phone(db, task)
-    if not phone:
+    contact = customer_calls.task_contact(db, task)
+    if not contact:
         raise HTTPException(409, "The customer has no phone number on record")
-    prop = db.get(Property, task.property_id) if task.property_id else None
-    url = customer_calls.call_link(phone, body.mode, actor.user.full_name, prop.owner_name if prop else None, task.number, task.title)
+    url = customer_calls.call_link(contact[0], body.mode, actor.user.full_name, contact[1], task.number, task.title)
     customer_calls.record(db, actor, "maintenance_task", task.id, body.mode)
     db.commit()
     return CallLinkOut(mode=body.mode, url=url)

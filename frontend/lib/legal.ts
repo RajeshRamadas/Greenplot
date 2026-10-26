@@ -6,6 +6,9 @@ export const BUSINESS = {
   brand: "GreenPlot",
   legalName: "UDO TECHNOLOGIES LLP",
   address: "18, Kempanna Layout, Ramachandrapura, Jalahalli Post, Bangalore, Karnataka, India - 560013",
+  // The address again in parts, for search engines.
+  street: "18, Kempanna Layout, Ramachandrapura, Jalahalli Post",
+  postalCode: "560013",
   city: "Bangalore",
   state: "Karnataka",
   email: "hello@greenplot.in",
@@ -15,6 +18,8 @@ export const BUSINESS = {
   grievanceOfficer: "Rajesh Ramadas",
   grievanceEmail: "hello@greenplot.in",
   updated: "18 October 2026",
+  // Google Business Profile "Ask for reviews" link. Leave empty until the profile is verified; the job proof page then shows no review button.
+  googleReviewUrl: "",
 };
 
 /** Bump when the Terms or Privacy Policy change in a way users must accept again. */

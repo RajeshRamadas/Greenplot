@@ -27,7 +27,7 @@ function watchErrors(page: Page) {
 
 test("public website loads with the WhatsApp contact", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("h1")).toContainText("Manage your property");
+  await expect(page.locator("h1")).toContainText("Plot maintenance in Bangalore");
   await expect(page.locator('a[href^="https://wa.me/918105568225"]').first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Every maintenance task. Documented and verified." })).toBeVisible();
   await page.locator("#demoForm input[name=name]").fill("E2E Secretary");

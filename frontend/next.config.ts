@@ -23,6 +23,11 @@ const config: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(self), geolocation=(self), microphone=()" },
         ],
       },
+      // Sign-in, invite and job proof pages are client pages that cannot set metadata, so keep them out of search here.
+      ...["/login", "/register", "/forgot-password", "/accept-invite", "/proof/:path*"].map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      })),
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Service-Worker-Allowed", value: "/" }] },
     ];
   },

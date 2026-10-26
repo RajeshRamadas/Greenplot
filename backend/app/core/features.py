@@ -75,7 +75,7 @@ ROLE_FEATURES: dict[str, dict[str, dict]] = {
         "jobs": {
             "label": "Work orders",
             "description": "Assigned jobs with checklist, materials and evidence capture",
-            "permissions": ["maintenance.read", "maintenance.work"],
+            "permissions": ["maintenance.read", "maintenance.work", "customers.call"],
         },
         "scan": {"label": "Scan asset", "description": "Find an asset and its open jobs by QR/NFC", "permissions": ["assets.scan"]},
         "proof_reports": {

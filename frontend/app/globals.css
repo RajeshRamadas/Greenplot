@@ -309,6 +309,8 @@ a.list-item:hover { text-decoration: none; background: var(--green-pale); }
   body:has(.bottomnav) .wa-float { bottom: calc(80px + env(safe-area-inset-bottom)); }
 }
 @media print { .wa-float { display: none; } }
+.btn.wa-call { gap: 6px; color: #128c4b; border-color: color-mix(in srgb, #25d366 55%, var(--line)); }
+.btn.wa-call svg { width: 17px; height: 17px; fill: #25d366; flex: none; }
 @media (max-width: 600px) { .hide-sm { display: none; } }
 
 /* Public service pages (/services, /services/<slug>) */

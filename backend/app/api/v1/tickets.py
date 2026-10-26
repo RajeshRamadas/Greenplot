@@ -26,7 +26,7 @@ from app.models import (
 )
 from app.models.base import utcnow
 from app.models.enums import ChecklistStatus, Role, TaskCategory, TaskStatus
-from app.schemas.common import GeoPoint, Page
+from app.schemas.common import CallIn, CallLinkOut, GeoPoint, Page
 from app.schemas.operations import AuditOut
 from app.schemas.tickets import (
     AssignmentOut,
@@ -54,7 +54,7 @@ from app.schemas.tickets import (
     TimelineItem,
     WorkOrderOut,
 )
-from app.services import audit
+from app.services import audit, customer_calls
 from app.services import maintenance as msvc
 from app.services import tickets as svc
 from app.services.access import get_scoped, get_ticket, is_ticket_assignee, scope_tickets, tenant_select
@@ -387,6 +387,8 @@ def detail(db, actor: Actor, t: Ticket) -> TicketDetail:
     d.attachments = _attachments(db, actor, t)
     d.timeline = _timeline(db, actor, t, d.comments, d.attachments)
     d.allowed_actions = allowed_actions(db, actor, t, task)
+    if customer_calls.can_call_ticket(db, actor, t):
+        d.allowed_actions.append("call_customer")
     if manager:
         d.comment_visibilities = ["customer", "vendor", "internal"]
     elif assignee:
@@ -914,6 +916,22 @@ def add_evidence(ticket_id: uuid.UUID, body: TicketEvidenceIn, db: DB, actor: Pe
 
 
 # ------------------------------------------------------------------ read-only views
+
+
+@router.post("/{ticket_id}/whatsapp-call", response_model=CallLinkOut)
+def whatsapp_call(ticket_id: uuid.UUID, body: CallIn, db: DB, actor: Perm("customers.call")):
+    """WhatsApp link to call the ticket's customer; only for the office and the current assignee."""
+    t = get_ticket(db, actor, ticket_id)
+    if not customer_calls.may_call_ticket(db, actor, t):
+        raise HTTPException(403, "Only the office or the person assigned to this ticket can call the customer")
+    phone = customer_calls.ticket_phone(db, t)
+    if not phone:
+        raise HTTPException(409, "The customer has no phone number on record")
+    customer = db.get(User, t.customer_id)
+    url = customer_calls.call_link(phone, body.mode, actor.user.full_name, customer.full_name if customer else None, t.number, t.title)
+    customer_calls.record(db, actor, "ticket", t.id, body.mode)
+    db.commit()
+    return CallLinkOut(mode=body.mode, url=url)
 
 
 @router.get("/{ticket_id}/timeline", response_model=list[TimelineItem])

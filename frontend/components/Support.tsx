@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CaptureButton } from "@/components/Capture";
-import { ErrorBox, Field, Select } from "@/components/ui";
+import { ErrorBox, Field, Select, useToast } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useAction, useApi, useOnline } from "@/lib/hooks";
+import { BUSINESS } from "@/lib/legal";
 import { useLookups } from "@/lib/lookups";
 import { enqueue } from "@/lib/offline";
 import type { TicketCategory, TicketDetail } from "@/lib/types";
@@ -37,33 +38,28 @@ export function whatsappLink(number: string, text: string) {
 const WA_PATH =
   "M16.02 3.2C9.03 3.2 3.35 8.84 3.34 15.78c0 2.22.59 4.39 1.71 6.31L3.2 28.8l6.89-1.8a12.8 12.8 0 0 0 5.92 1.45h.01c6.98 0 12.66-5.64 12.67-12.58A12.48 12.48 0 0 0 25 6.96a12.6 12.6 0 0 0-8.98-3.76Zm0 23.1h-.01a10.6 10.6 0 0 1-5.39-1.47l-.39-.23-4.09 1.07 1.09-3.96-.25-.4a10.4 10.4 0 0 1-1.62-5.53c0-5.88 4.79-10.66 10.67-10.66 2.85 0 5.53 1.11 7.55 3.13a10.56 10.56 0 0 1 3.12 7.54c0 5.88-4.79 10.66-10.67 10.66Zm5.86-7.98c-.32-.16-1.9-.94-2.19-1.05-.29-.11-.51-.16-.72.16-.21.32-.83 1.05-1.02 1.27-.19.21-.38.24-.7.08-.32-.16-1.35-.5-2.57-1.59-.95-.84-1.59-1.88-1.78-2.2-.19-.32-.02-.49.14-.65.14-.14.32-.38.48-.57.16-.19.21-.32.32-.54.11-.21.05-.4-.03-.56-.08-.16-.72-1.73-.99-2.37-.26-.62-.52-.54-.72-.55h-.61c-.21 0-.56.08-.85.4-.29.32-1.12 1.09-1.12 2.66s1.15 3.09 1.31 3.3c.16.21 2.26 3.44 5.47 4.82.76.33 1.36.52 1.83.67.77.24 1.47.21 2.02.13.62-.09 1.9-.78 2.17-1.53.27-.75.27-1.39.19-1.53-.08-.13-.29-.21-.61-.37Z";
 
-/** WhatsApp link to support with a greeting that says who is writing; null until the number loads. */
-function useSupportLink(): string | null {
+/** WhatsApp link to support with a greeting that says who is writing; the business number until the API's loads. */
+function useSupportLink(): string {
   const { me } = useAuth();
-  const [number, setNumber] = useState<string | null>(null);
+  const [number, setNumber] = useState(BUSINESS.phone.replace(/\D/g, ""));
   useEffect(() => {
-    loadNumber().then(setNumber);
+    loadNumber().then((n) => n && setNumber(n));
   }, []);
-  if (!number) return null;
   const who = me ? ` This is ${me.full_name}${me.tenant_name ? `, ${me.tenant_name}` : ""}.` : "";
   return whatsappLink(number, `Hi GreenPlot, I need some help.${who}`);
 }
 
 export function WhatsAppLink({ children }: { children: React.ReactNode }) {
-  const href = useSupportLink();
-  return href ? (
-    <a href={href} target="_blank" rel="noopener noreferrer">
+  return (
+    <a href={useSupportLink()} target="_blank" rel="noopener noreferrer">
       {children}
     </a>
-  ) : (
-    <>{children}</>
   );
 }
 
 /** Floating "Chat with us on WhatsApp" button, shown on every page of the app. */
 export function WhatsAppButton() {
   const href = useSupportLink();
-  if (!href) return null;
   return (
     <a
       className="wa-float"
@@ -77,6 +73,53 @@ export function WhatsAppButton() {
         <path d={WA_PATH} />
       </svg>
     </a>
+  );
+}
+
+// ------------------------------------------------------------------ WhatsApp call to a customer
+
+/**
+ * "WhatsApp call" and "WhatsApp video" buttons for the office and the person assigned to the job
+ * (the API lists "call_customer" in allowed_actions only for them). WhatsApp has no link that starts
+ * a call, so this opens the customer's chat with a note saying who is calling; the caller then taps
+ * the phone or camera icon at the top of the chat.
+ */
+export function CallCustomer({ path }: { path: string }) {
+  const toast = useToast();
+  const [pending, setPending] = useState<string | null>(null);
+
+  async function start(mode: "audio" | "video") {
+    // Open the tab now, inside the tap, so the browser does not block it as a pop-up.
+    const tab = window.open("", "_blank");
+    setPending(mode);
+    try {
+      const { url } = await api<{ url: string }>(`${path}/whatsapp-call`, { body: { mode } });
+      if (tab) tab.location.href = url;
+      else window.location.href = url;
+      toast(mode === "video" ? "WhatsApp is open: tap the camera icon to start the video call" : "WhatsApp is open: tap the phone icon to call");
+    } catch (e) {
+      tab?.close();
+      toast((e as Error).message, "error");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  return (
+    <>
+      <button className="btn wa-call" disabled={!!pending} onClick={() => start("audio")} title="Call the customer on WhatsApp">
+        <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <path d={WA_PATH} />
+        </svg>
+        {pending === "audio" ? "Opening…" : "WhatsApp call"}
+      </button>
+      <button className="btn wa-call" disabled={!!pending} onClick={() => start("video")} title="Video call the customer on WhatsApp">
+        <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <path d={WA_PATH} />
+        </svg>
+        {pending === "video" ? "Opening…" : "WhatsApp video"}
+      </button>
+    </>
   );
 }
 

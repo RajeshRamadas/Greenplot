@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Generic, TypeVar
+from typing import Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -40,3 +40,12 @@ class ReasonIn(BaseModel):
 
 class CommentIn(BaseModel):
     comment: str | None = Field(None, max_length=4000)
+
+
+class CallIn(BaseModel):
+    mode: Literal["audio", "video"] = "audio"
+
+
+class CallLinkOut(BaseModel):
+    mode: str
+    url: str  # wa.me link that opens the customer's chat; the caller taps the call or video icon

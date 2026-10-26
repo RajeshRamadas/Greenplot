@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { CaptureButton } from "@/components/Capture";
+import { CallCustomer } from "@/components/Support";
 import { SlaBadge, TicketLifecycle } from "@/components/Tickets";
 import { Badge, Dialog, Empty, ErrorBox, Field, Loading, PageHead, Select, useToast } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -90,6 +91,7 @@ export default function TicketPage() {
         <Badge status={t.priority} text={`${label(t.priority)} priority`} />
         <SlaBadge state={t.sla_state} due={t.due_at} />
         <Badge status={t.status} />
+        {can("call_customer") ? <CallCustomer path={`/tickets/${t.id}`} /> : null}
       </PageHead>
       <div className="card" style={{ marginBottom: 16 }}>
         <TicketLifecycle status={t.status} />

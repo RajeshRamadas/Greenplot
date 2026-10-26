@@ -6,7 +6,7 @@ import { useState } from "react";
 import { CaptureButton } from "@/components/Capture";
 import { PayDialog } from "@/components/Pay";
 import { QrScanner } from "@/components/QrScanner";
-import { StarInput, Stars } from "@/components/Support";
+import { CallCustomer, StarInput, Stars } from "@/components/Support";
 import { Badge, Dialog, Empty, ErrorBox, Field, Loading, PageHead, Select, useToast } from "@/components/ui";
 import { api, download } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -128,6 +128,7 @@ export default function TaskPage() {
       >
         <Badge status={t.status} />
         {t.overdue ? <Badge status="urgent" text="Overdue" /> : null}
+        {A.has("call_customer") ? <CallCustomer path={`/maintenance/${t.id}`} /> : null}
         {A.has("download_report") ? (
           <button className="btn" onClick={() => download(`/maintenance/${t.id}/report.pdf`).catch((e) => toast(e.message, "error"))}>
             Proof report (PDF)

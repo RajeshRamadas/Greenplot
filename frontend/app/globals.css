@@ -133,6 +133,8 @@ img { max-width: 100%; display: block; }
 .row.between { justify-content: space-between; }
 .muted { color: var(--muted); }
 .small { font-size: 12.5px; }
+/* A lone text link with room around it, so it is easy to tap. */
+.tap { display: inline-block; padding: 10px 0; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
 .divider { height: 1px; background: var(--line); margin: 14px 0; }
 
@@ -388,10 +390,12 @@ a.list-item:hover { text-decoration: none; background: var(--green-pale); }
 /* Business details, FAQs, city and area pages, guides */
 .svc-nap { font-style: normal; display: grid; gap: 4px; justify-items: center; text-align: center; font-size: 14px; color: var(--muted); }
 .svc-nap b { color: var(--ink); }
-/* Roomier footer links on phones so each one is easy to tap. */
-@media (max-width: 600px) {
+/* Roomier links on phones and tablets so each one is easy to tap. */
+@media (max-width: 900px) {
   .legal-links, .svc-others { gap: 0 18px; align-items: center; }
-  .legal-links a, .svc-others a, .svc-others span, .svc-nap a { display: inline-block; padding: 8px 0; }
+  .legal-links a, .svc-others a, .svc-others span, .svc-nap a, .legal-contact a { display: inline-block; padding: 8px 0; }
+  .svc-crumbs { gap: 0 6px; align-items: center; }
+  .svc-crumbs a { display: inline-block; padding: 8px 0; }
   .svc-nap { gap: 0; }
 }
 .svc-faq { display: grid; gap: 10px; }
@@ -472,6 +476,7 @@ a.list-item:hover { text-decoration: none; background: var(--green-pale); }
 .seo-preview b { color: #1a0dab; font-weight: 500; font-size: 17px; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .check input { width: auto; min-height: 0; }
+input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; min-height: 0; accent-color: var(--green); flex: none; }
 .warn-text { color: var(--amber); }
 .ok-text { color: var(--green-dark); }
 @media (max-width: 1100px) { .blog-editor-grid { grid-template-columns: 1fr; } }

@@ -107,7 +107,7 @@ function LoginForm() {
             <button className="btn primary big" disabled={busy}>
               {busy ? "Signing in…" : "Sign in"}
             </button>
-            <Link href="/forgot-password" className="small">
+            <Link href="/forgot-password" className="small tap">
               Forgot password?
             </Link>
           </form>

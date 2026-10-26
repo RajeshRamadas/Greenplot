@@ -31,7 +31,8 @@ def test_list_and_search_customers(as_, world):
     page = admin.ok("get", "/customers")
     assert {c["full_name"] for c in page["items"]} == {"Priya Owner", "Rahul Owner"}
     assert admin.ok("get", "/customers", params={"q": "204"})["items"][0]["full_name"] == "Rahul Owner"
-    assert admin.ok("get", "/customers", params={"q": "GV-117"})["items"][0]["plots"] == ["Plot 117"]
+    found = admin.ok("get", "/customers", params={"q": "GV-117"})["items"]
+    assert [(c["full_name"], c["plots"]) for c in found] == [("Priya Owner", ["Plot 117"])]
 
 
 def test_conversations_and_history(as_, world, db):
@@ -75,7 +76,16 @@ def test_conversations_and_history(as_, world, db):
     assert internal and internal[0]["internal"] and internal[0]["direction"] == "out"
     mine = [e for e in history if e["body"] == "Please come after 5"][0]
     assert mine["direction"] == "in" and not mine["internal"]
-    assert all(e["kind"] == "phone_call" for e in admin.ok("get", f"/customers/{world.resident.id}/history", params={"kind": "phone_call"}))
+    calls = admin.ok("get", f"/customers/{world.resident.id}/history", params={"kind": "phone_call"})
+    assert calls and all(e["kind"] == "phone_call" for e in calls)
+    # The customer list shows the latest conversation too.
+    listed = admin.ok("get", "/customers", params={"q": "Priya"})["items"][0]
+    assert listed["last_contact_at"] is not None and listed["open_tickets"] == 1
+
+    # A ticket can only be linked to its own customer's conversations.
+    other = raise_ticket(as_(world.resident2), world, property_id=str(world.p204.id))
+    bad = admin.post(f"/customers/{world.resident.id}/interactions", {"summary": "x", "ticket_id": other["id"]})
+    assert bad.status_code == 422
 
     c = admin.ok("get", f"/customers/{world.resident.id}")
     assert c["stats"]["tickets"] == 1 and c["stats"]["open_tickets"] == 1 and c["stats"]["conversations"] == 2
@@ -101,11 +111,19 @@ def test_notes_for_an_owner_without_a_login(as_, world, db):
     assert len(rows) == 1 and rows[0]["customer_id"] is None and rows[0]["kind"] == "site_visit"
     assert as_(world.supervisor).get(f"/properties/{plot.id}/interactions").status_code == 403
 
-    # Once the owner has an account, the plot's notes show on their record too.
+    # A plot page shows its own notes and the owner's general ones, not notes about their other plots.
+    admin.ok("post", f"/customers/{world.resident2.id}/interactions", {"summary": "About plot 204", "property_id": str(world.p204.id)})
+    admin.ok("post", f"/customers/{world.resident2.id}/interactions", {"summary": "General chat"})
     plot.owner_user_id = world.resident2.id
     db.commit()
-    assert [i["summary"] for i in admin.ok("get", f"/customers/{world.resident2.id}/interactions")] == [
-        "Met Kiran at the plot, wants fencing"
+    assert {i["summary"] for i in admin.ok("get", f"/properties/{plot.id}/interactions")} == {
+        "Met Kiran at the plot, wants fencing",
+        "General chat",
+    }
+
+    # Once the owner has an account, the plot's notes show on their record too.
+    assert "Met Kiran at the plot, wants fencing" in [
+        i["summary"] for i in admin.ok("get", f"/customers/{world.resident2.id}/interactions")
     ]
 
 
@@ -131,6 +149,14 @@ def test_photos_from_every_record_and_customer_files(as_, world, db):
     assert resident.get("/media", params={"entity_type": "customer", "entity_id": str(world.resident.id)}).status_code == 404
     assert len(admin.ok("get", "/media", params={"entity_type": "customer", "entity_id": str(world.resident.id)})) == 1
 
+    # Photos of a deleted ticket leave the record with it.
+    from app.models import Ticket
+    from app.models.base import utcnow
+
+    db.get(Ticket, uuid.UUID(t["id"])).deleted_at = utcnow()
+    db.commit()
+    assert [f["source"] for f in admin.ok("get", f"/customers/{world.resident.id}/media")] == ["Customer file"]
+
 
 def test_export_everything(as_, world):
     admin = as_(world.admin)
@@ -142,3 +168,10 @@ def test_export_everything(as_, world):
     assert data["customer"]["full_name"] == "Priya Owner"
     assert data["conversations"][0]["summary"] == "Welcome call"
     assert any(e["kind"] == "ticket" for e in data["history"])
+
+    # Names outside Latin-1 still download, with an ASCII fallback file name.
+    world.resident.full_name = "ಪ್ರಿಯಾ Nair"
+    world.db.commit()
+    r = admin.get(f"/customers/{world.resident.id}/export")
+    assert r.status_code == 200
+    assert 'filename="greenplot-nair.json"' in r.headers["content-disposition"] and "filename*=UTF-8''" in r.headers["content-disposition"]

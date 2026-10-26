@@ -6,13 +6,15 @@ import { useState } from "react";
 import { CaptureButton } from "@/components/Capture";
 import { ConversationList, LogConversation } from "@/components/Conversations";
 import { Badge, Empty, ErrorBox, Loading, PageHead, Select, Stat } from "@/components/ui";
-import { download } from "@/lib/api";
+import { api, download } from "@/lib/api";
 import { fmtDate, fmtDateTime, inr, label } from "@/lib/format";
 import { useAction, useApi } from "@/lib/hooks";
 import { linkFor } from "@/lib/links";
 import type { Customer, CustomerEvent, Interaction, MediaItem } from "@/lib/types";
 
 type CustomerMedia = MediaItem & { source: string };
+
+const PAGE = 200;
 
 const GROUPS: Record<string, string[]> = {
   conversations: ["note", "phone_call", "whatsapp_call", "whatsapp_chat", "sms", "email", "site_visit", "meeting", "whatsapp", "ticket_message", "complaint_message"],
@@ -25,7 +27,9 @@ const GROUPS: Record<string, string[]> = {
 export default function CustomerPage() {
   const { id } = useParams<{ id: string }>();
   const { data: c, error, loading, reload } = useApi<Customer>(`/customers/${id}`);
-  const history = useApi<CustomerEvent[]>(`/customers/${id}/history`, { limit: 500 });
+  const history = useApi<CustomerEvent[]>(`/customers/${id}/history`, { limit: PAGE });
+  const [older, setOlder] = useState<CustomerEvent[]>([]);
+  const [olderDone, setOlderDone] = useState(false);
   const convo = useApi<Interaction[]>(`/customers/${id}/interactions`);
   const [mediaKey, setMediaKey] = useState(0);
   const media = useApi<CustomerMedia[]>(`/customers/${id}/media`, { k: mediaKey });
@@ -35,8 +39,10 @@ export default function CustomerPage() {
 
   if (loading && !c) return <Loading />;
   if (!c) return <ErrorBox error={error || "Not found"} />;
-  const items = (history.data ?? []).filter((e) => !group || GROUPS[group]?.includes(e.kind));
-  const refresh = () => (convo.reload(), history.reload(), reload());
+  const all = [...(history.data ?? []), ...older];
+  const items = all.filter((e) => !group || GROUPS[group]?.includes(e.kind));
+  const more = (history.data?.length ?? 0) === PAGE && !olderDone;
+  const refresh = () => (convo.reload(), history.reload(), reload(), setOlder([]), setOlderDone(false));
 
   return (
     <>
@@ -102,6 +108,21 @@ export default function CustomerPage() {
                 );
               })}
             </ul>
+            {more ? (
+              <button
+                className="btn small"
+                disabled={act.pending}
+                onClick={async () => {
+                  const page = await act.run(() => api<CustomerEvent[]>(`/customers/${id}/history`, { query: { limit: PAGE, offset: PAGE + older.length } }));
+                  if (page) {
+                    setOlder([...older, ...page]);
+                    if (page.length < PAGE) setOlderDone(true);
+                  }
+                }}
+              >
+                Show older
+              </button>
+            ) : null}
           </div>
           <div className="card">
             <h2>Photos & files</h2>

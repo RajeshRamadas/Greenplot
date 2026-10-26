@@ -134,41 +134,96 @@ def _task_ids(db: Session, tenant_id: uuid.UUID, property_ids: set[uuid.UUID], t
 
 
 def _media_sources(db: Session, u: User) -> dict[tuple[str, uuid.UUID], str]:
-    """Every record whose photos and files belong on this customer's record, with a label for each."""
+    """Every live record whose photos and files belong on this customer's record, with a label for each."""
     tid = u.tenant_id
     pids = set(plot_links(db, tid, u.id))
     sources: dict[tuple[str, uuid.UUID], str] = {("customer", u.id): "Customer file"}
     if pids:
         for p in db.execute(select(Property.id, Property.plot_number).where(Property.id.in_(pids))):
             sources[("property", p.id)] = f"Plot {p.plot_number}"
-        for i in db.execute(select(Inspection.id, Inspection.number).where(Inspection.tenant_id == tid, Inspection.property_id.in_(pids))):
+        for i in db.execute(
+            select(Inspection.id, Inspection.number).where(
+                Inspection.tenant_id == tid, Inspection.property_id.in_(pids), Inspection.deleted_at.is_(None)
+            )
+        ):
             sources[("inspection", i.id)] = f"Inspection {i.number}"
-    tickets = dict(db.execute(select(Ticket.id, Ticket.number).where(Ticket.tenant_id == tid, Ticket.customer_id == u.id)).all())
+    tickets = dict(
+        db.execute(
+            select(Ticket.id, Ticket.number).where(Ticket.tenant_id == tid, Ticket.customer_id == u.id, Ticket.deleted_at.is_(None))
+        ).all()
+    )
     for tid_, number in tickets.items():
         sources[("ticket", tid_)] = f"Ticket {number}"
     task_ids = _task_ids(db, tid, pids, set(tickets))
     if task_ids:
         for t in db.execute(select(MaintenanceTask.id, MaintenanceTask.number).where(MaintenanceTask.id.in_(task_ids))):
             sources[("maintenance_task", t.id)] = f"Job {t.number}"
-    for c in db.execute(select(Complaint.id, Complaint.number).where(Complaint.tenant_id == tid, Complaint.raised_by == u.id)):
+    for c in db.execute(
+        select(Complaint.id, Complaint.number).where(
+            Complaint.tenant_id == tid, Complaint.raised_by == u.id, Complaint.deleted_at.is_(None)
+        )
+    ):
         sources[("complaint", c.id)] = f"Complaint {c.number}"
     return sources
 
 
-def media(db: Session, u: User, limit: int = 500) -> list[tuple[Media, str]]:
-    """Ready photos, videos and documents from the customer's tickets, jobs, plots and own file, newest first."""
-    sources = _media_sources(db, u)
+def _media_query(u: User, sources: dict[tuple[str, uuid.UUID], str]):
     by_type: dict[str, set[uuid.UUID]] = {}
     for etype, eid in sources:
         by_type.setdefault(etype, set()).add(eid)
     clause = or_(*[(Media.entity_type == etype) & Media.entity_id.in_(ids) for etype, ids in by_type.items()])
-    rows = db.scalars(
-        select(Media)
-        .where(Media.tenant_id == u.tenant_id, Media.status == MediaStatus.READY, clause)
-        .order_by(func.coalesce(Media.captured_at, Media.uploaded_at, Media.created_at).desc())
-        .limit(limit)
+    return select(Media).where(Media.tenant_id == u.tenant_id, Media.status == MediaStatus.READY, clause)
+
+
+def media(db: Session, u: User, limit: int | None = None, offset: int = 0) -> list[tuple[Media, str]]:
+    """Ready photos, videos and documents from the customer's tickets, jobs, plots and own file, newest first."""
+    sources = _media_sources(db, u)
+    stmt = _media_query(u, sources).order_by(func.coalesce(Media.captured_at, Media.uploaded_at, Media.created_at).desc()).offset(offset)
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return [(m, sources[(m.entity_type, m.entity_id)]) for m in db.scalars(stmt)]
+
+
+def media_count(db: Session, u: User) -> int:
+    stmt = _media_query(u, _media_sources(db, u))
+    return db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+
+
+def _standalone_ratings(db: Session, tenant_id: uuid.UUID, task_ids: set[uuid.UUID]) -> list[MaintenanceTask]:
+    """Jobs without a ticket that the customer rated (ticket jobs are rated on the ticket)."""
+    if not task_ids:
+        return []
+    return list(
+        db.scalars(
+            select(MaintenanceTask).where(
+                MaintenanceTask.id.in_(task_ids), MaintenanceTask.ticket_id.is_(None), MaintenanceTask.rated_at.is_not(None)
+            )
+        )
     )
-    return [(m, sources[(m.entity_type, m.entity_id)]) for m in rows]
+
+
+def _last_contact(db: Session, u: User, pids: set[uuid.UUID]) -> datetime | None:
+    """Latest conversation: a logged interaction, a WhatsApp message that went through, or a ticket message."""
+    tid = u.tenant_id
+    last = [
+        db.scalar(
+            select(func.max(CustomerInteraction.occurred_at)).where(
+                CustomerInteraction.tenant_id == tid, CustomerInteraction.deleted_at.is_(None), _interactions_filter(u.id, pids)
+            )
+        ),
+        db.scalar(
+            select(func.max(WhatsAppMessage.created_at)).where(
+                WhatsAppMessage.user_id == u.id, WhatsAppMessage.tenant_id == tid, WhatsAppMessage.status != "failed"
+            )
+        ),
+        db.scalar(
+            select(func.max(TicketComment.created_at))
+            .join(Ticket, Ticket.id == TicketComment.ticket_id)
+            .where(Ticket.tenant_id == tid, Ticket.customer_id == u.id, TicketComment.comment_type != "system")
+        ),
+    ]
+    last = [x for x in last if x]
+    return max(last) if last else None
 
 
 def stats(db: Session, u: User) -> CustomerStats:
@@ -184,12 +239,12 @@ def stats(db: Session, u: User) -> CustomerStats:
     )
     s.tickets = len(tickets)
     s.open_tickets = sum(1 for t in tickets if t.status not in OPEN_TICKET_EXCLUDED)
-    ratings = [t.rating for t in tickets if t.rating]
-    s.avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else None
     task_ids = _task_ids(db, tid, pids, {t.id for t in tickets})
+    ratings = [t.rating for t in tickets if t.rating] + [t.rating for t in _standalone_ratings(db, tid, task_ids) if t.rating]
+    s.avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else None
     if task_ids:
         s.jobs_done = db.scalar(select(func.count()).where(MaintenanceTask.id.in_(task_ids), MaintenanceTask.status.in_(DONE_TASK))) or 0
-    s.photos = len(media(db, u))
+    s.photos = media_count(db, u)
     if pids:
         billed, paid = db.execute(
             select(func.coalesce(func.sum(Invoice.amount), 0), func.coalesce(func.sum(Invoice.amount_paid), 0)).where(
@@ -209,47 +264,14 @@ def stats(db: Session, u: User) -> CustomerStats:
             )
             or 0
         )
-    convo = interactions(db, tid, u.id, pids)
-    s.conversations = len(convo)
-    last = [convo[0].occurred_at] if convo else []
-    last += [
-        db.scalar(select(func.max(WhatsAppMessage.created_at)).where(WhatsAppMessage.user_id == u.id, WhatsAppMessage.tenant_id == tid))
-    ]
-    last += [
-        db.scalar(
-            select(func.max(TicketComment.created_at))
-            .join(Ticket, Ticket.id == TicketComment.ticket_id)
-            .where(Ticket.tenant_id == tid, Ticket.customer_id == u.id, TicketComment.comment_type != "system")
-        )
-    ]
-    last = [x for x in last if x]
-    s.last_contact_at = max(last) if last else None
+    s.conversations = len(interactions(db, tid, u.id, pids))
+    s.last_contact_at = _last_contact(db, u, pids)
     return s
 
 
-def last_contact(db: Session, tenant_id: uuid.UUID, user_ids: list[uuid.UUID]) -> dict[uuid.UUID, datetime]:
-    """Most recent conversation (logged interaction or WhatsApp message) per customer, for the list page."""
-    out: dict[uuid.UUID, datetime] = {}
-    if not user_ids:
-        return out
-    for uid, at in db.execute(
-        select(CustomerInteraction.customer_id, func.max(CustomerInteraction.occurred_at))
-        .where(
-            CustomerInteraction.tenant_id == tenant_id,
-            CustomerInteraction.customer_id.in_(user_ids),
-            CustomerInteraction.deleted_at.is_(None),
-        )
-        .group_by(CustomerInteraction.customer_id)
-    ):
-        out[uid] = at
-    for uid, at in db.execute(
-        select(WhatsAppMessage.user_id, func.max(WhatsAppMessage.created_at))
-        .where(WhatsAppMessage.tenant_id == tenant_id, WhatsAppMessage.user_id.in_(user_ids))
-        .group_by(WhatsAppMessage.user_id)
-    ):
-        if uid not in out or at > out[uid]:
-            out[uid] = at
-    return out
+def last_contact(db: Session, users: list[User]) -> dict[uuid.UUID, datetime | None]:
+    """Latest conversation per customer for the list page (a page is at most a few dozen customers)."""
+    return {u.id: _last_contact(db, u, set(plot_links(db, u.tenant_id, u.id))) for u in users}
 
 
 # --------------------------------------------------------------------------- history
@@ -376,6 +398,18 @@ def timeline(db: Session, u: User) -> list[CustomerEvent]:
                     entity_id=t.id,
                 )
             )
+            if t.rated_at and t.rating and t.ticket_id is None:
+                ev.append(
+                    CustomerEvent(
+                        at=t.rated_at,
+                        kind="feedback",
+                        title=f"Rated the work {t.rating}/5",
+                        body=t.rating_comment,
+                        number=t.number,
+                        entity_type="maintenance_task",
+                        entity_id=t.id,
+                    )
+                )
 
     complaints = {
         c.id: c
@@ -478,7 +512,11 @@ def timeline(db: Session, u: User) -> list[CustomerEvent]:
 
 
 def log_whatsapp_call(db: Session, actor: Actor, entity_type: str, entity_id: uuid.UUID, mode: str) -> None:
-    """Put a WhatsApp call started from a ticket or job on the customer's record."""
+    """Put a WhatsApp call from a ticket or job on the customer's record.
+
+    The app only hands out a wa.me link (the call itself happens in WhatsApp), so this records
+    that the call link was opened, not that the call connected.
+    """
     customer_id = property_id = ticket_id = task_id = None
     ref = ""
     if entity_type == "ticket":
@@ -503,7 +541,7 @@ def log_whatsapp_call(db: Session, actor: Actor, entity_type: str, entity_id: uu
             kind="whatsapp_call",
             direction="out",
             occurred_at=utcnow(),
-            summary=f"{'Video' if mode == 'video' else 'Audio'} call started from {ref}.",
+            summary=f"{'Video' if mode == 'video' else 'Audio'} call link opened from {ref} (the call itself happens in WhatsApp).",
             author_id=actor.id,
         )
     )

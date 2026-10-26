@@ -29,10 +29,8 @@ from app.services.storage import (
 log = logging.getLogger("greenplot.media")
 
 
-def _retention(db: Session, tenant_id: uuid.UUID, entity_type: str) -> tuple[date | None, bool]:
+def _retention(db: Session, tenant_id: uuid.UUID, entity_type: str) -> tuple[date, bool]:
     s = get_settings()
-    if entity_type == "customer":  # files kept on a customer's record are kept until someone deletes them
-        return None, False
     if entity_type == "incident":
         days = msvc.tenant_setting(db, tenant_id, "incident_media_retention_days", s.incident_media_retention_days)
         return date.today() + timedelta(days=days), True
@@ -171,6 +169,10 @@ def finalize(db: Session, actor: Actor, m: Media, caption: str | None = None) ->
     m.uploaded_at = utcnow()
     m.status = MediaStatus.READY
     m.error = None
+    if m.entity_type == "customer":
+        # Files on a customer's record are kept until someone deletes them. Until it is ready an upload
+        # keeps the routine deadline, so abandoned or failed uploads are still cleaned up.
+        m.retention_until = None
     if m.replaces_id:
         old = db.get(Media, m.replaces_id)
         old.replaced_by_id = m.id

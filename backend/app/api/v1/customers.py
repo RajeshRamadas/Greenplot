@@ -5,8 +5,9 @@ Layout admins only, since the record shows customers' numbers and the office's i
 
 import json
 import uuid
+from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy import func, or_, select
 
@@ -85,7 +86,7 @@ def list_customers(db: DB, actor: Perm("customers.read"), q: str | None = None, 
         )
     users, total = paginate(db, stmt, limit, offset)
     ids = [u.id for u in users]
-    contact = svc.last_contact(db, actor.tenant_id, ids)
+    contact = svc.last_contact(db, users)
     open_tickets = (
         dict(
             db.execute(
@@ -125,18 +126,21 @@ def get_customer(user_id: uuid.UUID, db: DB, actor: Perm("customers.read")):
 
 
 @router.get("/customers/{user_id}/history", response_model=list[CustomerEvent])
-def customer_history(user_id: uuid.UUID, db: DB, actor: Perm("customers.read"), kind: str | None = None, limit: int = Limit):
+def customer_history(
+    user_id: uuid.UUID, db: DB, actor: Perm("customers.read"), kind: str | None = None, limit: int = Limit, offset: int = Offset
+):
+    """Newest first; page back with offset."""
     events = svc.timeline(db, svc.get_customer(db, actor, user_id))
     if kind:
         events = [e for e in events if e.kind == kind]
-    return events[:limit]
+    return events[offset : offset + limit]
 
 
 @router.get("/customers/{user_id}/media", response_model=list[CustomerMediaOut])
-def customer_media(user_id: uuid.UUID, db: DB, actor: Perm("customers.read")):
-    """All photos, videos and documents from the customer's tickets, jobs, plots, inspections and own file."""
+def customer_media(user_id: uuid.UUID, db: DB, actor: Perm("customers.read"), limit: int | None = Query(None, ge=1), offset: int = Offset):
+    """Photos, videos and documents from the customer's tickets, jobs, plots, inspections and own file (all of them by default)."""
     u = svc.get_customer(db, actor, user_id)
-    return [CustomerMediaOut(**present(db, m).model_dump(), source=source) for m, source in svc.media(db, u)]
+    return [CustomerMediaOut(**present(db, m).model_dump(), source=source) for m, source in svc.media(db, u, limit, offset)]
 
 
 @router.get("/customers/{user_id}/export")
@@ -153,11 +157,13 @@ def export_customer(user_id: uuid.UUID, db: DB, actor: Perm("customers.read")):
     }
     audit.record(db, actor, "customer.exported", "user", u.id)
     db.commit()
-    slug = "".join(c if c.isalnum() else "-" for c in u.full_name.lower()).strip("-") or "customer"
+    # ASCII fallback plus the full name in filename* (RFC 6266), so names in Kannada or Hindi still download.
+    ascii_slug = "-".join("".join(c if c.isascii() and c.isalnum() else " " for c in u.full_name.lower()).split()) or "customer"
+    full = quote(f"greenplot-{'-'.join(u.full_name.lower().split())}.json")
     return Response(
         json.dumps(data, ensure_ascii=False, indent=2),
         media_type="application/json",
-        headers={"Content-Disposition": f'attachment; filename="greenplot-{slug}.json"'},
+        headers={"Content-Disposition": f"attachment; filename=\"greenplot-{ascii_slug}.json\"; filename*=UTF-8''{full}"},
     )
 
 
@@ -174,6 +180,8 @@ def _create(db, actor: Actor, body: InteractionIn, customer_id: uuid.UUID | None
     ticket_id = None
     if body.ticket_id:
         t = get_scoped(db, Ticket, body.ticket_id, actor, "Ticket")
+        if (customer_id and t.customer_id != customer_id) or (property_id and t.property_id not in (None, property_id)):
+            raise HTTPException(422, "That ticket belongs to another customer or plot")
         ticket_id = t.id
         property_id = property_id or t.property_id
     i = CustomerInteraction(
@@ -215,8 +223,8 @@ def property_interactions(property_id: uuid.UUID, db: DB, actor: Perm("customers
     """Conversations about a plot, including ones with an owner who has no login."""
     p = get_scoped(db, Property, property_id, actor, "Property")
     clauses = [CustomerInteraction.property_id == p.id]
-    if p.owner_user_id:
-        clauses.append(CustomerInteraction.customer_id == p.owner_user_id)
+    if p.owner_user_id:  # plus the owner's general notes that aren't about a particular plot
+        clauses.append((CustomerInteraction.customer_id == p.owner_user_id) & CustomerInteraction.property_id.is_(None))
     rows = db.scalars(
         select(CustomerInteraction)
         .where(CustomerInteraction.tenant_id == actor.tenant_id, CustomerInteraction.deleted_at.is_(None), or_(*clauses))

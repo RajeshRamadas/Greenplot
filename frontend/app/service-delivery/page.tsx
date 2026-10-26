@@ -48,12 +48,20 @@ export default function ServiceDeliveryPage() {
         amount paid for it.
       </p>
 
-      <h2>6. Digital access</h2>
+      <h2>6. Plants bought from the online store</h2>
+      <p>
+        Plants ordered from our <Link href="/store">plant store</Link> are delivered by our own team within Bangalore, usually in <b>2 to 4 working days</b>. We call
+        the number on the order before we come. Delivery is free over the amount shown at checkout, and a delivery charge is added below it, which you see before you
+        pay. Plants are delivered in their nursery pots, watered, with care notes. You can pay online or in cash on delivery, and the bill for the order is on your
+        order page the moment it is placed.
+      </p>
+
+      <h2>7. Digital access</h2>
       <p>
         Access to the {BUSINESS.brand} app is given by email and text message once the layout office approves your account. There is nothing to download or ship.
       </p>
 
-      <h2>7. Contact</h2>
+      <h2>8. Contact</h2>
       <ContactBlock />
     </LegalPage>
   );

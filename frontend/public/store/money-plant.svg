@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Illustration of a Money Plant in a pot">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eef8f2"/><stop offset="1" stop-color="#dcefe4"/>
+    </linearGradient>
+    <linearGradient id="pot" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c2744a"/><stop offset="0.5" stop-color="#e09064"/><stop offset="1" stop-color="#b4683f"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg)"/>
+  <ellipse cx="300" cy="556" rx="150" ry="20" fill="#000" opacity=".08"/>
+  <g>
+    <path d="M 300 430 C 180 430, 130 500, 150 600" stroke="#3f9d5d" stroke-width="6" fill="none"/>
+    <ellipse cx="240" cy="435.3333333333333" rx="26" ry="19" fill="#3f9d5d" opacity="0.9" transform="rotate(-24 240 435.3333333333333)"/>
+    <ellipse cx="200" cy="451.3333333333333" rx="26" ry="19" fill="#3f9d5d" opacity="0.9" transform="rotate(-30 200 451.3333333333333)"/>
+    <ellipse cx="160" cy="478.0" rx="26" ry="19" fill="#3f9d5d" opacity="0.9" transform="rotate(-36 160 478.0)"/>
+    <ellipse cx="120" cy="515.3333333333334" rx="26" ry="19" fill="#3f9d5d" opacity="0.9" transform="rotate(-42 120 515.3333333333334)"/>
+    <ellipse cx="80" cy="563.3333333333334" rx="26" ry="19" fill="#3f9d5d" opacity="0.9" transform="rotate(-48 80 563.3333333333334)"/>
+    <ellipse cx="40" cy="622.0" rx="26" ry="19" fill="#3f9d5d" opacity="0.9" transform="rotate(-54 40 622.0)"/>
+    <path d="M 300 430 C 420 430, 470 500, 450 600" stroke="#3f9d5d" stroke-width="6" fill="none"/>
+    <ellipse cx="360" cy="435.3333333333333" rx="26" ry="19" fill="#3f9d5d" opacity="0.9" transform="rotate(24 360 435.3333333333333)"/>
+    <ellipse cx="400" cy="451.3333333333333" rx="26" ry="19" fill="#3f9d5d" opacity="0.9" transform="rotate(30 400 451.3333333333333)"/>
+    <ellipse cx="440" cy="478.0" rx="26" ry="19" fill="#3f9d5d" opacity="0.9" transform="rotate(36 440 478.0)"/>
+    <ellipse cx="480" cy="515.3333333333334" rx="26" ry="19" fill="#3f9d5d" opacity="0.9" transform="rotate(42 480 515.3333333333334)"/>
+    <ellipse cx="520" cy="563.3333333333334" rx="26" ry="19" fill="#3f9d5d" opacity="0.9" transform="rotate(48 520 563.3333333333334)"/>
+    <ellipse cx="560" cy="622.0" rx="26" ry="19" fill="#3f9d5d" opacity="0.9" transform="rotate(54 560 622.0)"/>
+    <ellipse cx="300" cy="360" rx="60" ry="46" fill="#3f9d5d" opacity="1.0" transform="rotate(0 300 360)"/>
+    <ellipse cx="236" cy="392" rx="48" ry="36" fill="#3f9d5d" opacity="0.92" transform="rotate(-24 236 392)"/>
+    <ellipse cx="364" cy="392" rx="48" ry="36" fill="#3f9d5d" opacity="0.92" transform="rotate(24 364 392)"/>
+    
+  </g>
+  <path d="M 214 452 h 172 l -22 100 a 14 14 0 0 1 -14 12 h -100 a 14 14 0 0 1 -14 -12 Z" fill="url(#pot)"/>
+  <rect x="206" y="434" width="188" height="26" rx="10" fill="#b4683f"/>
+  <text x="300" y="586" text-anchor="middle" font-family="system-ui, sans-serif" font-size="19" fill="#5d6f68">Money Plant · sample picture</text>
+</svg>

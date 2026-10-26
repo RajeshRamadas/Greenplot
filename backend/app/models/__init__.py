@@ -55,6 +55,7 @@ from app.models.operations import (
     Visitor,
 )
 from app.models.owner_updates import PlotReport
+from app.models.store import StoreCounter, StoreOrder, StoreOrderItem, StoreProduct
 from app.models.tickets import (
     NotificationDelivery,
     Ticket,
@@ -113,6 +114,10 @@ __all__ = [
     "SignupRequest",
     "SosAlert",
     "StaffProfile",
+    "StoreCounter",
+    "StoreOrder",
+    "StoreOrderItem",
+    "StoreProduct",
     "Subscription",
     "SyncOperation",
     "Tenant",

@@ -133,6 +133,8 @@ img { max-width: 100%; display: block; }
 .row.between { justify-content: space-between; }
 .muted { color: var(--muted); }
 .small { font-size: 12.5px; }
+/* A lone text link with room around it, so it is easy to tap. */
+.tap { display: inline-block; padding: 10px 0; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
 .divider { height: 1px; background: var(--line); margin: 14px 0; }
 
@@ -388,10 +390,12 @@ a.list-item:hover { text-decoration: none; background: var(--green-pale); }
 /* Business details, FAQs, city and area pages, guides */
 .svc-nap { font-style: normal; display: grid; gap: 4px; justify-items: center; text-align: center; font-size: 14px; color: var(--muted); }
 .svc-nap b { color: var(--ink); }
-/* Roomier footer links on phones so each one is easy to tap. */
-@media (max-width: 600px) {
+/* Roomier links on phones and tablets so each one is easy to tap. */
+@media (max-width: 900px) {
   .legal-links, .svc-others { gap: 0 18px; align-items: center; }
-  .legal-links a, .svc-others a, .svc-others span, .svc-nap a { display: inline-block; padding: 8px 0; }
+  .legal-links a, .svc-others a, .svc-others span, .svc-nap a, .legal-contact a { display: inline-block; padding: 8px 0; }
+  .svc-crumbs { gap: 0 6px; align-items: center; }
+  .svc-crumbs a { display: inline-block; padding: 8px 0; }
   .svc-nap { gap: 0; }
 }
 .svc-faq { display: grid; gap: 10px; }
@@ -408,6 +412,75 @@ a.list-item:hover { text-decoration: none; background: var(--green-pale); }
 .post p, .post li { line-height: 1.7; }
 .post-meta { color: var(--muted); font-size: 14px; }
 
+/* Blog: lists */
+.blog-topics a[aria-current="page"] { background: var(--green); border-color: var(--green); color: #fff; }
+.blog-topics.svc-wrap { margin: 0 auto 22px; }
+.blog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.blog-tile { padding: 0; overflow: hidden; color: inherit; text-decoration: none; display: flex; flex-direction: column; transition: transform .15s, box-shadow .15s; }
+.blog-tile:hover { transform: translateY(-2px); text-decoration: none; }
+.blog-tile + .blog-tile { margin-top: 0; }
+.blog-tile img, .blog-tile-blank { display: block; width: 100%; aspect-ratio: 1200 / 630; object-fit: cover; background: var(--green-soft); }
+.blog-tile-body { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 16px; flex: 1; }
+.blog-tile h3, .blog-tile h2 { margin: 0; color: var(--ink); line-height: 1.3; }
+.blog-tile h3 { font-size: 17px; }
+.blog-tile .post-meta { margin-top: auto; padding-top: 4px; font-size: 13px; }
+.blog-excerpt { color: var(--muted); font-size: 14.5px; line-height: 1.5; }
+.blog-cat { color: var(--green-dark); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; }
+.blog-tile.big { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); margin-bottom: 18px; }
+.blog-tile.big img, .blog-tile.big .blog-tile-blank { height: 100%; aspect-ratio: auto; min-height: 260px; }
+.blog-tile.big .blog-tile-body { padding: 22px 24px; justify-content: center; }
+.blog-tile.big h2 { font-size: clamp(22px, 3vw, 28px); }
+.blog-pager { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; }
+.blog-pager > :last-child { justify-self: end; }
+@media (max-width: 760px) {
+  .blog-tile.big { grid-template-columns: 1fr; }
+  .blog-tile.big img, .blog-tile.big .blog-tile-blank { min-height: 0; aspect-ratio: 1200 / 630; }
+  .blog-tile.big .blog-tile-body { padding: 14px 16px 16px; }
+}
+
+/* Blog: a post */
+.post-cover { margin: 18px 0 8px; }
+.post-cover img { width: 100%; border-radius: var(--radius); display: block; aspect-ratio: 1200 / 630; object-fit: cover; }
+.post-body h3 { margin-top: 22px; }
+.post-body blockquote { margin: 18px 0; padding: 4px 0 4px 16px; border-left: 4px solid var(--green); color: var(--ink); font-size: 17px; }
+.post-body hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0; }
+.post-figure { margin: 22px 0; }
+.post-figure img { width: 100%; height: auto; border-radius: 12px; display: block; }
+.post-figure figcaption { color: var(--muted); font-size: 13.5px; margin-top: 6px; text-align: center; }
+.post-toc { margin: 18px 0; }
+.post-toc ol { margin: 8px 0 0; padding-left: 20px; }
+.post-toc li { line-height: 1.6; }
+.post-body h2, .post-body h3 { scroll-margin-top: 16px; }
+.post-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 24px 0; padding: 16px 18px; border-radius: var(--radius); background: var(--green-soft); border: 1px solid color-mix(in srgb, var(--green) 30%, var(--line)); }
+.post-cta div { display: grid; gap: 4px; flex: 1 1 260px; }
+.post-cta span { color: var(--muted); font-size: 14.5px; }
+.post-tags { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 26px 0 12px; }
+.post-tags a { font-size: 13.5px; font-weight: 600; }
+.share { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.share > span { margin-right: 6px; }
+.post-services { margin-top: 10px; }
+
+/* Blog: the office's editor */
+.blog-editor-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+.blog-editor-main { display: grid; gap: 12px; }
+.blog-editor-main .tabs { margin-bottom: 0; }
+.blog-editor-side { display: grid; gap: 14px; }
+.blog-editor-side .card + .card { margin-top: 0; }
+.blog-editor-side h2 { font-size: 16px; margin: 0 0 10px; }
+.md-toolbar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.md-toolbar select { width: auto; min-height: 32px; font-size: 13px; }
+.md-input { width: 100%; min-height: 420px; font: 15px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; resize: vertical; }
+.blog-preview { max-width: none; margin: 0; }
+.blog-cover-preview { width: 100%; aspect-ratio: 1200 / 630; object-fit: cover; border-radius: 10px; display: block; margin-bottom: 10px; }
+.seo-preview { display: grid; gap: 3px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 12px; overflow-wrap: anywhere; }
+.seo-preview b { color: #1a0dab; font-weight: 500; font-size: 17px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.check input { width: auto; min-height: 0; }
+input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; min-height: 0; accent-color: var(--green); flex: none; }
+.warn-text { color: var(--amber); }
+.ok-text { color: var(--green-dark); }
+@media (max-width: 1100px) { .blog-editor-grid { grid-template-columns: 1fr; } }
+@media (prefers-color-scheme: dark) { .seo-preview b { color: #8ab4f8; } }
 /* Online plant store (/store) */
 .store-count { margin-left: 6px; background: #fff; color: var(--green-dark); border-radius: 99px; min-width: 20px; height: 20px; padding: 0 6px; font-size: 12px; font-weight: 800; display: inline-grid; place-items: center; }
 .store-section { scroll-margin-top: 16px; }

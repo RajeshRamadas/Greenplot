@@ -2,8 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactBlock, LegalPage } from "@/components/Legal";
 import { BUSINESS } from "@/lib/legal";
+import { pageOpenGraph } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Service Delivery Policy" };
+export const metadata: Metadata = {
+  title: "Service Delivery Policy",
+  description: "How GreenPlot schedules and delivers plot maintenance in Bangalore, how each visit is proven with photos, and what happens if a visit is missed.",
+  alternates: { canonical: "/service-delivery" },
+  openGraph: pageOpenGraph({ title: "Service Delivery Policy", description: "How GreenPlot schedules and delivers plot maintenance in Bangalore, how each visit is proven with photos, and what happens if a visit is missed.", url: "/service-delivery" }),
+};
 
 export default function ServiceDeliveryPage() {
   return (

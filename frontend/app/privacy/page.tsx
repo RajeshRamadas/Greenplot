@@ -2,8 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactBlock, LegalPage } from "@/components/Legal";
 import { BUSINESS } from "@/lib/legal";
+import { pageOpenGraph } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Privacy Policy" };
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: "How GreenPlot collects, uses, stores and protects your personal data, photos and payment details, and how to reach our Grievance Officer.",
+  alternates: { canonical: "/privacy" },
+  openGraph: pageOpenGraph({ title: "Privacy Policy", description: "How GreenPlot collects, uses, stores and protects your personal data, photos and payment details, and how to reach our Grievance Officer.", url: "/privacy" }),
+};
 
 export default function PrivacyPage() {
   return (

@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactBlock, LegalPage } from "@/components/Legal";
+import { pageOpenGraph } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Contact Us" };
+export const metadata: Metadata = {
+  title: "Contact Us",
+  description: "Contact GreenPlot for plot cleaning, fencing, gardening and inspections in Bangalore. Call or WhatsApp +91 81055 68225 or email hello@greenplot.in.",
+  alternates: { canonical: "/contact" },
+  openGraph: pageOpenGraph({ title: "Contact Us", description: "Contact GreenPlot for plot cleaning, fencing, gardening and inspections in Bangalore. Call or WhatsApp +91 81055 68225 or email hello@greenplot.in.", url: "/contact" }),
+};
 
 export default function ContactPage() {
   return (

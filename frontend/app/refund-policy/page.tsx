@@ -2,8 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactBlock, LegalPage } from "@/components/Legal";
 import { BUSINESS } from "@/lib/legal";
+import { pageOpenGraph } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Refund & Cancellation Policy" };
+export const metadata: Metadata = {
+  title: "Refund & Cancellation Policy",
+  description: "How to cancel or reschedule a GreenPlot visit, when you get a refund, and how long refunds take to reach your account.",
+  alternates: { canonical: "/refund-policy" },
+  openGraph: pageOpenGraph({ title: "Refund & Cancellation Policy", description: "How to cancel or reschedule a GreenPlot visit, when you get a refund, and how long refunds take to reach your account.", url: "/refund-policy" }),
+};
 
 export default function RefundPolicyPage() {
   return (

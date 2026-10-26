@@ -2,8 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactBlock, LegalPage } from "@/components/Legal";
 import { BUSINESS } from "@/lib/legal";
+import { pageOpenGraph } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Terms & Conditions" };
+export const metadata: Metadata = {
+  title: "Terms & Conditions",
+  description: "The terms for using GreenPlot's website, app and plot maintenance services in Bangalore: accounts, bookings, payments, visits and your responsibilities.",
+  alternates: { canonical: "/terms" },
+  openGraph: pageOpenGraph({ title: "Terms & Conditions", description: "The terms for using GreenPlot's website, app and plot maintenance services in Bangalore: accounts, bookings, payments, visits and your responsibilities.", url: "/terms" }),
+};
 
 export default function TermsPage() {
   return (

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/JsonLd";
 import { FaqList, ServiceShell } from "@/components/ServicePage";
-import { POSTS } from "@/lib/blog";
+import { getPosts } from "@/lib/blog";
 import { type City, cityBySlug, liveCities } from "@/lib/cities";
 import type { Faq } from "@/lib/faqs";
 import { SERVICES, TERRAIN_NOTE } from "@/lib/services";
@@ -38,6 +38,7 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
   const c = cityBySlug((await params).city);
   if (!c) notFound();
   const faqs = cityFaqs(c);
+  const posts = (await getPosts({ limit: 6 }))?.items ?? [];
   return (
     <ServiceShell>
       <JsonLd
@@ -96,16 +97,21 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
           </div>
         </section>
 
-        <section className="svc-wrap">
-          <h2>Guides for {c.name} plot owners</h2>
-          <ul className="svc-ticks">
-            {POSTS.map((p) => (
-              <li key={p.slug}>
-                <Link href={`/blog/${p.slug}`}>{p.title}</Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+        {posts.length ? (
+          <section className="svc-wrap">
+            <h2>Guides for {c.name} plot owners</h2>
+            <ul className="svc-ticks">
+              {posts.map((p) => (
+                <li key={p.slug}>
+                  <Link href={`/blog/${p.slug}`}>{p.title}</Link>
+                </li>
+              ))}
+            </ul>
+            <p>
+              <Link href="/blog">All guides →</Link>
+            </p>
+          </section>
+        ) : null}
 
         <FaqList faqs={faqs} />
       </main>

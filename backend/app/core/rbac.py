@@ -14,6 +14,8 @@ FIELD = {R.STAFF, R.VENDOR}
 PERMISSIONS: dict[str, set[Role]] = {
     # platform
     "tenants.manage": {R.SUPER_ADMIN},
+    # the marketing blog on the public website is GreenPlot's own, like the tenants list
+    "blog.manage": {R.SUPER_ADMIN},
     # the online plant store is GreenPlot's own business, not a layout's
     "store.manage": {R.SUPER_ADMIN},
     # people & properties

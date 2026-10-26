@@ -115,7 +115,7 @@ export const SERVICES: Service[] = [
       { name: "Premium", summary: "12 inspections plus cleaning", includes: ["Monthly Property Watch visit", "2 plot cleanings a year", "Repairs arranged for you, quoted before work"], perSqftYear: 9, minimumYear: 10000 },
     ],
     price: { perSqft: 0.5, per: "per visit", minimum: 750 },
-    cover: { src: "/showcase/property-inspection-cover.jpg", alt: "An inspector photographing a plot's gate and boundary stones" },
+    cover: { src: "/showcase/property-inspection-cover.jpg", alt: "An inspector at the plot gate showing the owner the plot on a video call" },
     thumb: "/showcase/property-inspection-card.jpg",
     name: "Property Inspection",
     promise: "Know the condition of your property without visiting it.",

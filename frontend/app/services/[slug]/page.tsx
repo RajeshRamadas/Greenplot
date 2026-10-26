@@ -39,6 +39,12 @@ export default async function ServiceDetail({ params }: { params: Promise<{ slug
             <img src={s.beforeAfter} alt={`Sample before and after photos for ${s.name.toLowerCase()}`} />
             <figcaption>Sample before and after photos. These are illustrations; your reports show real photos from the site.</figcaption>
           </figure>
+        ) : s.cover ? (
+          <figure className="svc-wrap svc-ba">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={s.cover.src} alt={s.cover.alt} />
+            <figcaption>Sample photo. This is an illustration; your reports show real photos from the site.</figcaption>
+          </figure>
         ) : null}
 
         <section className="svc-wrap">

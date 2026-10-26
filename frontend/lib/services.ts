@@ -15,6 +15,8 @@ export interface Service {
   shot: { src: string; alt: string; caption: string };
   /** Sample before and after photos, for services that are proven with photos. */
   beforeAfter?: string;
+  /** Sample photo for services that have no before and after. */
+  cover?: { src: string; alt: string };
   /** Picture on the services overview card. */
   thumb: string;
   goodFor: string[];
@@ -113,7 +115,8 @@ export const SERVICES: Service[] = [
       { name: "Premium", summary: "12 inspections plus cleaning", includes: ["Monthly Property Watch visit", "2 plot cleanings a year", "Repairs arranged for you, quoted before work"], perSqftYear: 9, minimumYear: 10000 },
     ],
     price: { perSqft: 0.5, per: "per visit", minimum: 750 },
-    thumb: "/showcase/property-inspection.jpg",
+    cover: { src: "/showcase/property-inspection-cover.jpg", alt: "An inspector at the plot gate showing the owner the plot on a video call" },
+    thumb: "/showcase/property-inspection-card.jpg",
     name: "Property Inspection",
     promise: "Know the condition of your property without visiting it.",
     intro:
@@ -178,7 +181,8 @@ export const SERVICES: Service[] = [
   },
   {
     slug: "staff-vendors",
-    thumb: "/showcase/staff-vendors.jpg",
+    cover: { src: "/showcase/staff-vendors-cover.jpg", alt: "A field team in uniform with a hedge trimmer, broom and toolbox" },
+    thumb: "/showcase/staff-vendors-card.jpg",
     name: "Staff & Vendors",
     promise: "Everyone who works in your layout, organised in one place.",
     intro:

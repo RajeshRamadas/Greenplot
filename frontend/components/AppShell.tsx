@@ -105,7 +105,10 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/sos", label: "SOS", icon: "sos", feature: "sos" },
     { href: "/records", label: "Records", icon: "search", feature: "records" },
   ],
-  super_admin: [{ href: "/tenants", label: "Tenants", icon: "layers" }],
+  super_admin: [
+    { href: "/tenants", label: "Tenants", icon: "layers" },
+    { href: "/blog-posts", label: "Blog", icon: "doc", group: "Website" },
+  ],
 };
 
 const BOTTOM: Partial<Record<Role, string[]>> = {

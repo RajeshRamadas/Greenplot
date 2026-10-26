@@ -119,15 +119,17 @@ export function qs(query?: RequestOptions["query"]): string {
 
 export async function api<T = unknown>(path: string, opts: RequestOptions = {}): Promise<T> {
   if (!accessToken && getRefreshToken()) await refresh();
+  // A FormData body (a file upload) is sent as multipart; the browser sets its Content-Type.
+  const form = typeof FormData !== "undefined" && opts.body instanceof FormData;
   const doFetch = () =>
     fetch(`${BASE}${path}${qs(opts.query)}`, {
       method: opts.method || (opts.body !== undefined ? "POST" : "GET"),
       headers: {
-        ...(opts.body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(opts.body !== undefined && !form ? { "Content-Type": "application/json" } : {}),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...opts.headers,
       },
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      body: form ? (opts.body as FormData) : opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     });
   let r = await doFetch();
   if (r.status === 401 && (await refresh())) r = await doFetch();

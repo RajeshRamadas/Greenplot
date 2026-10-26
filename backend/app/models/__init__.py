@@ -1,4 +1,5 @@
 from app.models.accounts import OtpCode, SignupRequest
+from app.models.blog import BlogImage, BlogPost
 from app.models.core import (
     Asset,
     Attendance,
@@ -70,6 +71,8 @@ from app.models.tickets import (
 __all__ = [
     "Asset",
     "Attendance",
+    "BlogImage",
+    "BlogPost",
     "AuditLog",
     "DemoRequest",
     "BillingPlan",

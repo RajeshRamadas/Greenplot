@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from app.api.v1 import (
     auth,
     billing,
+    blog,
     comms,
     complaints,
     customers,
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
         people,
         security,
         billing,
+        blog,
         subscriptions,
         referrals,
         comms,

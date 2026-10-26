@@ -48,7 +48,7 @@ export default function RecordsPage() {
         <div className="row small" style={{ marginTop: 10 }}>
           <span className="muted">Try:</span>
           {EXAMPLES.map((x) => (
-            <button key={x} type="button" className="btn small ghost" onClick={() => (setInput(x), setQ(x))}>
+            <button key={x} type="button" className="btn small ghost" style={{ whiteSpace: "normal", textAlign: "left" }} onClick={() => (setInput(x), setQ(x))}>
               {x}
             </button>
           ))}

@@ -30,6 +30,7 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/gardening", label: "Gardening & cleaning", icon: "leaf", group: "Operations" },
     { href: "/inspections", label: "Property Watch", icon: "eye", group: "Operations" },
     { href: "/complaints", label: "Complaints", icon: "message", group: "Operations" },
+    { href: "/customers", label: "Customers", icon: "user", group: "Layout" },
     { href: "/properties", label: "Properties & residents", icon: "building", group: "Layout" },
     { href: "/assets", label: "Assets", icon: "box", group: "Layout" },
     { href: "/staff", label: "Staff", icon: "users", group: "Layout" },

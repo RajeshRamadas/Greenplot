@@ -102,8 +102,8 @@ def test_overdue_reminders_and_retention(as_, world, db):
     staff.ok("post", f"/maintenance/{t['id']}/accept")
     m = staff.upload("maintenance_task", t["id"], jpeg_bytes(), "image/jpeg", "before_photo").json()
     row = db.get(Media, __import__("uuid").UUID(m["id"]))
-    assert row.retention_until == date.today() + timedelta(days=90)
-    assert jobs.purge_expired_media(db, today=date.today() + timedelta(days=91)) == 1
+    assert row.retention_until == date.today() + timedelta(days=365)
+    assert jobs.purge_expired_media(db, today=date.today() + timedelta(days=366)) == 1
     db.commit()
     db.refresh(row)
     assert row.status == "deleted" and row.sha256 == m["sha256"], "hash and metadata survive purge"

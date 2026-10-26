@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { CaptureButton } from "@/components/Capture";
+import { ConversationList, LogConversation } from "@/components/Conversations";
 import { MediaGallery } from "@/components/MediaGallery";
 import { Badge, Dialog, Empty, ErrorBox, Field, Loading, PageHead, Select, useToast, WhatsAppField } from "@/components/ui";
 import { api, download } from "@/lib/api";
@@ -10,7 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { fmtDate, label } from "@/lib/format";
 import { useAction, useApi } from "@/lib/hooks";
 import { linkFor } from "@/lib/links";
-import type { Asset, Page, Property, Resident, TimelineEntry } from "@/lib/types";
+import type { Asset, Interaction, Page, Property, Resident, TimelineEntry } from "@/lib/types";
 import { announceInvite } from "@/lib/invites";
 
 type PlotReport = {
@@ -28,6 +29,8 @@ export function PropertyView({ id }: { id: string }) {
   const residents = useApi<Page<Resident>>(can("residents.read") ? "/residents" : null, { property_id: id });
   const assets = useApi<Asset[]>(can("assets.read") ? `/properties/${id}/assets` : null);
   const reports = useApi<PlotReport[]>(`/properties/${id}/plot-reports`);
+  const convo = useApi<Interaction[]>(can("customers.read") ? `/properties/${id}/interactions` : null);
+  const [logOpen, setLogOpen] = useState(false);
   const act = useAction();
   const [kind, setKind] = useState("");
   const [edit, setEdit] = useState(false);
@@ -93,7 +96,7 @@ export function PropertyView({ id }: { id: string }) {
             <h2>Profile</h2>
             <dl className="kv" style={{ gridTemplateColumns: "100px 1fr" }}>
               <dt>Owner</dt>
-              <dd>{p.owner_name || "—"}</dd>
+              <dd>{p.owner_user_id && can("customers.read") ? <Link href={`/customers/${p.owner_user_id}`}>{p.owner_name || "Customer record"}</Link> : p.owner_name || "—"}</dd>
               <dt>Phone</dt>
               <dd>{p.owner_phone || (me?.role === "layout_admin" || me?.role === "resident" ? "—" : "Office only")}</dd>
               {p.owner_phone ? (
@@ -132,13 +135,24 @@ export function PropertyView({ id }: { id: string }) {
               {residents.data.items.map((r) => (
                 <div key={r.id} className="list-item">
                   <div>
-                    <div className="title">{r.name}</div>
+                    <div className="title">{r.user_id && can("customers.read") ? <Link href={`/customers/${r.user_id}`}>{r.name}</Link> : r.name}</div>
                     <div className="small muted">
                       {label(r.relation)} {r.phone ? `· ${r.phone}` : ""} {r.whatsapp_phone ? `· WhatsApp ${r.whatsapp_phone}` : ""} {r.user_id ? "· has login" : ""}
                     </div>
                   </div>
                 </div>
               ))}
+            </div>
+          ) : null}
+          {convo.data ? (
+            <div className="card">
+              <div className="card-head">
+                <h2>Conversations</h2>
+                <button className="btn small" onClick={() => setLogOpen(true)}>
+                  Add
+                </button>
+              </div>
+              <ConversationList items={convo.data} onDeleted={convo.reload} />
             </div>
           ) : null}
           {reports.data?.length ? (
@@ -173,6 +187,7 @@ export function PropertyView({ id }: { id: string }) {
         </div>
       </div>
 
+      {can("customers.notes") ? <LogConversation open={logOpen} onClose={() => setLogOpen(false)} path={`/properties/${p.id}/interactions`} onSaved={convo.reload} /> : null}
       <Dialog title="Edit property" open={edit} onClose={() => setEdit(false)}>
         <form
           className="form two"

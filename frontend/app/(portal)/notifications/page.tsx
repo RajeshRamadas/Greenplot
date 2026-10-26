@@ -32,7 +32,7 @@ export default function NotificationsPage() {
                   </div>
                   {n.body ? <div className="small muted">{n.body}</div> : null}
                 </div>
-                <span className="small muted">{ago(n.created_at)}</span>
+                <span className="small muted when">{ago(n.created_at)}</span>
               </>
             );
             return href ? (

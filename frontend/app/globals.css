@@ -92,7 +92,8 @@ img { max-width: 100%; display: block; }
   border-bottom: 1px solid var(--line); min-height: 58px;
 }
 .topbar .who { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
-.content { padding: 24px; max-width: 1240px; width: 100%; margin: 0 auto; }
+/* Bottom padding keeps the last controls clear of the floating WhatsApp button. */
+.content { padding: 24px 24px 92px; max-width: 1240px; width: 100%; margin: 0 auto; }
 .btn.menu-btn { display: none; }
 .bottomnav { display: none; }
 
@@ -102,7 +103,7 @@ img { max-width: 100%; display: block; }
   .sidebar.open { transform: none; }
   .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 40; }
   .btn.menu-btn { display: inline-flex; }
-  .content { padding: 16px 16px 96px; }
+  .content { padding: 16px 16px calc(146px + env(safe-area-inset-bottom)); }
   .topbar { padding: 8px 16px; }
   .bottomnav {
     display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
@@ -139,6 +140,7 @@ img { max-width: 100%; display: block; }
 .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
 .stat small { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
 .stat b { display: block; font-size: 26px; letter-spacing: -0.03em; margin-top: 2px; }
+@media (max-width: 560px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .stat { padding: 12px 14px; } .stat b { font-size: 22px; overflow-wrap: anywhere; } }
 .stat.alert b { color: var(--red); }
 .stat.warn b { color: var(--amber); }
 a.stat:hover { border-color: var(--green); text-decoration: none; }
@@ -194,6 +196,8 @@ tr.clickable:hover td { background: var(--green-pale); }
 .list-item { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 2px; border-bottom: 1px solid var(--line); }
 .list-item:last-child { border-bottom: 0; }
 .list-item .title { font-weight: 700; }
+.list-item > div { min-width: 0; overflow-wrap: anywhere; }
+.list-item > .when { flex: none; white-space: nowrap; }
 a.list-item { color: inherit; }
 a.list-item:hover { text-decoration: none; background: var(--green-pale); }
 
@@ -382,6 +386,12 @@ a.list-item:hover { text-decoration: none; background: var(--green-pale); }
 /* Business details, FAQs, city and area pages, guides */
 .svc-nap { font-style: normal; display: grid; gap: 4px; justify-items: center; text-align: center; font-size: 14px; color: var(--muted); }
 .svc-nap b { color: var(--ink); }
+/* Roomier footer links on phones so each one is easy to tap. */
+@media (max-width: 600px) {
+  .legal-links, .svc-others { gap: 0 18px; align-items: center; }
+  .legal-links a, .svc-others a, .svc-others span, .svc-nap a { display: inline-block; padding: 8px 0; }
+  .svc-nap { gap: 0; }
+}
 .svc-faq { display: grid; gap: 10px; }
 .svc-faq details { padding: 14px 18px; }
 .svc-faq summary { font-weight: 700; cursor: pointer; }

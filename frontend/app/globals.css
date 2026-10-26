@@ -378,3 +378,20 @@ a.list-item:hover { text-decoration: none; background: var(--green-pale); }
 .svc-plan .svc-ticks { margin-top: 12px; gap: 8px; }
 .svc-plan .svc-ticks li { font-weight: 500; font-size: 14px; }
 @media (max-width: 860px) { .svc-amc { grid-template-columns: 1fr; } }
+
+/* Business details, FAQs, city and area pages, guides */
+.svc-nap { font-style: normal; display: grid; gap: 4px; justify-items: center; text-align: center; font-size: 14px; color: var(--muted); }
+.svc-nap b { color: var(--ink); }
+.svc-faq { display: grid; gap: 10px; }
+.svc-faq details { padding: 14px 18px; }
+.svc-faq summary { font-weight: 700; cursor: pointer; }
+.svc-faq details p { margin: 10px 0 0; color: var(--muted); line-height: 1.6; }
+.svc-crumbs { font-size: 14px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.svc-crumbs a { color: var(--green-dark); }
+.svc-area-list { display: flex; flex-wrap: wrap; gap: 8px 10px; list-style: none; padding: 0; margin: 0; }
+.svc-area-list a { display: inline-block; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font-weight: 600; font-size: 14px; text-decoration: none; }
+.svc-area-list a:hover { border-color: var(--green); color: var(--green-dark); }
+.post { max-width: 760px; margin: 0 auto 36px; }
+.post h2 { margin-top: 30px; }
+.post p, .post li { line-height: 1.7; }
+.post-meta { color: var(--muted); font-size: 14px; }

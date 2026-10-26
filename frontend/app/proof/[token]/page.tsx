@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ErrorBox, Loading } from "@/components/ui";
 import { fmtDate, fmtDateTime, label } from "@/lib/format";
+import { BUSINESS } from "@/lib/legal";
 
 type Photo = { url: string; thumbnail_url: string | null; taken_at: string | null };
 type Proof = {
@@ -78,6 +79,14 @@ export default function ProofPage() {
               <Photos title="After" photos={proof.after} />
             </div>
             <p className="small muted">Photos are taken on site by our team and stored with their time and location. Reply on WhatsApp if anything looks wrong.</p>
+            {BUSINESS.googleReviewUrl ? (
+              <div className="alert info">
+                <b>Happy with the work?</b> A short Google review helps other plot owners find us.{" "}
+                <a href={BUSINESS.googleReviewUrl} target="_blank" rel="noopener noreferrer">
+                  Leave a review →
+                </a>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

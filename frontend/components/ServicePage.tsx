@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { LegalLinks } from "@/components/Legal";
+import { liveCities } from "@/lib/cities";
+import type { Faq } from "@/lib/faqs";
 import { BUSINESS } from "@/lib/legal";
 import { SERVICES } from "@/lib/services";
 
@@ -17,6 +19,11 @@ export function ServiceShell({ current, children }: { current?: string; children
           <Link href="/services" className="btn small ghost hide-sm">
             Services
           </Link>
+          {liveCities().map((c) => (
+            <Link key={c.slug} href={`/${c.slug}`} className="btn small ghost hide-sm">
+              {c.name}
+            </Link>
+          ))}
           <Link href="/login" className="btn small ghost">
             Login
           </Link>
@@ -53,8 +60,37 @@ export function ServiceShell({ current, children }: { current?: string; children
           ),
         )}
       </nav>
+      <address className="svc-wrap svc-nap">
+        <b>
+          {BUSINESS.brand} · {BUSINESS.legalName}
+        </b>
+        <span>{BUSINESS.address}</span>
+        <span>
+          <a href={`tel:${BUSINESS.phone.replace(/\s/g, "")}`}>{BUSINESS.phone}</a> · <a href={`mailto:${BUSINESS.email}`}>{BUSINESS.email}</a> · {BUSINESS.hours}
+        </span>
+        <span>
+          <Link href="/blog">Guides for plot owners</Link>
+        </span>
+      </address>
       <LegalLinks />
     </div>
+  );
+}
+
+/** Questions and answers; the same list goes into the page's FAQ structured data. */
+export function FaqList({ faqs }: { faqs: Faq[] }) {
+  return (
+    <section className="svc-wrap">
+      <h2>Questions owners ask</h2>
+      <div className="svc-faq">
+        {faqs.map((f) => (
+          <details key={f.q} className="card">
+            <summary>{f.q}</summary>
+            <p>{f.a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
   );
 }
 

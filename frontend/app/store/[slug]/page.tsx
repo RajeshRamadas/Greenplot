@@ -12,13 +12,15 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const p = await getPlant((await params).slug);
   if (!p) return { title: "Plant not found", robots: { index: false } };
-  const title = `${p.name} Plant, ${rupees(p.price)} · Delivered in Bangalore`;
+  const named = /plant$/i.test(p.name) ? p.name : `${p.name} Plant`;
+  const title = `${named}, ${rupees(p.price)} · Delivered in Bangalore`;
   const description = `${p.summary} Buy ${p.name.toLowerCase()} online for ${rupees(p.price)} with delivery across Bangalore, cash on delivery or online payment.`;
   return {
     title,
     description,
     alternates: { canonical: `/store/${p.slug}` },
-    openGraph: { ...pageOpenGraph({ title, description, url: `/store/${p.slug}` }), images: [{ url: p.image, alt: p.name }] },
+    // WhatsApp and Facebook do not show SVG previews, so the placeholder drawings fall back to the site's share image.
+    openGraph: { ...pageOpenGraph({ title, description, url: `/store/${p.slug}` }), ...(p.image.endsWith(".svg") ? {} : { images: [{ url: p.image, alt: p.name }] }) },
   };
 }
 

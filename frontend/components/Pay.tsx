@@ -10,15 +10,16 @@ import type { Payment } from "@/lib/types";
 
 const CHECKOUT_JS = "https://checkout.razorpay.com/v1/checkout.js";
 
-interface RazorpayResponse {
+export interface RazorpayResponse {
   razorpay_order_id: string;
   razorpay_payment_id: string;
   razorpay_signature: string;
 }
 
-type RazorpayCtor = new (options: Record<string, unknown>) => { open: () => void; on: (event: string, fn: (r: { error?: { description?: string } }) => void) => void };
+export type RazorpayCtor = new (options: Record<string, unknown>) => { open: () => void; on: (event: string, fn: (r: { error?: { description?: string } }) => void) => void };
 
-function loadCheckout(): Promise<RazorpayCtor> {
+/** Load Razorpay Checkout's script once. */
+export function loadCheckout(): Promise<RazorpayCtor> {
   const w = window as unknown as { Razorpay?: RazorpayCtor };
   if (w.Razorpay) return Promise.resolve(w.Razorpay);
   return new Promise((resolve, reject) => {

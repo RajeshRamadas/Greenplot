@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="Illustration of a Aloe Vera in a pot">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eef8f2"/><stop offset="1" stop-color="#dcefe4"/>
+    </linearGradient>
+    <linearGradient id="pot" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c2744a"/><stop offset="0.5" stop-color="#e09064"/><stop offset="1" stop-color="#b4683f"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg)"/>
+  <ellipse cx="300" cy="556" rx="150" ry="20" fill="#000" opacity=".08"/>
+  <g>
+    <path d="M 254 540 C 246 380.0, 250 325.0, 254 285.0 C 260 325.0, 264 380.0, 254 540 Z" fill="#4fa377" opacity="0.78" transform="rotate(-9 300 540)"/>
+    <path d="M 282 540 C 274 364.6666666666667, 278 302.0, 282 206.8 C 288 302.0, 292 364.6666666666667, 282 540 Z" fill="#4fa377" opacity="0.8200000000000001" transform="rotate(-3 300 540)"/>
+    <path d="M 314 540 C 306 370.0, 310 310.0, 314 234.0 C 320 310.0, 324 370.0, 314 540 Z" fill="#4fa377" opacity="0.86" transform="rotate(4 300 540)"/>
+    <path d="M 344 540 C 336 384.0, 340 331.0, 344 305.4 C 350 331.0, 354 384.0, 344 540 Z" fill="#4fa377" opacity="0.9" transform="rotate(11 300 540)"/>
+    <path d="M 300 540 C 292 390.0, 296 340.0, 300 336.0 C 306 340.0, 310 390.0, 300 540 Z" fill="#4fa377" opacity="0.9400000000000001" transform="rotate(0 300 540)"/>
+    
+  </g>
+  <path d="M 214 452 h 172 l -22 100 a 14 14 0 0 1 -14 12 h -100 a 14 14 0 0 1 -14 -12 Z" fill="url(#pot)"/>
+  <rect x="206" y="434" width="188" height="26" rx="10" fill="#b4683f"/>
+  <text x="300" y="586" text-anchor="middle" font-family="system-ui, sans-serif" font-size="19" fill="#5d6f68">Aloe Vera · sample picture</text>
+</svg>

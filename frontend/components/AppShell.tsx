@@ -105,7 +105,11 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/sos", label: "SOS", icon: "sos", feature: "sos" },
     { href: "/records", label: "Records", icon: "search", feature: "records" },
   ],
-  super_admin: [{ href: "/tenants", label: "Tenants", icon: "layers" }],
+  super_admin: [
+    { href: "/tenants", label: "Tenants", icon: "layers" },
+    { href: "/store-orders", label: "Plant store orders", short: "Orders", icon: "box", group: "Plant store" },
+    { href: "/store-products", label: "Store products", short: "Plants", icon: "leaf", group: "Plant store" },
+  ],
 };
 
 const BOTTOM: Partial<Record<Role, string[]>> = {
@@ -115,6 +119,7 @@ const BOTTOM: Partial<Record<Role, string[]>> = {
   resident: ["/dashboard", "/tickets", "/maintenance", "/billing", "/sos"],
   supervisor: ["/dashboard", "/tickets", "/approvals", "/maintenance"],
   layout_admin: ["/dashboard", "/tickets", "/maintenance", "/approvals"],
+  super_admin: ["/tenants", "/store-orders", "/store-products"],
 };
 
 /** The role's menu with switched-off features removed (customers and vendors share one app). */

@@ -81,6 +81,14 @@ class Settings(BaseSettings):
     payment_brand_name: str = "GreenPlot"
     job_payment_due_days: int = 7  # due date of the bill raised for a maintenance job
 
+    # Online plant store (app.services.store). Amounts in rupees.
+    store_delivery_fee: int = 79
+    store_free_delivery_over: int = 999  # orders of at least this much are delivered free
+    store_cod_enabled: bool = True
+    store_cod_limit: int = 5000  # largest order that can be paid in cash on delivery
+    store_pincode_prefixes: str = "560,562"  # where we deliver (Bangalore)
+    store_orders_email: str | None = "hello@greenplot.in"  # who hears about new orders
+
     # Background worker inside the API process
     worker_enabled: bool = False
     worker_interval_seconds: int = 300

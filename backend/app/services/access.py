@@ -18,6 +18,7 @@ from app.models import (
     Property,
     Resident,
     Ticket,
+    User,
     Vehicle,
     Vendor,
     Visitor,
@@ -230,6 +231,7 @@ MEDIA_ENTITY_TYPES = {
     "vehicle",
     "patrol_run",
     "vendor",
+    "customer",
 }
 
 
@@ -299,4 +301,9 @@ def check_entity_access(db: Session, actor: Actor, entity_type: str, entity_id: 
         if not (actor.can("vendors.read") or (actor.role == Role.VENDOR and actor.user.vendor_id == v.id)):
             raise not_found("Vendor")
         return v
+    if entity_type == "customer":
+        u = db.get(User, entity_id)
+        if u is None or u.tenant_id != actor.tenant_id or u.role != Role.RESIDENT or not actor.can("customers.read"):
+            raise not_found("Customer")
+        return u
     raise not_found()

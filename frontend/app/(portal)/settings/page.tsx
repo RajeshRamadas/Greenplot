@@ -437,8 +437,8 @@ function General() {
         <Field label="Residents can see evidence">
           <Select value={String(s.resident_evidence_visibility ?? "after_approval")} onChange={(v) => save({ resident_evidence_visibility: v })} options={[{ value: "after_approval", label: "After approval" }, { value: "all", label: "Always" }, { value: "none", label: "Never" }]} />
         </Field>
-        <Field label="Routine media retention (days)" hint="Initial planning value: 90 days">
-          <input type="number" min="7" defaultValue={Number(s.routine_media_retention_days ?? 90)} onBlur={(e) => save({ routine_media_retention_days: Number(e.target.value) })} />
+        <Field label="Routine media retention (days)" hint="Default 365 days. Files on a customer record are kept until deleted.">
+          <input type="number" min="7" defaultValue={Number(s.routine_media_retention_days ?? 365)} onBlur={(e) => save({ routine_media_retention_days: Number(e.target.value) })} />
         </Field>
         <Field label="Incident media retention (days)">
           <input type="number" min="30" defaultValue={Number(s.incident_media_retention_days ?? 1095)} onBlur={(e) => save({ incident_media_retention_days: Number(e.target.value) })} />

@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     max_video_bytes: int = 100 * 1024 * 1024
     max_document_bytes: int = 20 * 1024 * 1024
     max_photos_per_task: int = 30
-    routine_media_retention_days: int = 90
+    routine_media_retention_days: int = 365
     incident_media_retention_days: int = 365 * 3
 
     # Malware scanning: "clamav" (self-hosted daemon), "eicar" (test stub) or "none".

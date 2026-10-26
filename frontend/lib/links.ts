@@ -17,6 +17,8 @@ export function linkFor(type: string | null | undefined, id: string | null | und
       return `/incidents/${id}`;
     case "property":
       return `/properties/${id}`;
+    case "customer":
+      return `/customers/${id}`;
     case "asset":
       return `/assets/${id}`;
     case "sos":

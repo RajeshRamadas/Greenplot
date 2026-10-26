@@ -112,4 +112,8 @@ def call_link(phone: str, mode: str, caller: str, customer: str | None, ref: str
 
 
 def record(db: Session, actor: Actor, entity_type: str, entity_id: uuid.UUID, mode: str) -> None:
+    """Audit the call and put it on the customer's record (app.services.customers)."""
+    from app.services.customers import log_whatsapp_call
+
     audit.record(db, actor, "customer.whatsapp_call", entity_type, entity_id, new={"mode": mode})
+    log_whatsapp_call(db, actor, entity_type, entity_id, mode)

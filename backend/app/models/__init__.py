@@ -12,6 +12,7 @@ from app.models.core import (
     User,
     Vendor,
 )
+from app.models.customers import CustomerInteraction
 from app.models.maintenance import (
     ChecklistTemplate,
     Complaint,
@@ -76,6 +77,7 @@ __all__ = [
     "Complaint",
     "ComplaintComment",
     "Counter",
+    "CustomerInteraction",
     "EvidenceException",
     "EvidencePolicy",
     "Expense",

@@ -747,3 +747,81 @@ export interface Referrals {
   reward_amount: number;
   credit_remaining: number;
 }
+
+export interface CustomerPlot {
+  id: UUID;
+  code: string;
+  plot_number: string;
+  layout_name: string | null;
+  relation: string;
+  area_sqft: number | null;
+  status: string;
+}
+
+export interface Customer {
+  id: UUID;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  whatsapp_phone: string | null;
+  is_active: boolean;
+  whatsapp_opt_in: boolean;
+  phone_verified: boolean;
+  joined_at: string;
+  last_login_at: string | null;
+  plots: CustomerPlot[];
+  stats: {
+    tickets: number;
+    open_tickets: number;
+    jobs_done: number;
+    photos: number;
+    conversations: number;
+    billed: number;
+    paid: number;
+    outstanding: number;
+    avg_rating: number | null;
+    active_subscriptions: number;
+    last_contact_at: string | null;
+  };
+}
+
+export interface CustomerSummary {
+  id: UUID;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  whatsapp_phone: string | null;
+  is_active: boolean;
+  plots: string[];
+  open_tickets: number;
+  last_contact_at: string | null;
+}
+
+export interface CustomerEvent {
+  at: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  status: string | null;
+  number: string | null;
+  by: string | null;
+  direction: "in" | "out" | null;
+  internal: boolean;
+  entity_type: string | null;
+  entity_id: UUID | null;
+}
+
+export interface Interaction {
+  id: UUID;
+  customer_id: UUID | null;
+  property_id: UUID | null;
+  ticket_id: UUID | null;
+  maintenance_task_id: UUID | null;
+  kind: string;
+  direction: "in" | "out" | null;
+  occurred_at: string;
+  summary: string;
+  outcome: string | null;
+  author_id: UUID | null;
+  author_name: string | null;
+}

@@ -169,6 +169,10 @@ def finalize(db: Session, actor: Actor, m: Media, caption: str | None = None) ->
     m.uploaded_at = utcnow()
     m.status = MediaStatus.READY
     m.error = None
+    if m.entity_type == "customer":
+        # Files on a customer's record are kept until someone deletes them. Until it is ready an upload
+        # keeps the routine deadline, so abandoned or failed uploads are still cleaned up.
+        m.retention_until = None
     if m.replaces_id:
         old = db.get(Media, m.replaces_id)
         old.replaced_by_id = m.id

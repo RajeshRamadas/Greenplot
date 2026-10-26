@@ -390,7 +390,10 @@ def handle_webhook(db: Session, event: dict) -> str:
     order_id, pay_id = entity.get("order_id"), entity.get("id")
     p = db.scalar(select(Payment).where(Payment.provider_order_id == order_id)) if order_id else None
     if p is None:
-        row.result = "unknown_order"
+        from app.services import store
+
+        # Plant store orders share the gateway and its webhook.
+        row.result = store.apply_gateway_event(db, event.get("event", ""), entity) or "unknown_order"
     elif event.get("event") == "payment.captured":
         if p.status == PaymentStatus.SUCCEEDED:
             row.result = "already_succeeded"

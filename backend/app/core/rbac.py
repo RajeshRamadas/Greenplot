@@ -16,6 +16,8 @@ PERMISSIONS: dict[str, set[Role]] = {
     "tenants.manage": {R.SUPER_ADMIN},
     # the marketing blog on the public website is GreenPlot's own, like the tenants list
     "blog.manage": {R.SUPER_ADMIN},
+    # the online plant store is GreenPlot's own business, not a layout's
+    "store.manage": {R.SUPER_ADMIN},
     # people & properties
     "users.read": {R.LAYOUT_ADMIN, R.SUPERVISOR},
     "users.manage": {R.LAYOUT_ADMIN},

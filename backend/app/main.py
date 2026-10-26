@@ -25,6 +25,7 @@ from app.api.v1 import (
     security,
     signups,
     sms,
+    store,
     subscriptions,
     system,
     tenants,
@@ -116,6 +117,7 @@ def create_app() -> FastAPI:
         owner_updates,
         signups,
         sms,
+        store,
     ):
         app.include_router(module.router, prefix=s.api_prefix)
     app.include_router(tenants.settings_router, prefix=s.api_prefix)

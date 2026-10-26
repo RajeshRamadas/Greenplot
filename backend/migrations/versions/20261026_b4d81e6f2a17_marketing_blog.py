@@ -1,7 +1,7 @@
 """marketing blog: posts and their pictures
 
 Revision ID: b4d81e6f2a17
-Revises: 3850def6ec20
+Revises: 7c2e4f9a1b3d
 Create Date: 2026-10-26 15:00:00
 
 The four guides that were written into the website's code move here, so they can be edited
@@ -21,7 +21,7 @@ import app.models.base
 
 # revision identifiers, used by Alembic.
 revision: str = "b4d81e6f2a17"
-down_revision: Union[str, Sequence[str], None] = "3850def6ec20"
+down_revision: Union[str, Sequence[str], None] = "7c2e4f9a1b3d"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

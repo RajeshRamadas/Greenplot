@@ -62,13 +62,30 @@ export default function RefundPolicyPage() {
         that. We do not refund part of a period already started, except where a service in that period was not delivered, in which case section 3 applies.
       </p>
 
-      <h2>5. Duplicate or extra payments</h2>
+      <h2>5. Plants bought from the online store</h2>
+      <p>
+        Plants ordered from our <Link href="/store">plant store</Link> are living goods, so they are handled differently from service bookings:
+      </p>
+      <ul>
+        <li>You can cancel an order free of charge any time before it is sent out for delivery; an online payment is refunded in full.</li>
+        <li>
+          If a plant arrives damaged, broken or not the plant you ordered, tell us within <b>48 hours</b> of delivery with photos. We replace it on the next delivery
+          run, or refund that item in full, whichever you prefer.
+        </li>
+        <li>
+          You can also refuse a plant at the door if it is clearly unhealthy, and pay nothing for it. We cannot take plants back later for change of mind, because a
+          plant&apos;s condition depends on how it is kept after delivery.
+        </li>
+        <li>Plants that decline after 48 hours are not refunded, but send us a photo and we will advise you on how to revive them at no charge.</li>
+      </ul>
+
+      <h2>6. Duplicate or extra payments</h2>
       <p>
         If you are charged twice, or pay more than the bill, we refund the extra amount once it is identified. You do not need to ask, but you can write to us to speed
         it up.
       </p>
 
-      <h2>6. How refunds are paid</h2>
+      <h2>7. How refunds are paid</h2>
       <ul>
         <li>Refunds go back to the payment method you used (card, UPI, net banking or wallet).</li>
         <li>
@@ -78,7 +95,7 @@ export default function RefundPolicyPage() {
         <li>Payments made in cash or by direct bank transfer are refunded by bank transfer to an account you name.</li>
       </ul>
 
-      <h2>7. Contact</h2>
+      <h2>8. Contact</h2>
       <p>For any cancellation or refund question, contact us:</p>
       <ContactBlock />
       <p className="small muted">

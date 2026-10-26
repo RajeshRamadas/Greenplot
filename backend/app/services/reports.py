@@ -561,3 +561,56 @@ def success_metrics(approved: list[MaintenanceTask], _month: list[MaintenanceTas
         "avg_approval_hours": round(sum(appr) / len(appr), 2) if appr else None,
         "sample": len(approved),
     }
+
+
+def store_bill_pdf(db: Session, o) -> bytes:
+    """The bill for a plant store order. Helvetica has no rupee sign, so amounts read 'Rs.'."""
+    from app.services import store
+
+    st = _styles()
+    rs = lambda v: f"Rs. {float(v):,.2f}"  # noqa: E731
+    lines = store.items(db, o)
+    rows = [(i + 1, it.name, it.quantity, rs(it.unit_price), rs(it.line_total)) for i, it in enumerate(lines)]
+    totals = [("Subtotal", rs(o.subtotal)), ("Delivery", rs(o.delivery_fee) if o.delivery_fee else "Free"), ("Total", rs(o.total))]
+    paid = "Paid" + (
+        f" online on {fmt(o.paid_at)}" if o.payment_method == "online" and o.paid_at else f" on {fmt(o.paid_at)}" if o.paid_at else ""
+    )
+    status = paid if o.payment_status == "paid" else ("To pay in cash on delivery" if o.payment_method == "cod" else "Not paid yet")
+    if o.status == "cancelled":
+        status = f"Order cancelled · {status}"
+    story = [
+        Paragraph("GreenPlot", st["brand"]),
+        Paragraph(
+            "UDO TECHNOLOGIES LLP · 18, Kempanna Layout, Ramachandrapura, Jalahalli Post, Bangalore 560013 · hello@greenplot.in",
+            st["small"],
+        ),
+        Spacer(1, 6),
+        Paragraph(f"Bill · {o.bill_number}", st["title"]),
+        _kv_table(
+            [
+                ("Order", f"{o.number} · {fmt(o.created_at)}"),
+                ("Billed to", f"{o.customer_name} · {o.phone}" + (f" · {o.email}" if o.email else "")),
+                ("Deliver to", f"{o.address}, {o.area}, Bangalore {o.pincode}" + (f" (near {o.landmark})" if o.landmark else "")),
+                (
+                    "Payment",
+                    ("Cash on delivery" if o.payment_method == "cod" else "Online (Razorpay)")
+                    + (f" · {o.provider_payment_id}" if o.provider_payment_id else ""),
+                ),
+                ("Status", status),
+            ],
+            st,
+        ),
+        Spacer(1, 8),
+        _grid(["#", "Item", "Qty", "Price", "Amount"], rows, [10 * mm, 90 * mm, 15 * mm, 27 * mm, 28 * mm], st),
+        Spacer(1, 4),
+        _kv_table(totals, st),
+        Spacer(1, 8),
+        Paragraph(
+            "Prices include all taxes. This is a computer-generated bill and does not require a signature. "
+            "Returns and refunds: greenplot.in/refund-policy.",
+            st["small"],
+        ),
+    ]
+    buf = io.BytesIO()
+    SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, title=o.bill_number).build(story)
+    return buf.getvalue()

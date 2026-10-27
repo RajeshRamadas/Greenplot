@@ -12,9 +12,10 @@ export function ServiceShell({ current, children }: { current?: string; children
   return (
     <div className="svc-page">
       <header className="svc-head">
-        <Link href="/" className="legal-brand" aria-label="GreenPlot home">
+        {/* A plain link: "/" is the static marketing page, which Next would otherwise prefetch in full. */}
+        <a href="/" className="legal-brand" aria-label="GreenPlot home">
           <span>Green</span>Plot
-        </Link>
+        </a>
         <nav className="row">
           <Link href="/services" className="btn small ghost hide-sm">
             Services
@@ -27,9 +28,9 @@ export function ServiceShell({ current, children }: { current?: string; children
           <Link href="/login" className="btn small ghost">
             Login
           </Link>
-          <Link href="/#demo" className="btn small primary">
+          <a href="/#demo" className="btn small primary">
             Request a demo
-          </Link>
+          </a>
         </nav>
       </header>
       {children}
@@ -39,9 +40,9 @@ export function ServiceShell({ current, children }: { current?: string; children
           <p>We set up a demo with your plots and show you the app your staff and owners will use.</p>
         </div>
         <div className="row">
-          <Link href="/#demo" className="btn primary big">
+          <a href="/#demo" className="btn primary big">
             Request a demo
-          </Link>
+          </a>
           <a href={WHATSAPP} className="btn big" target="_blank" rel="noopener noreferrer">
             WhatsApp us
           </a>

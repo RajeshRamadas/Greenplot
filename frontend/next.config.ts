@@ -33,6 +33,11 @@ const config: NextConfig = {
         source,
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       })),
+      // Website pictures keep their names when replaced, so browsers reuse them for a day and refresh them in the background after that.
+      ...["/showcase/:path*", "/site/:path*", "/store/:path*", "/og/:path*", "/icons/:path*"].map((source) => ({
+        source,
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }],
+      })),
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Service-Worker-Allowed", value: "/" }] },
     ];
   },

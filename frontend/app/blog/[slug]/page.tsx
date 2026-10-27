@@ -9,7 +9,7 @@ import { ServiceShell } from "@/components/ServicePage";
 import { ShareButtons } from "@/components/Share";
 import { CATEGORIES, fillTokens, getPost, longDate, tagSlug } from "@/lib/blog";
 import { serviceBySlug } from "@/lib/services";
-import { absolute, breadcrumbSchema, pageOpenGraph, SHARE_IMAGE } from "@/lib/site";
+import { absolute, breadcrumbSchema, pageOpenGraph, pageTitle, SHARE_IMAGE } from "@/lib/site";
 
 // Posts come from the API, so the page is rendered on request (its data is cached for a minute).
 export const dynamic = "force-dynamic";
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = p.seo_title || p.title;
   const description = fillTokens(p.seo_description || p.excerpt);
   return {
-    title: { absolute: `${title} · GreenPlot` },
+    title: pageTitle(title),
     description,
     keywords: p.tags,
     alternates: { canonical: path },
@@ -82,7 +82,7 @@ export default async function PostPage({ params }: Props) {
       <main>
         <article className="post">
           <nav className="svc-crumbs" aria-label="Breadcrumb">
-            <Link href="/">Home</Link> › <Link href="/blog">Guides</Link> › <Link href={`/blog/category/${p.category}`}>{category}</Link>
+            <a href="/">Home</a> › <Link href="/blog">Guides</Link> › <Link href={`/blog/category/${p.category}`}>{category}</Link>
           </nav>
           <h1>{p.title}</h1>
           <p className="post-meta">

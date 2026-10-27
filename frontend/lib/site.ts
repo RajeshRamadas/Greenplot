@@ -16,6 +16,12 @@ export const pageOpenGraph = (og: { title: string; description: string; url: str
   ...og,
 });
 
+/**
+ * Search results cut titles at about 60 characters, so a long title drops the " · GreenPlot" ending
+ * from the layout's title template and keeps its own words visible.
+ */
+export const pageTitle = (title: string) => (title.length + " · GreenPlot".length <= 60 ? title : { absolute: title });
+
 export const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
 /** The business as schema.org sees it; pages refer to it by @id. */

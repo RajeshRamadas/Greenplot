@@ -5,7 +5,7 @@ import { BlogList, pageNumber } from "@/components/Blog";
 import { JsonLd } from "@/components/JsonLd";
 import { ServiceShell } from "@/components/ServicePage";
 import { CATEGORIES, getPosts, getTopics, PAGE_SIZE } from "@/lib/blog";
-import { breadcrumbSchema, pageOpenGraph } from "@/lib/site";
+import { breadcrumbSchema, pageOpenGraph, pageTitle } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const title = `${name}: Guides for Bangalore Plot Owners`;
   const description = `GreenPlot's guides on ${name.toLowerCase()} for owners of plots and layouts in Bangalore.`;
   return {
-    title: page > 1 ? `${title} (page ${page})` : title,
+    title: pageTitle(page > 1 ? `${title} (page ${page})` : title),
     description,
     alternates: { canonical: page > 1 ? `${base}?page=${page}` : base },
     openGraph: pageOpenGraph({ title, description, url: base }),
@@ -48,7 +48,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       <main>
         <section className="svc-wrap svc-hero">
           <nav className="svc-crumbs" aria-label="Breadcrumb">
-            <Link href="/">Home</Link> › <Link href="/blog">Guides</Link>
+            <a href="/">Home</a> › <Link href="/blog">Guides</Link>
           </nav>
           <h1>{name}</h1>
         </section>

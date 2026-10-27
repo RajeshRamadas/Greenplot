@@ -6,9 +6,10 @@ export function LegalPage({ title, intro, children }: { title: string; intro?: R
   return (
     <div className="legal-page">
       <header className="legal-head">
-        <Link href="/" className="legal-brand" aria-label="GreenPlot home">
+        {/* A plain link: "/" is the static marketing page, which Next would otherwise prefetch in full. */}
+        <a href="/" className="legal-brand" aria-label="GreenPlot home">
           <span>Green</span>Plot
-        </Link>
+        </a>
         <Link href="/login" className="btn small ghost">
           Login
         </Link>

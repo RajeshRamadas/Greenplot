@@ -9,9 +9,10 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="svc-page">
       <header className="svc-head">
-        <Link href="/" className="legal-brand" aria-label="GreenPlot home">
+        {/* A plain link: "/" is the static marketing page, which Next would otherwise prefetch in full. */}
+        <a href="/" className="legal-brand" aria-label="GreenPlot home">
           <span>Green</span>Plot
-        </Link>
+        </a>
         <nav className="row">
           <Link href="/store" className="btn small ghost">
             Plant store

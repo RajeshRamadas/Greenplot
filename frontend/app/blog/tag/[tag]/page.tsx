@@ -31,7 +31,7 @@ export default async function TagPage({ params, searchParams }: Props) {
       <main>
         <section className="svc-wrap svc-hero">
           <nav className="svc-crumbs" aria-label="Breadcrumb">
-            <Link href="/">Home</Link> › <Link href="/blog">Guides</Link>
+            <a href="/">Home</a> › <Link href="/blog">Guides</Link>
           </nav>
           <p className="svc-eyebrow">Tag</p>
           <h1>{name ?? tag}</h1>

@@ -1,7 +1,11 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Sample values from the code and .env.example. Anyone who knows the key can sign their own admin tokens.
+SAMPLE_SECRET_KEYS = {"", "change-me", "change-me-in-production-please-32b+"}
 
 
 class Settings(BaseSettings):
@@ -138,6 +142,14 @@ class Settings(BaseSettings):
     msg91_var_max: int = 30  # DLT limit per variable
     msg91_webhook_token: str | None = None  # secret in the delivery-report URL
     default_country_code: str = "91"
+
+    @model_validator(mode="after")
+    def _production_secrets(self):
+        if self.environment == "production" and (self.secret_key in SAMPLE_SECRET_KEYS or len(self.secret_key) < 32):
+            raise ValueError(
+                'GP_SECRET_KEY must be a long random value in production (python -c "import secrets; print(secrets.token_urlsafe(48))")'
+            )
+        return self
 
     @property
     def mfa_roles(self) -> set[str]:

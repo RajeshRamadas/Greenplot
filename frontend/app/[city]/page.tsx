@@ -6,7 +6,7 @@ import { FaqList, ServiceShell } from "@/components/ServicePage";
 import { getPosts } from "@/lib/blog";
 import { type City, cityBySlug, liveCities } from "@/lib/cities";
 import type { Faq } from "@/lib/faqs";
-import { SERVICES, TERRAIN_NOTE } from "@/lib/services";
+import { SERVICES, TERRAIN_NOTE, THUMB_SIZE } from "@/lib/services";
 import { absolute, breadcrumbSchema, businessSchema, faqSchema, pageOpenGraph, rupees } from "@/lib/site";
 
 export const dynamicParams = false;
@@ -81,7 +81,7 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
             {SERVICES.map((s) => (
               <Link key={s.slug} href={`/services/${s.slug}`} className="card svc-item svc-link">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={s.thumb} alt={`${s.name} in ${c.name}`} loading="lazy" />
+                <img src={s.thumb} {...THUMB_SIZE} alt={`${s.name} in ${c.name}`} loading="lazy" decoding="async" />
                 <h3>
                   {s.name} in {c.name}
                 </h3>

@@ -5,7 +5,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { AddToCart } from "@/components/Store";
 import { PlantCard, StoreShell } from "@/components/StoreShell";
 import { CATEGORIES, getPlant, getPlants, getStoreConfig, rupees } from "@/lib/store";
-import { absolute, breadcrumbSchema, businessSchema, pageOpenGraph } from "@/lib/site";
+import { absolute, breadcrumbSchema, businessSchema, pageOpenGraph, pageTitle } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const title = `${named}, ${rupees(p.price)} · Delivered in Bangalore`;
   const description = `${p.summary} Buy ${p.name.toLowerCase()} online for ${rupees(p.price)} with delivery across Bangalore, cash on delivery or online payment.`;
   return {
-    title,
+    title: pageTitle(title),
     description,
     alternates: { canonical: `/store/${p.slug}` },
     // WhatsApp and Facebook do not show SVG previews, so the placeholder drawings fall back to the site's share image.

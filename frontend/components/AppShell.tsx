@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { roleLabel } from "@/lib/format";
 import { useOnline } from "@/lib/hooks";
-import { listQueue, onQueueChange, startSyncLoop } from "@/lib/offline";
+import { listQueue, onQueueChange, registerServiceWorker, startSyncLoop } from "@/lib/offline";
 import type { Role } from "@/lib/types";
 
 interface NavItem {
@@ -147,6 +147,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [loading, me, router, path]);
 
   useEffect(() => setOpen(false), [path]);
+  useEffect(registerServiceWorker, []);
 
   // Roles that must use 2-step verification are kept on their profile until they set it up.
   useEffect(() => {

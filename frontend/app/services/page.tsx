@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { JsonLd } from "@/components/JsonLd";
 import { ServiceShell } from "@/components/ServicePage";
-import { SERVICES } from "@/lib/services";
+import { SERVICES, THUMB_SIZE } from "@/lib/services";
 import { absolute, breadcrumbSchema, businessSchema, pageOpenGraph } from "@/lib/site";
 
 const title = "Plot Maintenance Services and Prices in Bangalore";
@@ -42,7 +42,7 @@ export default function ServicesIndex() {
           {SERVICES.map((s) => (
             <Link key={s.slug} href={`/services/${s.slug}`} className="card svc-item svc-link">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={s.thumb} alt={`${s.name} in Bangalore`} loading="lazy" />
+              <img src={s.thumb} {...THUMB_SIZE} alt={`${s.name} in Bangalore`} loading="lazy" decoding="async" />
               <h3>{s.name}</h3>
               <p>{s.promise}</p>
               {s.price ? <p className="svc-from">From ₹{s.price.perSqft} per sq ft, {s.price.per}{s.amc ? " · AMC plans" : ""}</p> : null}

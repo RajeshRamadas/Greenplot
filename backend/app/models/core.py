@@ -40,7 +40,7 @@ class User(Model):
     role: Mapped[str] = mapped_column(String(30), index=True)
     password_hash: Mapped[str | None] = mapped_column(String(300), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    vendor_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("vendors.id"), nullable=True)
+    vendor_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("vendors.id"), nullable=True, index=True)
     invite_token_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     invite_expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
@@ -97,7 +97,7 @@ class Property(TenantModel, SoftDelete):
     units: Mapped[int] = mapped_column(Integer, default=1)
     status: Mapped[str] = mapped_column(String(30), default="vacant_plot")  # vacant_plot, occupied, under_construction, rented
     condition: Mapped[str] = mapped_column(String(20), default="good")
-    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
+    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True, index=True)
     owner_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     owner_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     owner_whatsapp: Mapped[str | None] = mapped_column(String(30), nullable=True)  # None: same as owner_phone
@@ -131,7 +131,7 @@ class Asset(TenantModel, SoftDelete):
     nfc_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(200))
     category: Mapped[str] = mapped_column(String(40))  # gate, pump, motor, streetlight, electrical, water, security, infrastructure
-    property_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("properties.id"), nullable=True)
+    property_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("properties.id"), nullable=True, index=True)
     layout_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("layouts.id"), nullable=True)
     location: Mapped[str | None] = mapped_column(String(300), nullable=True)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)

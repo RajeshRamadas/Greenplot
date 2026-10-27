@@ -51,7 +51,7 @@ def send(
     users = owner_user_ids(db, prop)
     if users:
         sent: list[str] = []
-        for n in notifications.notify(db, prop.tenant_id, users, kind, title, body, entity_type, entity_id):
+        for n in notifications.notify(db, prop.tenant_id, users, kind, title, body, entity_type, entity_id, send_now=True):
             sent += [ch for ch, r in (n.delivery or {}).items() if r.split(":", 1)[0] in ("stored", "sent", "delivered")]
         return list(dict.fromkeys(sent))
     from app.services.messaging import send_email, send_sms

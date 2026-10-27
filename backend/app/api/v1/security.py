@@ -4,7 +4,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from app.api.v1._util import Limit, Offset, paginate, property_labels, user_names
 from app.core.deps import DB, CurrentActor, Perm
@@ -203,8 +203,9 @@ def vehicle_logs(db: DB, actor: Perm("vehicles.read"), number: str | None = None
 # ------------------------------------------------------------------ patrol
 
 
-def _route_out(db, r: PatrolRoute) -> RouteOut:
-    cps = db.scalars(select(PatrolCheckpoint).where(PatrolCheckpoint.route_id == r.id).order_by(PatrolCheckpoint.position))
+def _route_out(db, r: PatrolRoute, cps: list[PatrolCheckpoint] | None = None) -> RouteOut:
+    if cps is None:
+        cps = db.scalars(select(PatrolCheckpoint).where(PatrolCheckpoint.route_id == r.id).order_by(PatrolCheckpoint.position))
     return RouteOut.model_validate(r).model_copy(update={"checkpoints": [CheckpointOut.model_validate(c) for c in cps]})
 
 
@@ -224,7 +225,12 @@ def _run_out(db, run: PatrolRun) -> PatrolRunOut:
 
 @router.get("/patrol/routes", response_model=list[RouteOut])
 def list_routes(db: DB, actor: Perm("patrol.read")):
-    return [_route_out(db, r) for r in db.scalars(tenant_select(PatrolRoute, actor).order_by(PatrolRoute.name))]
+    routes = list(db.scalars(tenant_select(PatrolRoute, actor).order_by(PatrolRoute.name)))
+    by_route: dict[uuid.UUID, list[PatrolCheckpoint]] = {r.id: [] for r in routes}
+    if routes:
+        for cp in db.scalars(select(PatrolCheckpoint).where(PatrolCheckpoint.route_id.in_(by_route)).order_by(PatrolCheckpoint.position)):
+            by_route[cp.route_id].append(cp)
+    return [_route_out(db, r, by_route[r.id]) for r in routes]
 
 
 @router.post("/patrol/routes", response_model=RouteOut, status_code=201)
@@ -296,7 +302,33 @@ def list_runs(db: DB, actor: Perm("patrol.read"), active: bool | None = None, li
         stmt = stmt.where(PatrolRun.guard_id == actor.id)
     if active:
         stmt = stmt.where(PatrolRun.status == "in_progress")
-    return [_run_out(db, r) for r in db.scalars(stmt.limit(limit))]
+    runs = list(db.scalars(stmt.limit(limit)))
+    if not runs:
+        return []
+    scans: dict[uuid.UUID, list[PatrolScan]] = {r.id: [] for r in runs}
+    for sc in db.scalars(select(PatrolScan).where(PatrolScan.run_id.in_(scans)).order_by(PatrolScan.scanned_at)):
+        scans[sc.run_id].append(sc)
+    route_ids = {r.route_id for r in runs}
+    route_names = dict(db.execute(select(PatrolRoute.id, PatrolRoute.name).where(PatrolRoute.id.in_(route_ids))).all())
+    totals = dict(
+        db.execute(
+            select(PatrolCheckpoint.route_id, func.count())
+            .where(PatrolCheckpoint.route_id.in_(route_ids))
+            .group_by(PatrolCheckpoint.route_id)
+        ).all()
+    )
+    guards = user_names(db, (r.guard_id for r in runs))
+    return [
+        PatrolRunOut.model_validate(r).model_copy(
+            update={
+                "scans": [PatrolScanOut.model_validate(sc) for sc in scans[r.id]],
+                "route_name": route_names.get(r.route_id),
+                "guard_name": guards.get(r.guard_id),
+                "checkpoints_total": totals.get(r.route_id, 0),
+            }
+        )
+        for r in runs
+    ]
 
 
 @router.get("/patrol/runs/{run_id}", response_model=PatrolRunOut)
@@ -315,9 +347,9 @@ def _incident_visible(db, actor, inc: Incident) -> bool:
     return actor.can("incidents.read")
 
 
-def _incident_out(db, inc: Incident, updates=False) -> IncidentOut:
+def _incident_out(db, inc: Incident, updates=False, names: dict[uuid.UUID, str] | None = None) -> IncidentOut:
     o = IncidentOut.model_validate(inc)
-    o.reported_by_name = user_names(db, [inc.reported_by]).get(inc.reported_by)
+    o.reported_by_name = (names if names is not None else user_names(db, [inc.reported_by])).get(inc.reported_by)
     if updates:
         rows = list(db.scalars(select(IncidentUpdate).where(IncidentUpdate.incident_id == inc.id).order_by(IncidentUpdate.created_at)))
         names = user_names(db, (r.author_id for r in rows))
@@ -354,7 +386,8 @@ def list_incidents(
     if property_id:
         stmt = stmt.where(Incident.property_id == property_id)
     items, total = paginate(db, stmt, limit, offset)
-    return Page(items=[_incident_out(db, i) for i in items], total=total, limit=limit, offset=offset)
+    names = user_names(db, (i.reported_by for i in items))
+    return Page(items=[_incident_out(db, i, names=names) for i in items], total=total, limit=limit, offset=offset)
 
 
 @router.post("/incidents", response_model=IncidentOut, status_code=201)
@@ -394,8 +427,9 @@ def incident_note(incident_id: uuid.UUID, body: PatrolFinishIn, db: DB, actor: P
 # ------------------------------------------------------------------ SOS
 
 
-def _sos_out(db, s: SosAlert) -> SosOut:
-    return SosOut.model_validate(s).model_copy(update={"raised_by_name": user_names(db, [s.raised_by]).get(s.raised_by)})
+def _sos_out(db, s: SosAlert, names: dict[uuid.UUID, str] | None = None) -> SosOut:
+    names = names if names is not None else user_names(db, [s.raised_by])
+    return SosOut.model_validate(s).model_copy(update={"raised_by_name": names.get(s.raised_by)})
 
 
 @router.post("/sos", response_model=SosOut, status_code=201)
@@ -412,7 +446,9 @@ def list_sos(db: DB, actor: CurrentActor, active: bool = True):
         stmt = stmt.where(SosAlert.raised_by == actor.id)
     if active:
         stmt = stmt.where(SosAlert.status.in_([SosStatus.ACTIVE, SosStatus.ACKNOWLEDGED]))
-    return [_sos_out(db, s) for s in db.scalars(stmt.limit(100))]
+    alerts = list(db.scalars(stmt.limit(100)))
+    names = user_names(db, (s.raised_by for s in alerts))
+    return [_sos_out(db, s, names) for s in alerts]
 
 
 @router.post("/sos/{sos_id}/action", response_model=SosOut)

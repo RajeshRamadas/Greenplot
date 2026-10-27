@@ -11,6 +11,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.db import keep
 from app.core.deps import Actor
 from app.models import (
     Asset,
@@ -157,7 +158,7 @@ def ensure_default_policies(db: Session, tenant_id: uuid.UUID) -> None:
 
 
 def tenant_setting(db: Session, tenant_id: uuid.UUID, key: str, default):
-    t = db.get(Tenant, tenant_id)
+    t = keep(db, db.get(Tenant, tenant_id))
     return (t.settings or {}).get(key, default) if t else default
 
 

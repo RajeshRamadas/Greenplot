@@ -66,7 +66,14 @@ def send_test(body: SmsTestIn, db: DB, actor: Perm("settings.manage")):
         result, rid = sms_svc.send_notification(phone, "Test message", "SMS is working for your layout")
         return {"result": result, "request_id": rid}
     sent = notifications.notify(
-        db, actor.tenant_id, [actor.id], "announcement", "Test message", "SMS is working for your layout", channels=["in_app", "sms"]
+        db,
+        actor.tenant_id,
+        [actor.id],
+        "announcement",
+        "Test message",
+        "SMS is working for your layout",
+        channels=["in_app", "sms"],
+        send_now=True,
     )
     db.commit()
     return {"result": sent[0].delivery.get("sms") if sent else "not_sent"}

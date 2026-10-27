@@ -11,7 +11,7 @@ from sqlalchemy import or_, select
 from app.api.v1._util import Limit, Offset, apply, paginate
 from app.core.deps import DB, Perm, client_ip
 from app.core.ratelimit import limiter
-from app.models import StoreOrder, StoreProduct
+from app.models import StoreOrder, StoreOrderItem, StoreProduct
 from app.schemas.common import ORM, Page, Stamped
 from app.services import audit
 from app.services import store as svc
@@ -142,9 +142,9 @@ class OrderPatch(BaseModel):
     reason: str | None = Field(None, max_length=300)
 
 
-def _out(db, o: StoreOrder, model=OrderOut):
+def _out(db, o: StoreOrder, model=OrderOut, items: list[StoreOrderItem] | None = None):
     out = model.model_validate(o)
-    out.items = [ItemOut.model_validate(i) for i in svc.items(db, o)]
+    out.items = [ItemOut.model_validate(i) for i in (svc.items(db, o) if items is None else items)]
     return out
 
 
@@ -261,7 +261,8 @@ def list_orders(
         like = f"%{q.strip()}%"
         stmt = stmt.where(or_(StoreOrder.number.ilike(like), StoreOrder.customer_name.ilike(like), StoreOrder.phone.ilike(like)))
     rows, total = paginate(db, stmt, limit, offset)
-    return Page(items=[_out(db, o, AdminOrderOut) for o in rows], total=total, limit=limit, offset=offset)
+    items = svc.items_for(db, rows)
+    return Page(items=[_out(db, o, AdminOrderOut, items[o.id]) for o in rows], total=total, limit=limit, offset=offset)
 
 
 def _order(db, order_id: uuid.UUID) -> StoreOrder:

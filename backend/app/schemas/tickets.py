@@ -180,6 +180,7 @@ class AttachmentOut(BaseModel):
     sha256: str | None = None
     url: str | None = None
     thumbnail_url: str | None = None
+    preview_url: str | None = None  # screen-sized copy of a large photo (the original stays at url)
 
 
 class AssignmentOut(ORM):

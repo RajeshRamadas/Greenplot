@@ -326,7 +326,7 @@ def test_sla_breach_escalation_and_auto_close(as_, world, db):
 def test_notification_failures_are_logged_and_retried(as_, world, db, monkeypatch):
     calls = {"n": 0}
 
-    def flaky(user, title, body):
+    def flaky(user, title, body, data=None):
         calls["n"] += 1
         if calls["n"] == 1:
             raise RuntimeError("provider down")

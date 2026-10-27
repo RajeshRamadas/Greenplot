@@ -195,7 +195,24 @@ def max_bytes_for(content_type: str) -> int:
     return {"image": s.max_image_bytes, "video": s.max_video_bytes, "document": s.max_document_bytes}.get(kind, 0)
 
 
-def make_thumbnail(data: bytes, max_px: int = 480) -> bytes | None:
+PREVIEW_PX = 1600  # long side of the screen-sized copy that apps show instead of the original
+PREVIEW_ABOVE_BYTES = 1_500_000
+
+
+def make_preview(data: bytes) -> bytes | None:
+    """A screen-sized JPEG of a large photo, so phones don't download a 10 MB original to view it."""
+    try:
+        from PIL import Image
+
+        with Image.open(io.BytesIO(data)) as im:
+            if max(im.size) <= PREVIEW_PX and len(data) <= PREVIEW_ABOVE_BYTES:
+                return None
+    except Exception:
+        return None
+    return make_thumbnail(data, PREVIEW_PX, quality=82)
+
+
+def make_thumbnail(data: bytes, max_px: int = 480, quality: int = 78) -> bytes | None:
     try:
         from PIL import Image, ImageOps
 
@@ -203,7 +220,7 @@ def make_thumbnail(data: bytes, max_px: int = 480) -> bytes | None:
             im = ImageOps.exif_transpose(im)
             im.thumbnail((max_px, max_px))
             out = io.BytesIO()
-            im.convert("RGB").save(out, format="JPEG", quality=78)
+            im.convert("RGB").save(out, format="JPEG", quality=quality, optimize=True)
             return out.getvalue()
     except Exception:
         return None

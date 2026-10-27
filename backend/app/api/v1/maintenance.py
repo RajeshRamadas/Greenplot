@@ -153,6 +153,8 @@ def detail(db, actor: Actor, task: MaintenanceTask) -> TaskDetail:
                 eo.url = storage.download_url(e.media.storage_key, e.media.original_filename)
                 if e.media.thumbnail_key:
                     eo.thumbnail_url = storage.download_url(e.media.thumbnail_key)
+                if e.media.preview_key:
+                    eo.preview_url = storage.download_url(e.media.preview_key)
             out.append(eo)
         d.evidence = out
     d.exceptions = [

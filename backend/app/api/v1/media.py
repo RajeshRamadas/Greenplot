@@ -27,6 +27,8 @@ def present(db, m: Media) -> MediaOut:
         out.url = storage.download_url(m.storage_key, m.original_filename)
         if m.thumbnail_key:
             out.thumbnail_url = storage.download_url(m.thumbnail_key)
+        if m.preview_key:
+            out.preview_url = storage.download_url(m.preview_key)
     out.approved = svc.approved_state(db, m)
     return out
 
@@ -67,8 +69,8 @@ def get_blob(key: str, token: str, db: DB):
     storage = get_storage()
     if not storage.exists(key):
         raise HTTPException(404, "Not found")
-    m = db.scalar(select(Media).where((Media.storage_key == key) | (Media.thumbnail_key == key)))
-    ctype = "image/jpeg" if m is None or key == m.thumbnail_key else m.content_type
+    m = db.scalar(select(Media).where((Media.storage_key == key) | (Media.thumbnail_key == key) | (Media.preview_key == key)))
+    ctype = "image/jpeg" if m is None or key in (m.thumbnail_key, m.preview_key) else m.content_type
     return Response(
         storage.get(key),
         media_type=ctype,

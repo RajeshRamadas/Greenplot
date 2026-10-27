@@ -93,6 +93,8 @@ def test_session_message_inside_24h_window(world, db, meta):
     u.whatsapp_last_inbound_at = utcnow() - timedelta(hours=2)
     db.commit()
     notifications.notify(db, world.ta.id, [u.id], "ticket_update", "Title", "Body", channels=["whatsapp"])
+    assert meta == [], "nothing leaves before the change is saved"
+    db.commit()
     assert meta[0]["type"] == "text" and meta[0]["text"]["body"] == "*Title*\nBody"
 
 

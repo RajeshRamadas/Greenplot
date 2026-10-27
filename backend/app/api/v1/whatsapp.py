@@ -102,6 +102,7 @@ def send_test(body: TestIn, db: DB, actor: Perm("settings.manage")):
         "GreenPlot test message",
         body.message or "WhatsApp notifications are working for your layout.",
         channels=["in_app", "whatsapp"],
+        send_now=True,
     )
     db.commit()
     result = sent[0].delivery.get("whatsapp") if sent else "not_sent"

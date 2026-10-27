@@ -96,8 +96,12 @@ def hash_token(token: str) -> str:
 
 
 def sign_value(value: str, expires_in: int) -> str:
-    """Short-lived HMAC signature for local-storage signed URLs."""
-    exp = int((datetime.now(UTC) + timedelta(seconds=expires_in)).timestamp())
+    """Short-lived HMAC signature for local-storage signed URLs.
+
+    The expiry is rounded up to the minute, so a link to the same file stays identical for a minute:
+    phones can cache the picture, and a list that hasn't changed keeps the same ETag.
+    """
+    exp = -(-int((datetime.now(UTC) + timedelta(seconds=expires_in)).timestamp()) // 60) * 60
     msg = f"{value}:{exp}".encode()
     sig = hmac.new(get_settings().secret_key.encode(), msg, hashlib.sha256).hexdigest()
     return f"{exp}.{sig}"

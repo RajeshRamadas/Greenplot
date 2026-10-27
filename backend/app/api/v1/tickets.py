@@ -169,6 +169,7 @@ def _attachments(db, actor: Actor, t: Ticket) -> list[AttachmentOut]:
             sha256=m.sha256,
             url=storage.download_url(m.storage_key, m.original_filename),
             thumbnail_url=storage.download_url(m.thumbnail_key) if m.thumbnail_key else None,
+            preview_url=storage.download_url(m.preview_key) if m.preview_key else None,
         )
 
     for r in rows:

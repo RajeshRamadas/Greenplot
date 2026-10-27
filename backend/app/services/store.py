@@ -14,6 +14,7 @@ import hashlib
 import hmac
 import logging
 import secrets
+import uuid
 from decimal import Decimal
 
 from fastapi import HTTPException
@@ -222,9 +223,17 @@ def _announce(o: StoreOrder, token: str | None) -> None:
 
 
 def items(db: Session, o: StoreOrder) -> list[StoreOrderItem]:
-    return list(
-        db.scalars(select(StoreOrderItem).where(StoreOrderItem.order_id == o.id).order_by(StoreOrderItem.created_at, StoreOrderItem.name))
-    )
+    return items_for(db, [o])[o.id]
+
+
+def items_for(db: Session, orders: list[StoreOrder]) -> dict[uuid.UUID, list[StoreOrderItem]]:
+    """The lines of several orders in one query."""
+    out: dict[uuid.UUID, list[StoreOrderItem]] = {o.id: [] for o in orders}
+    if out:
+        stmt = select(StoreOrderItem).where(StoreOrderItem.order_id.in_(out)).order_by(StoreOrderItem.created_at, StoreOrderItem.name)
+        for i in db.scalars(stmt):
+            out[i.order_id].append(i)
+    return out
 
 
 def _restock(db: Session, o: StoreOrder) -> None:

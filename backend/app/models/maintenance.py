@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import JSON, Boolean, Date, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import JSON, Boolean, Date, Float, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import SoftDelete, TenantModel, UTCDateTime
@@ -187,7 +187,7 @@ class MaintenanceSchedule(TenantModel, SoftDelete):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str] = mapped_column(String(40))
     priority: Mapped[str] = mapped_column(String(20), default="medium")
-    property_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("properties.id"), nullable=True)
+    property_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("properties.id"), nullable=True, index=True)
     asset_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("assets.id"), nullable=True)
     location_note: Mapped[str | None] = mapped_column(String(300), nullable=True)
     checklist_template_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("checklist_templates.id"), nullable=True)
@@ -206,7 +206,7 @@ class Media(TenantModel):
     """Private object-storage media with integrity metadata (requirements §12-13)."""
 
     __tablename__ = "media"
-    __table_args__ = (UniqueConstraint("uploaded_by", "client_ref"),)
+    __table_args__ = (UniqueConstraint("uploaded_by", "client_ref"), Index("ix_media_entity_type_entity_id", "entity_type", "entity_id"))
 
     entity_type: Mapped[str] = mapped_column(String(40), index=True)
     entity_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
@@ -220,6 +220,7 @@ class Media(TenantModel):
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     storage_key: Mapped[str] = mapped_column(String(400), unique=True)
     thumbnail_key: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    preview_key: Mapped[str | None] = mapped_column(String(400), nullable=True)  # screen-sized copy of a large photo
     content_type: Mapped[str] = mapped_column(String(100))
     original_filename: Mapped[str | None] = mapped_column(String(300), nullable=True)
     size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -248,7 +249,7 @@ class Complaint(TenantModel, SoftDelete):
     title: Mapped[str] = mapped_column(String(300))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="open", index=True)
-    raised_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+    raised_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), index=True)
     assigned_staff_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
     vendor_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("vendors.id"), nullable=True)
     maintenance_task_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
@@ -273,7 +274,7 @@ class Inspection(TenantModel, SoftDelete):
 
     number: Mapped[str] = mapped_column(String(40), index=True)
     property_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("properties.id"), index=True)
-    inspector_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
+    inspector_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True, index=True)
     is_property_watch: Mapped[bool] = mapped_column(Boolean, default=False)
     status: Mapped[str] = mapped_column(String(20), default="scheduled")
     scheduled_for: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)

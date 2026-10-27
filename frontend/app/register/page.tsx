@@ -65,9 +65,9 @@ export default function RegisterPage() {
             <div className="alert ok">
               Thanks! Your request has been sent to <b>{done}</b>. Once the office approves it, you&apos;ll get a link by email and on your phone to set your password.
             </div>
-            <Link className="btn" href="/">
+            <a className="btn" href="/">
               Back to website
-            </Link>
+            </a>
           </div>
         ) : (
           <form

@@ -5,8 +5,8 @@ import { JsonLd } from "@/components/JsonLd";
 import { FaqList, ServiceShell } from "@/components/ServicePage";
 import { areaBySlug, cityBySlug, liveCities } from "@/lib/cities";
 import { areaFaqs } from "@/lib/faqs";
-import { SERVICES, serviceBySlug } from "@/lib/services";
-import { absolute, breadcrumbSchema, businessSchema, faqSchema, pageOpenGraph, rupees } from "@/lib/site";
+import { BEFORE_AFTER_SIZE, SERVICES, serviceBySlug, wideImage } from "@/lib/services";
+import { absolute, breadcrumbSchema, businessSchema, faqSchema, pageOpenGraph, pageTitle, rupees } from "@/lib/site";
 
 export const dynamicParams = false;
 
@@ -26,10 +26,10 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
   if (!found) return {};
   const { city, area } = found;
   const cleaning = serviceBySlug("plot-cleaning");
-  const title = `Plot Cleaning and Maintenance in ${area.name}, ${city.name}`;
+  const title = `Plot Cleaning & Maintenance in ${area.name}, ${city.name}`;
   const description = `Plot cleaning${cleaning?.price ? ` from ${rupees(cleaning.price.perSqft)}/sq ft ${cleaning.price.per}` : ""}, fencing, garden upkeep and inspections in ${area.name}, ${city.name}: ${area.localities.join(", ")}. Photo proof of every visit.`;
   const path = `/${city.slug}/${area.slug}`;
-  return { title, description, alternates: { canonical: path }, openGraph: pageOpenGraph({ title, description, url: path }) };
+  return { title: pageTitle(title), description, alternates: { canonical: path }, openGraph: pageOpenGraph({ title, description, url: path }) };
 }
 
 export default async function AreaPage({ params }: { params: Promise<{ city: string; area: string }> }) {
@@ -63,7 +63,7 @@ export default async function AreaPage({ params }: { params: Promise<{ city: str
       <main>
         <section className="svc-wrap svc-hero">
           <nav className="svc-crumbs" aria-label="Breadcrumb">
-            <Link href="/">Home</Link> › <Link href={`/${city.slug}`}>{city.name}</Link> › <span aria-current="page">{area.name}</span>
+            <a href="/">Home</a> › <Link href={`/${city.slug}`}>{city.name}</Link> › <span aria-current="page">{area.name}</span>
           </nav>
           <h1>Plot maintenance in {area.name}</h1>
           <p className="svc-lead">Plot cleaning, fencing and inspections in {area.name}, {city.name}, with photos of every visit.</p>
@@ -78,7 +78,7 @@ export default async function AreaPage({ params }: { params: Promise<{ city: str
         {cleaning?.beforeAfter ? (
           <figure className="svc-wrap svc-ba">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cleaning.beforeAfter} alt={`Sample before and after photos of a cleaned plot, like those we send owners in ${area.name}`} />
+            <img {...wideImage(cleaning.beforeAfter)} {...BEFORE_AFTER_SIZE} loading="lazy" decoding="async" alt={`Sample before and after photos of a cleaned plot, like those we send owners in ${area.name}`} />
             <figcaption>Sample before and after photos. These are illustrations; your reports show real photos from your plot.</figcaption>
           </figure>
         ) : null}

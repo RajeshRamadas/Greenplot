@@ -7,6 +7,7 @@ import { homeFor } from "@/components/AppShell";
 import { LegalLinks } from "@/components/Legal";
 import { ErrorBox, Field } from "@/components/ui";
 import { publicPost } from "@/lib/api";
+import { registerServiceWorker } from "@/lib/offline";
 import { useAuth } from "@/lib/auth";
 
 type Mode = "password" | "code";
@@ -29,6 +30,8 @@ function LoginForm() {
   const [mfaCode, setMfaCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(registerServiceWorker, []);
 
   useEffect(() => {
     if (!loading && me) {

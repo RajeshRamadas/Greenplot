@@ -16,6 +16,16 @@ const DB_NAME = "greenplot-offline";
 const OPS = "ops";
 const BLOBS = "blobs";
 
+/**
+ * Installs the offline service worker. Only the app (sign-in and signed-in pages) calls this,
+ * so website visitors do not download the app's offline pages.
+ */
+export function registerServiceWorker() {
+  if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+  }
+}
+
 export type SyncState = "queued" | "syncing" | "synced" | "failed" | "retry" | "conflict";
 
 export interface QueuedOp {

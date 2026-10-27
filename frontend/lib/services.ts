@@ -1,6 +1,8 @@
 /**
  * The services shown on the public website, one page each at /services/<slug>.
  * Screenshots live in public/showcase/ and come from the sample layout (python -m app.seed).
+ * Pictures are WebP, sized for the widest place they show; before and after photos and covers
+ * also have a 760px wide copy (<name>-760.webp) for phones.
  */
 
 export interface Service {
@@ -12,18 +14,38 @@ export interface Service {
   included: { title: string; text: string }[];
   /** What the person paying sees once a job is done. */
   proof: string[];
-  shot: { src: string; alt: string; caption: string };
-  /** Sample before and after photos, for services that are proven with photos. */
+  shot: Picture & { caption: string };
+  /** Sample before and after photos (1400 x 478), for services that are proven with photos. */
   beforeAfter?: string;
   /** Sample photo for services that have no before and after. */
-  cover?: { src: string; alt: string };
-  /** Picture on the services overview card. */
+  cover?: Picture;
+  /** Picture on the services overview card (712 x 440). */
   thumb: string;
   goodFor: string[];
   /** Basic price on level, easy-to-reach ground; difficult terrain is quoted extra (see TERRAIN_NOTE). */
   price?: Price;
   /** Annual maintenance contract plans, cheapest first. */
   amc?: AmcPlan[];
+}
+
+export interface Picture {
+  src: string;
+  width: number;
+  height: number;
+  alt: string;
+}
+
+/** Size of every before and after picture and overview card picture. */
+export const BEFORE_AFTER_SIZE = { width: 1400, height: 478 };
+export const THUMB_SIZE = { width: 712, height: 440 };
+
+/** Lets phones download the 760px copy of a full-width picture instead of the 1400px one. */
+export function wideImage(src: string) {
+  return {
+    src,
+    srcSet: `${src.replace(/\.webp$/, "-760.webp")} 760w, ${src} 1400w`,
+    sizes: "(max-width: 1120px) calc(100vw - 32px), 1080px",
+  };
 }
 
 export interface AmcPlan {
@@ -59,8 +81,8 @@ export const SERVICES: Service[] = [
       { name: "Premium", summary: "12 cleanings a year", includes: ["Monthly cleaning", "Photo report after every visit", "Quarterly Property Watch inspection", "Priority visit within 48 hours on request"], perSqftYear: 20, minimumYear: 15000 },
     ],
     price: { perSqft: 2, per: "per visit", minimum: 1500 },
-    beforeAfter: "/showcase/plot-cleaning-ba.jpg",
-    thumb: "/showcase/plot-cleaning-card.jpg",
+    beforeAfter: "/showcase/plot-cleaning-ba.webp",
+    thumb: "/showcase/plot-cleaning-card.webp",
     name: "Plot Cleaning",
     promise: "Your plot kept clean and visible, every month, with photos to prove it.",
     intro:
@@ -73,7 +95,7 @@ export const SERVICES: Service[] = [
     ],
     proof: ["Photos of the cleaned plot", "Completed cleaning checklist", "Time of each visit, and location if you require it", "Bill and receipt for the job"],
     shot: {
-      src: "/showcase/plot-cleaning.jpg",
+      src: "/showcase/plot-cleaning.webp", width: 1000, height: 1356,
       alt: "A finished plot cleaning job with before and after photos, checklist and payment",
       caption: "A finished cleaning job in GreenPlot: photos, checklist, notes, supervisor approval and payment on one page.",
     },
@@ -87,8 +109,8 @@ export const SERVICES: Service[] = [
       { name: "Premium", summary: "Weekly visit plus tree care", includes: ["Everything in Standard", "Tree pruning before the monsoon", "Manure and pest control every quarter"], perSqftYear: 38, minimumYear: 36000 },
     ],
     price: { perSqft: 3, per: "per month", minimum: 2000 },
-    beforeAfter: "/showcase/garden-landscape-ba.jpg",
-    thumb: "/showcase/garden-landscape-card.jpg",
+    beforeAfter: "/showcase/garden-landscape-ba.webp",
+    thumb: "/showcase/garden-landscape-card.webp",
     name: "Garden & Landscape",
     promise: "Lawns, hedges, trees and parks looked after on schedule.",
     intro:
@@ -101,7 +123,7 @@ export const SERVICES: Service[] = [
     ],
     proof: ["Before and after photos of each area", "Gardening checklist ticked on site", "Supervisor approval", "Recurring schedule you can see"],
     shot: {
-      src: "/showcase/garden-landscape.jpg",
+      src: "/showcase/garden-landscape.webp", width: 1000, height: 1356,
       alt: "A finished lawn mowing and hedge trimming job with before and after photos",
       caption: "Park B's lawn and hedge job: what was found, what was done and the photos to show it.",
     },
@@ -115,8 +137,8 @@ export const SERVICES: Service[] = [
       { name: "Premium", summary: "12 inspections plus cleaning", includes: ["Monthly Property Watch visit", "2 plot cleanings a year", "Repairs arranged for you, quoted before work"], perSqftYear: 9, minimumYear: 10000 },
     ],
     price: { perSqft: 0.5, per: "per visit", minimum: 750 },
-    cover: { src: "/showcase/property-inspection-cover.jpg", alt: "An inspector at the plot gate showing the owner the plot on a video call" },
-    thumb: "/showcase/property-inspection-card.jpg",
+    cover: { src: "/showcase/property-inspection-cover.webp", width: 1400, height: 788, alt: "An inspector at the plot gate showing the owner the plot on a video call" },
+    thumb: "/showcase/property-inspection-card.webp",
     name: "Property Inspection",
     promise: "Know the condition of your property without visiting it.",
     intro:
@@ -129,7 +151,7 @@ export const SERVICES: Service[] = [
     ],
     proof: ["Condition of each inspection point", "Photos from the visit", "Overall condition and findings", "Follow-up jobs for anything found"],
     shot: {
-      src: "/showcase/property-inspection.jpg",
+      src: "/showcase/property-inspection.webp", width: 1000, height: 736,
       alt: "A Property Watch inspection with the condition of each point",
       caption: "A Property Watch report as the owner sees it: every point checked, with the one thing that needs attention.",
     },
@@ -137,8 +159,8 @@ export const SERVICES: Service[] = [
   },
   {
     slug: "fencing-gates",
-    beforeAfter: "/showcase/fencing-gates-ba.jpg",
-    thumb: "/showcase/fencing-gates-card.jpg",
+    beforeAfter: "/showcase/fencing-gates-ba.webp",
+    thumb: "/showcase/fencing-gates-card.webp",
     name: "Fencing & Gates",
     promise: "Gates that close and fences that hold, repaired and recorded.",
     intro:
@@ -151,7 +173,7 @@ export const SERVICES: Service[] = [
     ],
     proof: ["Before and after photos", "Completed, tested checklist", "QR scan and materials used, where recorded", "Supervisor sign-off"],
     shot: {
-      src: "/showcase/fencing-gates.jpg",
+      src: "/showcase/fencing-gates.webp", width: 1000, height: 1356,
       alt: "A finished gate repair job with QR scan, materials and photos",
       caption: "The main gate job: scanned on site, checklist done, materials recorded and approved.",
     },
@@ -159,8 +181,8 @@ export const SERVICES: Service[] = [
   },
   {
     slug: "maintenance-repairs",
-    beforeAfter: "/showcase/maintenance-repairs-ba.jpg",
-    thumb: "/showcase/maintenance-repairs-card.jpg",
+    beforeAfter: "/showcase/maintenance-repairs-ba.webp",
+    thumb: "/showcase/maintenance-repairs-card.webp",
     name: "Maintenance & Repairs",
     promise: "Leaks, lights and breakdowns fixed, with a record of every job.",
     intro:
@@ -173,7 +195,7 @@ export const SERVICES: Service[] = [
     ],
     proof: ["Status updates from report to closure", "Before and after photos", "Work notes: issue found and outcome", "Online bill and receipt"],
     shot: {
-      src: "/showcase/maintenance-repairs.jpg",
+      src: "/showcase/maintenance-repairs.webp", width: 1000, height: 1356,
       alt: "A finished pipe repair job with photos, notes and a paid bill",
       caption: "A leaking pipe at Plot 117: reported, fixed, tested, approved and paid.",
     },
@@ -181,8 +203,8 @@ export const SERVICES: Service[] = [
   },
   {
     slug: "staff-vendors",
-    cover: { src: "/showcase/staff-vendors-cover.jpg", alt: "A field team in uniform with a hedge trimmer, broom and toolbox" },
-    thumb: "/showcase/staff-vendors-card.jpg",
+    cover: { src: "/showcase/staff-vendors-cover.webp", width: 1400, height: 865, alt: "A field team in uniform with a hedge trimmer, broom and toolbox" },
+    thumb: "/showcase/staff-vendors-card.webp",
     name: "Staff & Vendors",
     promise: "Everyone who works in your layout, organised in one place.",
     intro:
@@ -195,7 +217,7 @@ export const SERVICES: Service[] = [
     ],
     proof: ["Who did each job and when", "Jobs waiting for approval", "Overdue work flagged", "Ratings from residents"],
     shot: {
-      src: "/showcase/staff-vendors.jpg",
+      src: "/showcase/staff-vendors.webp", width: 1000, height: 524,
       alt: "The staff list with shifts and roles",
       caption: "Staff, shifts and roles for the sample layout.",
     },

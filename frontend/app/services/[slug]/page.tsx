@@ -6,8 +6,8 @@ import { PriceCard } from "@/components/PriceCard";
 import { FaqList, STEPS, ServiceShell } from "@/components/ServicePage";
 import { CITIES, liveCities } from "@/lib/cities";
 import { serviceFaqs } from "@/lib/faqs";
-import { type Service, SERVICES, serviceBySlug } from "@/lib/services";
-import { absolute, breadcrumbSchema, businessSchema, faqSchema, pageOpenGraph, rupees } from "@/lib/site";
+import { BEFORE_AFTER_SIZE, type Service, SERVICES, serviceBySlug, wideImage } from "@/lib/services";
+import { absolute, breadcrumbSchema, businessSchema, faqSchema, pageOpenGraph, pageTitle, rupees } from "@/lib/site";
 
 // Service pages are written for the first live city; area pages carry the other places.
 const CITY = liveCities()[0] ?? CITIES[0];
@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!s) return {};
   const title = `${s.name} in ${CITY.name}${s.price ? `, ${fromPrice(s)}` : ""}`;
   const description = `${s.promise} ${s.name} for plots and layouts across ${CITY.name}${s.price ? `, ${fromPrice(s)}` : ""}. Photo proof of every job.`;
-  return { title, description, alternates: { canonical: `/services/${s.slug}` }, openGraph: pageOpenGraph({ title, description, url: `/services/${s.slug}` }) };
+  return { title: pageTitle(title), description, alternates: { canonical: `/services/${s.slug}` }, openGraph: pageOpenGraph({ title, description, url: `/services/${s.slug}` }) };
 }
 
 export default async function ServiceDetail({ params }: { params: Promise<{ slug: string }> }) {
@@ -82,13 +82,13 @@ export default async function ServiceDetail({ params }: { params: Promise<{ slug
         {s.beforeAfter ? (
           <figure className="svc-wrap svc-ba">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={s.beforeAfter} alt={`Sample before and after photos of ${s.name.toLowerCase()} on a ${CITY.name} plot`} />
+            <img {...wideImage(s.beforeAfter)} {...BEFORE_AFTER_SIZE} fetchPriority="high" alt={`Sample before and after photos of ${s.name.toLowerCase()} on a ${CITY.name} plot`} />
             <figcaption>Sample before and after photos. These are illustrations; your reports show real photos from the site.</figcaption>
           </figure>
         ) : s.cover ? (
           <figure className="svc-wrap svc-ba">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={s.cover.src} alt={s.cover.alt} />
+            <img {...wideImage(s.cover.src)} width={s.cover.width} height={s.cover.height} fetchPriority="high" alt={s.cover.alt} />
             <figcaption>Sample photo. This is an illustration; your reports show real photos from the site.</figcaption>
           </figure>
         ) : null}
@@ -110,7 +110,7 @@ export default async function ServiceDetail({ params }: { params: Promise<{ slug
           <div className="svc-proof">
             <figure className="svc-shot">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={s.shot.src} alt={s.shot.alt} loading="lazy" />
+              <img src={s.shot.src} width={s.shot.width} height={s.shot.height} alt={s.shot.alt} loading="lazy" decoding="async" />
               <figcaption>{s.shot.caption} Sample data, not a real customer.</figcaption>
             </figure>
             <div>

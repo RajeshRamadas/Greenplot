@@ -1196,7 +1196,40 @@ a.contactCard:hover{border-color:#b9d9cb;box-shadow:var(--shadow)}
 .hero .heroGrid>.panel{background:rgba(255,255,255,.80);-webkit-backdrop-filter:blur(14px) saturate(1.15);backdrop-filter:blur(14px) saturate(1.15);border-color:rgba(255,255,255,.65)}
 .hero .heroGrid>.heroCopy p{color:#40524b}
 @media (max-width:600px){.hero .heroGrid>.heroCopy{padding:22px 18px 20px;border-radius:20px}.hero .heroCopy .eyebrow:after{content:none}}
+.heroVideo{position:absolute;inset:0;overflow:hidden;opacity:0;transition:opacity 1.2s ease}
+.heroVideo.ready{opacity:1}
+.heroVideo iframe{position:absolute;top:50%;left:50%;border:0;pointer-events:none;transform:translate(-50%,-50%)}
 @media (prefers-reduced-motion:reduce){.heroBg span{animation:none;transform:none}.heroBg span:first-child{opacity:1}}
 </style>
+<script id="greenplot-hero-video">
+/* Hero video — a muted, looping YouTube video over the photo slideshow. It loads after the page,
+   and only fades in once it is actually playing, so a slow or blocked video just leaves the photos. */
+(function(){
+  var ID='vNl_c4ktaBE';
+  var bg=document.querySelector('.hero .heroBg');
+  if(!bg||!window.matchMedia||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  function start(){
+    var box=document.createElement('div');box.className='heroVideo';
+    var slot=document.createElement('div');box.appendChild(slot);bg.appendChild(box);
+    window.onYouTubeIframeAPIReady=function(){
+      var player=new YT.Player(slot,{videoId:ID,host:'https://www.youtube-nocookie.com',
+        playerVars:{autoplay:1,mute:1,loop:1,playlist:ID,controls:0,playsinline:1,rel:0,modestbranding:1,disablekb:1,iv_load_policy:3,fs:0},
+        events:{
+          onReady:function(e){var f=e.target.getIframe();f.tabIndex=-1;f.setAttribute('aria-hidden','true');f.title='GreenPlot background video';size();e.target.mute();e.target.playVideo();},
+          onStateChange:function(e){if(e.data===YT.PlayerState.PLAYING)box.classList.add('ready');}
+        }});
+      function size(){ /* cover the hero like background-size:cover, slightly oversized to hide the player's edges */
+        var f=player.getIframe&&player.getIframe();if(!f)return;
+        var w=bg.offsetWidth,h=bg.offsetHeight,k=1.15;
+        if(w/h>16/9){f.style.width=w*k+'px';f.style.height=w*k*9/16+'px';}
+        else{f.style.height=h*k+'px';f.style.width=h*k*16/9+'px';}
+      }
+      addEventListener('resize',size);
+    };
+    var t=document.createElement('script');t.src='https://www.youtube.com/iframe_api';t.async=true;document.head.appendChild(t);
+  }
+  if(document.readyState==='complete')start();else addEventListener('load',start);
+})();
+</script>
 </body>
 </html>

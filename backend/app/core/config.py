@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     store_pincode_prefixes: str = "560,562"  # where we deliver (Bangalore)
     store_orders_email: str | None = "hello@greenplot.in"  # who hears about new orders
 
+    # Send push, SMS, WhatsApp and email on a thread pool after the change is saved, instead of while the
+    # caller waits. Off sends them right after the commit, before the response (tests use this).
+    notify_in_background: bool = True
+
     # Background worker inside the API process
     worker_enabled: bool = False
     worker_interval_seconds: int = 300
@@ -110,6 +114,22 @@ class Settings(BaseSettings):
     whatsapp_template: str = "greenplot_update"  # approved utility template with {{1}} title and {{2}} body
     whatsapp_template_language: str = "en"
     whatsapp_otp_template: str = "greenplot_otp"  # approved Authentication template with a copy-code button
+
+    # Push notifications to the mobile apps through Firebase Cloud Messaging (app.services.push).
+    # "log" only logs; "fcm" sends. The service account is the JSON key itself or a path to it.
+    push_provider: str = "log"
+    fcm_project_id: str | None = None  # defaults to the project in the service account
+    fcm_service_account: str | None = None
+
+    # Mobile apps: versions older than these are asked to update before they can be used (GET /app/config).
+    app_min_version_android: str | None = None
+    app_min_version_ios: str | None = None
+    app_store_url_android: str | None = None
+    app_store_url_ios: str | None = None
+
+    # Database connection pool (PostgreSQL). Requests run on a thread pool, so allow a few more than the default.
+    db_pool_size: int = 10
+    db_max_overflow: int = 10
 
     # SMS via MSG91 Flow API with DLT-registered templates. "log" only logs; "msg91" sends.
     sms_provider: str = "log"

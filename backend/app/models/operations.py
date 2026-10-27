@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import JSON, Boolean, Date, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import JSON, Boolean, Date, Float, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Model, SoftDelete, TenantModel, UTCDateTime
@@ -35,7 +35,7 @@ class Vehicle(TenantModel, SoftDelete):
     __table_args__ = (UniqueConstraint("tenant_id", "number"),)
 
     number: Mapped[str] = mapped_column(String(20), index=True)
-    property_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("properties.id"), nullable=True)
+    property_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("properties.id"), nullable=True, index=True)
     owner_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     vehicle_type: Mapped[str] = mapped_column(String(20), default="car")
     make_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -110,12 +110,12 @@ class Incident(TenantModel, SoftDelete):
     category: Mapped[str] = mapped_column(String(40), default="security")  # security, fire, medical, theft, trespass, other
     severity: Mapped[str] = mapped_column(String(20), default="medium")
     status: Mapped[str] = mapped_column(String(20), default="open", index=True)
-    property_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("properties.id"), nullable=True)
+    property_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("properties.id"), nullable=True, index=True)
     location: Mapped[str | None] = mapped_column(String(300), nullable=True)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     occurred_at: Mapped[datetime] = mapped_column(UTCDateTime())
-    reported_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+    reported_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), index=True)
     assigned_to: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id"), nullable=True)
     acknowledged_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
@@ -136,7 +136,7 @@ class IncidentUpdate(TenantModel):
 class SosAlert(TenantModel):
     __tablename__ = "sos_alerts"
 
-    raised_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"))
+    raised_by: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), index=True)
     property_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("properties.id"), nullable=True)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -291,6 +291,7 @@ class Notice(TenantModel, SoftDelete):
 
 class Notification(TenantModel):
     __tablename__ = "notifications"
+    __table_args__ = (Index("ix_notifications_user_id_created_at", "user_id", "created_at"),)  # a person's feed, newest first
 
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     kind: Mapped[str] = mapped_column(String(40))
@@ -301,6 +302,28 @@ class Notification(TenantModel):
     channels: Mapped[list] = mapped_column(JSON, default=list)
     delivery: Mapped[dict] = mapped_column(JSON, default=dict)
     read_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+
+
+class DeviceToken(Model):
+    """A phone (or browser) that receives push notifications through Firebase Cloud Messaging.
+
+    Tied to the sign-in session that registered it, so signing out on that phone stops its pushes.
+    """
+
+    __tablename__ = "device_tokens"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=True)
+    session_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("refresh_tokens.id", ondelete="SET NULL"), index=True, nullable=True
+    )
+    token: Mapped[str] = mapped_column(String(512), unique=True)
+    platform: Mapped[str] = mapped_column(String(10))  # android, ios, web
+    app_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    device_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    disabled_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)  # Firebase said the token is gone
+    disabled_reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class PushSubscription(TenantModel):

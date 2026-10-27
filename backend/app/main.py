@@ -4,7 +4,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 
 from app.api.v1 import (
     auth,
@@ -13,6 +15,7 @@ from app.api.v1 import (
     comms,
     complaints,
     customers,
+    devices,
     inspections,
     maintenance,
     media,
@@ -35,6 +38,7 @@ from app.api.v1 import (
 )
 from app.core.config import get_settings
 from app.core.deps import client_ip
+from app.core.http import ETagMiddleware, error_body, install_error_handlers
 from app.core.ratelimit import limiter
 
 log = logging.getLogger("greenplot")
@@ -51,6 +55,11 @@ async def _worker_loop(interval: int):  # pragma: no cover - timing loop
                 log.info("jobs: %s", run_all(db))
         except Exception:
             log.exception("background jobs failed")
+
+
+def operation_id(route: APIRoute) -> str:
+    """Short, stable operation ids (tickets_list_tickets) so generated mobile clients get readable method names."""
+    return f"{route.tags[0]}_{route.name}" if route.tags else route.name
 
 
 @asynccontextmanager
@@ -71,7 +80,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
         docs_url=f"{s.api_prefix}/docs",
         openapi_url=f"{s.api_prefix}/openapi.json",
+        generate_unique_id_function=operation_id,
     )
+    install_error_handlers(app)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=s.cors_origin_list,
@@ -83,7 +94,7 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
         if request.url.path.startswith(s.api_prefix) and not limiter.allow(f"api:{client_ip(request)}", s.api_rate_per_minute):
-            return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
+            return JSONResponse(error_body(429, "Rate limit exceeded"), status_code=429, headers={"Retry-After": "60"})
         response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
@@ -92,12 +103,17 @@ def create_app() -> FastAPI:
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         return response
 
+    # Outermost last: compress what the ETag layer tagged. Images and video are already compressed and skipped.
+    app.add_middleware(ETagMiddleware, prefix=s.api_prefix)
+    app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=6)
+
     for module in (
         auth,
         tenants,
         users,
         properties,
         customers,
+        devices,
         maintenance,
         media,
         complaints,

@@ -41,7 +41,20 @@ Every V1 module in the requirements:
 These are built behind adapters and need credentials or a provider choice (see §47 open questions):
 
 - **Payments**: Razorpay orders, Checkout and webhooks are built in; set `GP_RAZORPAY_KEY_ID`, `GP_RAZORPAY_KEY_SECRET` and `GP_PAYMENT_WEBHOOK_SECRET` (below). Without keys the demo has a "simulate payment" button, which is disabled in production and whenever keys are set.
-- **Notifications**: the push adapter logs until a push provider is added. Email sends over SMTP once `GP_SMTP_*` is set, SMS through MSG91 and WhatsApp through the Cloud API (below); each logs until it is configured.
+- **Notifications**: push goes to the mobile apps through Firebase once `GP_PUSH_PROVIDER=fcm` and `GP_FCM_SERVICE_ACCOUNT` are set (see *Mobile apps* below). Email sends over SMTP once `GP_SMTP_*` is set, SMS through MSG91 and WhatsApp through the Cloud API (below); each logs until it is configured.
+
+### Mobile apps (Android and iPhone)
+
+The apps use the same `/api/v1` API as the website. What they need is built in:
+
+- **Sign-in**: `/auth/login` (or phone codes) returns an access token (30 minutes) and a refresh token (14 days) that `/auth/refresh` rotates. Each phone is its own session, listed at `/auth/sessions`.
+- **Push notifications**: after sign-in the app sends its Firebase token to `POST /devices`. Pushes carry `kind`, `entity_type` and `entity_id` so a tap can open the right screen. Signing out, or signing out everywhere, stops that phone's pushes. One Firebase project covers both stores: create it, add the Android and iOS apps, upload the APNs key for iOS, then set `GP_PUSH_PROVIDER=fcm` and `GP_FCM_SERVICE_ACCOUNT` (the service-account JSON, or a path to it).
+- **Start-up check**: `GET /app/config` (no sign-in) returns the minimum supported versions (`GP_APP_MIN_VERSION_ANDROID`, `GP_APP_MIN_VERSION_IOS`) and store links, so an old app can ask to update.
+- **Data use**: responses are gzipped, JSON GETs carry an `ETag` (send `If-None-Match` to get a `304` when nothing changed), photos have a 480 px `thumbnail_url` and, when large, a 1600 px `preview_url`.
+- **Errors**: every error has `detail` (as before), a stable `code` (`not_found`, `validation_error`, `mfa_setup_required`, ...) and a readable `message`.
+- **Client code**: `/api/v1/openapi.json` has short operation ids (`tickets_list_tickets`) for OpenAPI generators.
+
+Notifications are sent just after the change is saved, on a small thread pool, so a slow provider doesn't hold up the request; the worker sends anything left over after a restart.
 
 ### Payments (Razorpay)
 

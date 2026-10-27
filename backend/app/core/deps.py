@@ -5,9 +5,10 @@ from typing import Annotated
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import false, select
 from sqlalchemy.orm import Session
 
-from app.core.db import get_db
+from app.core.db import get_db, keep
 from app.core.features import disabled_permissions
 from app.core.rbac import has_permission
 from app.models import RefreshToken, Tenant, User
@@ -25,6 +26,7 @@ class Actor:
     user_agent: str | None
     # Permissions removed by the layout's feature switches for this role (app.core.features).
     disabled: frozenset[str] = field(default_factory=frozenset)
+    session_id: uuid.UUID | None = None  # the sign-in session (refresh token row) behind the access token
 
     @property
     def id(self) -> uuid.UUID:
@@ -69,20 +71,31 @@ def get_actor(
         user_id = uuid.UUID(payload["sub"])
     except (jwt.PyJWTError, KeyError, ValueError):
         raise unauthorized
-    user = db.get(User, user_id)
-    if user is None or not user.is_active or payload.get("ver") != user.token_version:
-        raise unauthorized
     sid = payload.get("sid")
-    if sid:
-        # A session signed out from another device stops working immediately, not when its token expires.
-        session = db.get(RefreshToken, uuid.UUID(sid))
-        if session is None or session.revoked_at is not None or session.user_id != user.id:
-            raise unauthorized
+    try:
+        session_id = uuid.UUID(sid) if sid else None
+    except ValueError:
+        raise unauthorized
+    # One round trip for the caller, their layout and their sign-in session; this runs on every request.
+    stmt = select(User, Tenant, RefreshToken).outerjoin(Tenant, Tenant.id == User.tenant_id).where(User.id == user_id)
+    if session_id:
+        stmt = stmt.outerjoin(RefreshToken, (RefreshToken.id == session_id) & (RefreshToken.user_id == User.id))
+    else:
+        stmt = stmt.outerjoin(RefreshToken, false())
+    row = db.execute(stmt).first()
+    if row is None:
+        raise unauthorized
+    user, tenant, session = row
+    if not user.is_active or payload.get("ver") != user.token_version:
+        raise unauthorized
+    # A session signed out from another device stops working immediately, not when its token expires.
+    if session_id and (session is None or session.revoked_at is not None):
+        raise unauthorized
     disabled: frozenset[str] = frozenset()
     if user.tenant_id is not None:
-        tenant = db.get(Tenant, user.tenant_id)
         if tenant is None or tenant.status != "active":
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Tenant is not active")
+        keep(db, tenant)
         disabled = disabled_permissions(tenant.settings, user.role)
     from app.core.config import get_settings
 
@@ -92,7 +105,7 @@ def get_actor(
             status.HTTP_403_FORBIDDEN,
             {"code": "mfa_setup_required", "message": "Set up 2-step verification in your profile to continue"},
         )
-    return Actor(user=user, ip=client_ip(request), user_agent=request.headers.get("user-agent"), disabled=disabled)
+    return Actor(user=user, ip=client_ip(request), user_agent=request.headers.get("user-agent"), disabled=disabled, session_id=session_id)
 
 
 def actor_for(db: Session, user: User, ip: str | None = None, user_agent: str | None = None) -> Actor:

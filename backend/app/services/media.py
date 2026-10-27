@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.db import keep
 from app.core.deps import Actor
 from app.models import MaintenanceEvidence, MaintenanceTask, Media
 from app.models.base import utcnow
@@ -21,6 +22,7 @@ from app.services.storage import (
     ALLOWED_TYPES,
     content_matches,
     get_storage,
+    make_preview,
     make_thumbnail,
     max_bytes_for,
     sha256_hex,
@@ -166,6 +168,10 @@ def finalize(db: Session, actor: Actor, m: Media, caption: str | None = None) ->
         if thumb:
             m.thumbnail_key = m.storage_key.rsplit(".", 1)[0] + "_thumb.jpg"
             storage.put(m.thumbnail_key, thumb, "image/jpeg")
+        preview = make_preview(data)
+        if preview:
+            m.preview_key = m.storage_key.rsplit(".", 1)[0] + "_preview.jpg"
+            storage.put(m.preview_key, preview, "image/jpeg")
     m.uploaded_at = utcnow()
     m.status = MediaStatus.READY
     m.error = None
@@ -243,5 +249,5 @@ def delete(db: Session, actor: Actor, m: Media, reason: str):
 def approved_state(db: Session, m: Media) -> bool | None:
     if m.entity_type != "maintenance_task":
         return None
-    task = db.get(MaintenanceTask, m.entity_id)
+    task = keep(db, db.get(MaintenanceTask, m.entity_id))  # a page of photos usually shares one job
     return bool(task and task.status in (TaskStatus.APPROVED, TaskStatus.CLOSED))

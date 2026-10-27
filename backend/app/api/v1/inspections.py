@@ -2,6 +2,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.api.v1._util import Limit, Offset, paginate, property_labels, user_names
 from app.core.deps import DB, Perm
@@ -78,7 +79,11 @@ def list_inspections(
     limit: int = Limit,
     offset: int = Offset,
 ):
-    stmt = scope_inspections(tenant_select(Inspection, actor), db, actor).order_by(Inspection.created_at.desc())
+    stmt = (
+        scope_inspections(tenant_select(Inspection, actor), db, actor)
+        .options(selectinload(Inspection.items))
+        .order_by(Inspection.created_at.desc())
+    )
     if property_id:
         stmt = stmt.where(Inspection.property_id == property_id)
     if status:

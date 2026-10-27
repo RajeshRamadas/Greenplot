@@ -7,6 +7,7 @@ os.environ.setdefault("GP_SECRET_KEY", "test-secret-key-for-greenplot-tests-0123
 os.environ.setdefault("GP_PUBLIC_BASE_URL", "http://testserver")
 os.environ.setdefault("GP_API_RATE_PER_MINUTE", "100000")
 os.environ.setdefault("GP_LOGIN_RATE_PER_MINUTE", "1000")
+os.environ.setdefault("GP_NOTIFY_IN_BACKGROUND", "false")
 
 import pytest
 from fastapi.testclient import TestClient

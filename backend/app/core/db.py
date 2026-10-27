@@ -14,6 +14,9 @@ def _make_engine(url: str):
     kwargs: dict = {"pool_pre_ping": True}
     if url.startswith("sqlite"):
         kwargs["connect_args"] = {"check_same_thread": False}
+    else:
+        s = get_settings()
+        kwargs |= {"pool_size": s.db_pool_size, "max_overflow": s.db_max_overflow, "pool_recycle": 1800}
     engine = create_engine(url, **kwargs)
     if url.startswith("sqlite"):
 
@@ -35,6 +38,17 @@ def configure(url: str) -> None:
     global engine
     engine = _make_engine(url)
     SessionLocal.configure(bind=engine)
+
+
+def keep(db: Session, obj):
+    """Hold a strong reference for the session's lifetime.
+
+    The identity map only holds objects weakly, so a row such as the caller's tenant that is looked up
+    with db.get() in many helpers would otherwise be fetched again each time it is garbage collected.
+    """
+    if obj is not None:
+        db.info.setdefault("kept", {})[id(obj)] = obj
+    return obj
 
 
 def get_db() -> Iterator[Session]:

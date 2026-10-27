@@ -26,7 +26,7 @@ from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -434,15 +434,16 @@ def reconciliation(db: Session, tenant_id: uuid.UUID) -> dict:
             )
         )
     )
+    paid_by_invoice = dict(
+        db.execute(
+            select(Payment.invoice_id, func.sum(Payment.amount))
+            .where(Payment.tenant_id == tenant_id, Payment.status == PaymentStatus.SUCCEEDED, Payment.invoice_id.is_not(None))
+            .group_by(Payment.invoice_id)
+        ).all()
+    )
     mismatched = []
     for inv in db.scalars(select(Invoice).where(Invoice.tenant_id == tenant_id, Invoice.deleted_at.is_(None))):
-        paid = sum(
-            (
-                money(p.amount)
-                for p in db.scalars(select(Payment).where(Payment.invoice_id == inv.id, Payment.status == PaymentStatus.SUCCEEDED))
-            ),
-            Decimal("0"),
-        )
+        paid = money(paid_by_invoice.get(inv.id) or 0)
         if paid != money(inv.amount_paid):
             mismatched.append({"invoice": inv.number, "recorded_paid": float(inv.amount_paid), "payments_total": float(paid)})
     return {

@@ -126,7 +126,7 @@ def purge_expired_media(db: Session, today: date | None = None) -> int:
         Media.status.in_([MediaStatus.READY, MediaStatus.DELETED, MediaStatus.FAILED]),
     )
     for m in db.scalars(stmt):
-        for key in (m.storage_key, m.thumbnail_key):
+        for key in (m.storage_key, m.thumbnail_key, m.preview_key):
             if key:
                 try:
                     storage.delete(key)

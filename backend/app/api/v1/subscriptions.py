@@ -17,9 +17,10 @@ router = APIRouter(tags=["billing"])
 def _out(db, subs: list[Subscription]) -> list[SubscriptionOut]:
     labels = property_labels(db, (s.property_id for s in subs))
     plans = {p.id: p for p in db.scalars(select(BillingPlan).where(BillingPlan.id.in_({s.plan_id for s in subs})))} if subs else {}
+    props = {p.id: p for p in db.scalars(select(Property).where(Property.id.in_({s.property_id for s in subs})))} if subs else {}
     out = []
     for s in subs:
-        plan, prop = plans.get(s.plan_id), db.get(Property, s.property_id)
+        plan, prop = plans.get(s.plan_id), props.get(s.property_id)
         price = svc.period_amount(plan, prop, s.frequency_months, s.discount_pct) if plan and prop else None
         out.append(
             SubscriptionOut.model_validate(s).model_copy(

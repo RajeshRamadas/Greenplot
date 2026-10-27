@@ -331,3 +331,15 @@ def test_resident_and_vendor_self_registration(client, world, as_, db, mail):
     admin.ok("post", f"/signups/{s['id']}/reject", {"reason": "No such plot in this layout"})
     assert any(m["To"] == "spam@x.in" and "No such plot" in m.get_content() for m in mail)
     assert admin.ok("get", "/signups")["total"] == 0
+
+
+def test_production_refuses_a_sample_or_short_secret_key():
+    from pydantic import ValidationError
+
+    from app.core.config import Settings
+
+    for weak in ("change-me", "change-me-in-production-please-32b+", "short-but-random-1234"):
+        with pytest.raises(ValidationError, match="GP_SECRET_KEY"):
+            Settings(environment="production", secret_key=weak)
+    assert Settings(environment="production", secret_key="x" * 48).secret_key == "x" * 48
+    assert Settings(environment="development", secret_key="change-me")  # demos keep working

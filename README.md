@@ -161,6 +161,24 @@ docker compose exec api python -m app.seed   # optional demo data
 
 Put Cloudflare or another TLS reverse proxy in front of port 3000. For large video uploads, route `/api/v1/*` straight to the `api` service at the proxy. For S3 / Cloudflare R2 media storage, set `GP_STORAGE_BACKEND=s3` and the `GP_S3_*` variables; the bucket must stay private.
 
+### Backups
+
+The `backup` service backs up the database and every uploaded file each night at 02:00 IST and keeps 30 days. Set the `GP_BACKUP_S3_*` variables in `.env` to a private bucket separate from the media one (for example Cloudflare R2), and `GP_BACKUP_HEARTBEAT_URL` so a missed or failed night raises an alert. Without a bucket, backups only go to the `backups` volume on the same server.
+
+In the bucket: `db/greenplot-<UTC stamp>.dump` (one `pg_dump` per night), `media/current/` (a mirror of the uploads) and `media/changed/<UTC stamp>/` (files that night's run deleted or overwrote in the mirror, so older versions can still be recovered).
+
+```bash
+docker compose exec backup backup.sh                    # back up now
+docker compose exec backup restore.sh list              # what is there
+docker compose exec backup restore.sh check             # test-restore the latest dump into a scratch database
+docker compose stop api worker
+docker compose exec backup restore.sh db latest --yes   # replace the live database (or name a dump)
+docker compose exec backup restore.sh media --yes       # copy the uploads mirror back
+docker compose start api worker
+```
+
+Run `restore.sh check` once before launch and then every quarter.
+
 ## Tests
 
 ```bash

@@ -82,6 +82,12 @@ jobs:
             sleep 1
           done
           echo "worker did not finish a job pass"; exit 1
+      - name: Backup and test restore
+        run: |
+          docker compose exec -T api sh -c 'mkdir -p /data/storage/ci && echo backup-check > /data/storage/ci/file.txt'
+          docker compose exec -T backup backup.sh
+          test "$(docker compose exec -T backup cat /backups/media/current/ci/file.txt)" = backup-check
+          docker compose exec -T backup restore.sh check
       - name: Logs
         if: always()
         run: docker compose logs --no-color

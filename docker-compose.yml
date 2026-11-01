@@ -92,7 +92,24 @@ services:
     ports:
       - "3000:3000"
 
+  # Nightly backups of the database and uploads (backup/backup.sh). Set GP_BACKUP_S3_* in .env so copies
+  # leave the server; without them they only go to the `backups` volume on this machine.
+  backup:
+    build: ./backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: ${GP_BACKUP_TZ:-Asia/Kolkata}
+    volumes:
+      - media:/data/storage
+      - backups:/backups
+
 volumes:
   pgdata:
   media:
   clamav:
+  backups:
